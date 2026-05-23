@@ -13,32 +13,92 @@ export type SettingsLite = {
   hasApiKey: boolean;
   apiKey: string;
   baseUrl: string;
+  activeRelayId: string;
+  raw: Record<string, unknown>;
 };
 
+type RelayProfileLite = {
+  id?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  [key: string]: unknown;
+};
+
+type SettingsBlob = {
+  activeRelayId?: string;
+  relayProfiles?: RelayProfileLite[];
+  [key: string]: unknown;
+};
+
+function extractActiveProfile(raw: SettingsBlob): {
+  apiKey: string;
+  baseUrl: string;
+  activeRelayId: string;
+} {
+  const activeRelayId = typeof raw.activeRelayId === "string" ? raw.activeRelayId : "";
+  const profiles = Array.isArray(raw.relayProfiles) ? raw.relayProfiles : [];
+  const active = profiles.find((p) => p?.id === activeRelayId) ?? profiles[0];
+  return {
+    apiKey: (active?.apiKey ?? "").toString().trim(),
+    baseUrl: (active?.baseUrl ?? "").toString().trim(),
+    activeRelayId,
+  };
+}
+
+export function mergeApiKeyIntoSettings(
+  raw: SettingsBlob,
+  apiKey: string,
+  baseUrl: string,
+): SettingsBlob {
+  const profiles: RelayProfileLite[] = Array.isArray(raw.relayProfiles) ? [...raw.relayProfiles] : [];
+  const activeId = typeof raw.activeRelayId === "string" ? raw.activeRelayId : "";
+  let idx = profiles.findIndex((p) => p?.id === activeId);
+  if (idx < 0) idx = profiles.length > 0 ? 0 : -1;
+  if (idx < 0) {
+    profiles.push({ id: activeId || "default", apiKey, baseUrl });
+  } else {
+    profiles[idx] = {
+      ...profiles[idx],
+      apiKey,
+      ...(baseUrl ? { baseUrl } : {}),
+    };
+  }
+  return { ...raw, relayProfiles: profiles };
+}
+
+export const extractActiveProfileForTest = extractActiveProfile;
+export const mergeApiKeyForTest = mergeApiKeyIntoSettings;
+
 async function loadProbe(): Promise<
-  | { probe: ProbeResult; overview: OverviewLite; settings: SettingsLite }
-  | NormalizedError
+  { probe: ProbeResult; overview: OverviewLite; settings: SettingsLite; error: NormalizedError | null }
 > {
   const overview = await callSafe<Record<string, unknown>>("load_overview");
-  if (!overview.ok) return overview.error;
   const watcher = await callSafe<Record<string, unknown>>("load_watcher_state");
-  if (!watcher.ok) return watcher.error;
   const relay = await callSafe<Record<string, unknown>>("relay_status");
-  if (!relay.ok) return relay.error;
   const settings = await callSafe<Record<string, unknown>>("load_settings");
-  if (!settings.ok) return settings.error;
 
-  const ov = overview.data as {
+  const firstError =
+    !overview.ok ? overview.error
+    : !watcher.ok ? watcher.error
+    : !relay.ok ? relay.error
+    : !settings.ok ? settings.error
+    : null;
+
+  const ov = (overview.ok ? overview.data : {}) as {
     codex_app?: { status?: string; path?: string | null };
   };
-  const wa = watcher.data as { installed?: boolean; enabled?: boolean };
-  const re = relay.data as { authenticated?: boolean; configured?: boolean };
-  const stRaw = settings.data as { settings?: Record<string, unknown> };
-  const st = (stRaw.settings ?? {}) as { officialMixApiKey?: string|null; officialMixBaseUrl?: string|null };
+  const wa = (watcher.ok ? watcher.data : {}) as { installed?: boolean; enabled?: boolean };
+  const re = (relay.ok ? relay.data : {}) as {
+    authenticated?: boolean;
+    configured?: boolean;
+    requiresOpenaiAuth?: boolean;
+  };
+  const stRaw = (settings.ok ? settings.data : {}) as { settings?: Record<string, unknown> };
+  const rawSettings = (stRaw.settings ?? {}) as Record<string, unknown>;
+  const { apiKey, baseUrl, activeRelayId } = extractActiveProfile(rawSettings);
 
-  const apiKey = (st.officialMixApiKey ?? "").trim();
-  const baseUrl = (st.officialMixBaseUrl ?? "").trim();
-  const hasAccount = !!re.authenticated || apiKey.length > 0;
+  const hasApiKey = apiKey.length > 0;
+  const hasAccount = !!re.authenticated || hasApiKey;
 
   return {
     overview: {
@@ -52,8 +112,11 @@ async function loadProbe(): Promise<
       watcherEnabled: !!wa.enabled,
       relayApplied: !!re.configured,
       hasAccount,
+      authenticated: !!re.authenticated,
+      requiresOpenaiAuth: !!re.requiresOpenaiAuth,
     },
-    settings: { hasApiKey: apiKey.length > 0, apiKey, baseUrl },
+    settings: { hasApiKey, apiKey, baseUrl, activeRelayId, raw: rawSettings },
+    error: firstError,
   };
 }
 
@@ -65,14 +128,10 @@ export function useBackend() {
 
   const refresh = useCallback(async () => {
     const result = await loadProbe();
-    if ("probe" in result) {
-      setOverview(result.overview);
-      setProbe(result.probe);
-      setSettings(result.settings);
-      setError(null);
-    } else {
-      setError(result);
-    }
+    setOverview(result.overview);
+    setProbe(result.probe);
+    setSettings(result.settings);
+    setError(result.error);
   }, []);
 
   useEffect(() => {

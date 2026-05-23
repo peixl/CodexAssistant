@@ -3,6 +3,8 @@ export type ProbeResult = {
   watcherEnabled: boolean;
   relayApplied: boolean;
   hasAccount: boolean;
+  authenticated: boolean;
+  requiresOpenaiAuth: boolean;
 };
 
 export type LauncherState =
@@ -26,15 +28,13 @@ export const initialLauncherState: LauncherState = { kind: "preparing" };
 
 export function deriveStateFromProbe(result: ProbeResult): LauncherState {
   if (!result.hasAccount) return { kind: "need_account" };
-  if (!result.watcherInstalled || !result.watcherEnabled || !result.relayApplied) {
-    return { kind: "preparing" };
-  }
   return { kind: "ready" };
 }
 
 export function launcherReducer(state: LauncherState, event: LauncherEvent): LauncherState {
   switch (event.type) {
     case "probe_done":
+      if (state.kind === "launching") return state;
       return deriveStateFromProbe(event.result);
     case "prepare_start":
       return { kind: "preparing" };

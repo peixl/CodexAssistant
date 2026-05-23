@@ -40,7 +40,7 @@ export function Home({
       </header>
 
       <section className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
-        <LauncherButton state={state} onLaunch={onLaunch} onRetry={onRetry} />
+        <LauncherButton state={state} onLaunch={onLaunch} onRetry={onRetry} onOpenAccount={onOpenAccount} />
         <CapabilityChips />
         <UpdateBanner info={updateInfo} onUpdate={onOpenUpdate} />
       </section>

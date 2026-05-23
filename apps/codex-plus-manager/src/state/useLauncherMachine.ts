@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useRef, useReducer } from "react";
 import { callSafe } from "@/lib/invoke";
 import {
   initialLauncherState,
@@ -22,36 +22,24 @@ export function useLauncherMachine(deps: LauncherDeps): {
   retry: () => Promise<void>;
 } {
   const [state, dispatch] = useReducer(launcherReducer, initialLauncherState);
-
-  const prepare = useCallback(async () => {
-    dispatch({ type: "prepare_start" });
-    if (!deps.probe?.watcherInstalled) {
-      const r = await callSafe("install_watcher");
-      if (!r.ok) return dispatch({ type: "prepare_failed", message: r.error.message });
-    }
-    if (!deps.probe?.watcherEnabled) {
-      const r = await callSafe("enable_watcher");
-      if (!r.ok) return dispatch({ type: "prepare_failed", message: r.error.message });
-    }
-    if (!deps.probe?.relayApplied) {
-      const cmd =
-        deps.relayKind === "apiKey" ? "apply_pure_api_injection"
-          : deps.relayKind === "chatgpt" ? "apply_relay_injection"
-          : "clear_relay_injection";
-      const r = await callSafe(cmd);
-      if (!r.ok) return dispatch({ type: "prepare_failed", message: r.error.message });
-    }
-    dispatch({ type: "prepare_done" });
-  }, [deps.probe, deps.relayKind]);
+  const watcherInstallAttemptedRef = useRef(false);
 
   useEffect(() => {
     if (!deps.probe) return;
     dispatch({ type: "probe_done", result: deps.probe });
-    if (deps.probe.hasAccount &&
-      (!deps.probe.watcherInstalled || !deps.probe.watcherEnabled || !deps.probe.relayApplied)) {
-      void prepare();
+    if (
+      deps.probe.hasAccount &&
+      !deps.probe.watcherInstalled &&
+      !watcherInstallAttemptedRef.current
+    ) {
+      watcherInstallAttemptedRef.current = true;
+      void (async () => {
+        await callSafe("install_watcher");
+        await callSafe("enable_watcher");
+        await deps.onAfterLaunch();
+      })();
     }
-  }, [deps.probe, prepare]);
+  }, [deps.probe, deps.onAfterLaunch]);
 
   const launch = useCallback(async () => {
     dispatch({ type: "launch_click" });
@@ -76,8 +64,8 @@ export function useLauncherMachine(deps: LauncherDeps): {
 
   const retry = useCallback(async () => {
     dispatch({ type: "retry" });
-    await prepare();
-  }, [prepare]);
+    await deps.onAfterLaunch();
+  }, [deps.onAfterLaunch]);
 
   return { state, launch, retry };
 }

@@ -1,8 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { TEXT } from "@/lib/text";
 import { callSafe } from "@/lib/invoke";
 import type { RelayKind } from "@/state/useLauncherMachine";
+import { mergeApiKeyIntoSettings } from "@/state/useBackend";
+
+type RelayProfile = {
+  id?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  [key: string]: unknown;
+};
+
+type SettingsBlob = {
+  activeRelayId?: string;
+  relayProfiles?: RelayProfile[];
+  [key: string]: unknown;
+};
+
+async function loadRawSettings(): Promise<SettingsBlob> {
+  const r = await callSafe<{ settings?: SettingsBlob }>("load_settings");
+  if (!r.ok) return {};
+  return r.data.settings ?? {};
+}
 
 export function AccountDrawer({
   open,
@@ -21,6 +41,20 @@ export function AccountDrawer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    setKind(current === "none" ? "chatgpt" : current);
+    setError(null);
+    void (async () => {
+      const raw = await loadRawSettings();
+      const profiles = Array.isArray(raw.relayProfiles) ? raw.relayProfiles : [];
+      const activeId = typeof raw.activeRelayId === "string" ? raw.activeRelayId : "";
+      const active = profiles.find((p) => p?.id === activeId) ?? profiles[0];
+      setApiKey((active?.apiKey ?? "").toString());
+      setBaseUrl((active?.baseUrl ?? "").toString());
+    })();
+  }, [open, current]);
+
   const openLogin = async () => {
     setBusy(true); setError(null);
     const r = await callSafe("apply_relay_injection");
@@ -34,9 +68,9 @@ export function AccountDrawer({
     setBusy(true); setError(null);
     const trimmed = apiKey.trim();
     if (!trimmed) { setBusy(false); setError("API Key 不能为空"); return; }
-    const save = await callSafe("save_settings", {
-      settings: { officialMixApiKey: trimmed, officialMixBaseUrl: baseUrl.trim() || null },
-    });
+    const raw = await loadRawSettings();
+    const merged = mergeApiKeyIntoSettings(raw, trimmed, baseUrl.trim());
+    const save = await callSafe("save_settings", { settings: merged });
     if (!save.ok) { setBusy(false); setError(save.error.message); return; }
     const apply = await callSafe("apply_pure_api_injection");
     setBusy(false);
@@ -53,8 +87,8 @@ export function AccountDrawer({
           <div className="flex-1">
             <div>{TEXT.account.chatgpt}</div>
             {kind === "chatgpt" && (
-              <button onClick={openLogin} disabled={busy} className="mt-2 px-3 py-1.5 rounded bg-primary text-primary-foreground text-sm">
-                {TEXT.account.openLogin}
+              <button onClick={openLogin} disabled={busy} className="mt-2 px-3 py-1.5 rounded bg-primary text-primary-foreground text-sm disabled:opacity-60">
+                {busy ? "处理中…" : TEXT.account.openLogin}
               </button>
             )}
           </div>
@@ -74,8 +108,8 @@ export function AccountDrawer({
                   value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="Base URL（可选）"
                   className="w-full px-2 py-1 border border-border rounded bg-background"
                 />
-                <button onClick={saveApiKey} disabled={busy} className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-sm">
-                  {TEXT.account.saveSwitch}
+                <button onClick={saveApiKey} disabled={busy} className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-sm disabled:opacity-60">
+                  {busy ? "处理中…" : TEXT.account.saveSwitch}
                 </button>
               </>
             )}

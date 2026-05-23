@@ -11,10 +11,12 @@ const fullProbe: ProbeResult = {
   watcherEnabled: true,
   relayApplied: true,
   hasAccount: true,
+  authenticated: true,
+  requiresOpenaiAuth: false,
 };
 
 describe("deriveStateFromProbe", () => {
-  it("returns ready when everything is set", () => {
+  it("returns ready when account is set", () => {
     expect(deriveStateFromProbe(fullProbe)).toEqual({ kind: "ready" });
   });
   it("returns need_account when account missing", () => {
@@ -22,15 +24,15 @@ describe("deriveStateFromProbe", () => {
       kind: "need_account",
     });
   });
-  it("returns preparing when watcher uninstalled", () => {
-    expect(deriveStateFromProbe({ ...fullProbe, watcherInstalled: false })).toEqual({
-      kind: "preparing",
-    });
+  it("returns ready when account set but watcher uninstalled (watcher is background)", () => {
+    expect(
+      deriveStateFromProbe({ ...fullProbe, watcherInstalled: false }),
+    ).toEqual({ kind: "ready" });
   });
-  it("returns preparing when relay not applied", () => {
-    expect(deriveStateFromProbe({ ...fullProbe, relayApplied: false })).toEqual({
-      kind: "preparing",
-    });
+  it("returns ready when account set but relay not applied (relay is optional)", () => {
+    expect(
+      deriveStateFromProbe({ ...fullProbe, relayApplied: false }),
+    ).toEqual({ kind: "ready" });
   });
 });
 
@@ -75,9 +77,15 @@ describe("launcherReducer", () => {
     ).toEqual({ kind: "error", message: "nope" });
   });
 
-  it("probe_done updates from probe result", () => {
+  it("probe_done derives state from probe", () => {
     expect(
       launcherReducer({ kind: "preparing" }, { type: "probe_done", result: fullProbe }),
     ).toEqual({ kind: "ready" });
+  });
+
+  it("probe_done preserves launching state to avoid mid-launch flicker", () => {
+    expect(
+      launcherReducer({ kind: "launching" }, { type: "probe_done", result: fullProbe }),
+    ).toEqual({ kind: "launching" });
   });
 });

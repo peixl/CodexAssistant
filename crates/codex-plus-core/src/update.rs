@@ -219,14 +219,16 @@ pub async fn perform_update(
         .asset_url
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("没有可下载的 Release asset"))?;
-    let bytes =
-        crate::http_client::download_client(&format!("CodexAssistant/{}", crate::version::VERSION))?
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
+    let bytes = crate::http_client::download_client(&format!(
+        "CodexAssistant/{}",
+        crate::version::VERSION
+    ))?
+    .get(url)
+    .send()
+    .await?
+    .error_for_status()?
+    .bytes()
+    .await?;
     let installer_path = download_asset_to(release, &bytes, download_dir)?;
     validate_downloaded_installer(release, &installer_path, &bytes)?;
     launch_installer(&installer_path)?;

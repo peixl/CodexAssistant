@@ -18,8 +18,30 @@ export function normalizeInvokeError(error: unknown): NormalizedError {
   return { code: "unknown", message: TEXT.errors.unknown };
 }
 
+type BackendEnvelope = { status?: unknown; message?: unknown };
+
+export function isBackendFailure(value: unknown): value is BackendEnvelope {
+  if (!value || typeof value !== "object") return false;
+  const status = (value as BackendEnvelope).status;
+  return typeof status === "string" && status === "failed";
+}
+
+export function extractBackendError(value: unknown): NormalizedError {
+  const message =
+    typeof (value as BackendEnvelope)?.message === "string" &&
+    ((value as BackendEnvelope).message as string).length > 0
+      ? ((value as BackendEnvelope).message as string)
+      : TEXT.errors.unknown;
+  return { code: "backend_failed", message };
+}
+
 export async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  return tauriInvoke<T>(command, args);
+  const data = await tauriInvoke<T>(command, args);
+  if (isBackendFailure(data)) {
+    const error = extractBackendError(data);
+    throw Object.assign(new Error(error.message), { code: error.code });
+  }
+  return data;
 }
 
 export async function callSafe<T>(
@@ -28,6 +50,9 @@ export async function callSafe<T>(
 ): Promise<{ ok: true; data: T } | { ok: false; error: NormalizedError }> {
   try {
     const data = await tauriInvoke<T>(command, args);
+    if (isBackendFailure(data)) {
+      return { ok: false, error: extractBackendError(data) };
+    }
     return { ok: true, data };
   } catch (error) {
     return { ok: false, error: normalizeInvokeError(error) };

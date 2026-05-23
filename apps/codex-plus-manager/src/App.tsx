@@ -8,8 +8,15 @@ import { useUpdateProbe } from "@/state/useUpdateProbe";
 import { callSafe } from "@/lib/invoke";
 import { TEXT } from "@/lib/text";
 
-function inferRelayKind(applied: boolean, hasApiKey: boolean): RelayKind {
+function inferRelayKind(
+  applied: boolean,
+  requiresOpenaiAuth: boolean,
+  authenticated: boolean,
+  hasApiKey: boolean,
+): RelayKind {
   if (!applied) return "none";
+  if (requiresOpenaiAuth) return "apiKey";
+  if (authenticated) return "chatgpt";
   return hasApiKey ? "apiKey" : "chatgpt";
 }
 
@@ -20,8 +27,13 @@ export function App() {
   const [updateBusy, setUpdateBusy] = useState(false);
 
   const relayKind: RelayKind = useMemo(
-    () => inferRelayKind(!!probe?.relayApplied, !!settings?.hasApiKey),
-    [probe?.relayApplied, settings?.hasApiKey],
+    () => inferRelayKind(
+      !!probe?.relayApplied,
+      !!probe?.requiresOpenaiAuth,
+      !!probe?.authenticated,
+      !!settings?.hasApiKey,
+    ),
+    [probe?.relayApplied, probe?.requiresOpenaiAuth, probe?.authenticated, settings?.hasApiKey],
   );
 
   const launchArgs = useMemo(

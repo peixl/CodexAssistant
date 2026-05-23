@@ -6,10 +6,12 @@ export function LauncherButton({
   state,
   onLaunch,
   onRetry,
+  onOpenAccount,
 }: {
   state: LauncherState;
   onLaunch: () => void;
   onRetry: () => void;
+  onOpenAccount: () => void;
 }) {
   const base =
     "w-[320px] h-[120px] rounded-2xl text-xl font-semibold flex flex-col items-center justify-center gap-2 transition";
@@ -32,8 +34,9 @@ export function LauncherButton({
       );
     case "need_account":
       return (
-        <button onClick={onLaunch} className={`${base} border border-border bg-background hover:bg-muted`}>
+        <button onClick={onOpenAccount} className={`${base} border border-border bg-background hover:bg-muted`}>
           <span className="flex items-center gap-2"><ArrowRight className="size-6" /> {TEXT.launcher.needAccount}</span>
+          <span className="text-sm font-normal opacity-80">{TEXT.launcher.needAccountHint}</span>
         </button>
       );
     case "error":
