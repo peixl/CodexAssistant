@@ -6,6 +6,7 @@ pub mod ccs_import;
 pub mod cdp;
 pub mod cli_wrapper;
 pub mod diagnostic_log;
+pub mod helper_auth;
 pub mod http_client;
 pub mod install;
 pub mod launcher;
