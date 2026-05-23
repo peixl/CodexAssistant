@@ -82,7 +82,7 @@ async fn fetch_ad_list_tries_backup_url_when_primary_fails() {
             let request = String::from_utf8_lossy(&buffer[..read]);
             if request.starts_with("GET /primary.json?") {
                 stream
-                    .write_all(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n")
+                    .write_all(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                     .unwrap();
             } else {
                 assert!(request.starts_with("GET /backup.json?"), "{request}");
@@ -99,7 +99,7 @@ async fn fetch_ad_list_tries_backup_url_when_primary_fails() {
                 })
                 .to_string();
                 let response = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                     body.len(),
                     body
                 );
