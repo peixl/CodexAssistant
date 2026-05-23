@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an enhancement
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What pain are you trying to solve? Who is affected?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How should it work? A short user-facing description plus any UI/CLI sketches.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: Affects Windows
+        - label: Affects macOS
+        - label: Affects relay / provider config
+        - label: Affects injected enhancements (会话删除 / Markdown 导出 / Timeline 等)
+        - label: Affects auto-update

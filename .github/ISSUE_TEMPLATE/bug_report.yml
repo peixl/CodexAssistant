@@ -1,0 +1,95 @@
+name: Bug report
+description: Report a defect in CodexAssistant
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in the
+        sections below — issues that omit required environment information will
+        be closed.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A short, single-sentence description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered, minimal steps. Include the exact buttons clicked or commands run.
+      placeholder: |
+        1. Launch CodexAssistant 管理工具
+        2. Click "启动"
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error messages, screenshots, and the relevant lines from `latest.log` if applicable.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows 10/11 (x64)
+        - macOS Apple Silicon (arm64)
+        - macOS Intel (x64)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: CodexAssistant version
+      description: Shown in "更多 → 关于" or via `CodexAssistant 管理工具 --version`.
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: codex-version
+    attributes:
+      label: Codex version
+      placeholder: e.g. 0.40.1
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics bundle
+      description: |
+        Use "更多 → 诊断 → 复制诊断信息" and paste the result here. This includes
+        recent log tail, settings (with secrets redacted), and platform info.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am running the latest released version
+          required: true

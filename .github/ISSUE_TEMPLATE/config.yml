@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 交流与求助 (Discussion & support)
+    url: https://github.com/peixl/CodexAssistant#交流与支持
+    about: 加入 CodexAssistant 用户群获取使用帮助、反馈或讨论新功能。
+  - name: Security vulnerability
+    url: https://github.com/peixl/CodexAssistant/security/advisories/new
+    about: 通过 GitHub Private Vulnerability Reporting 私下提交安全漏洞，不要公开 issue。
