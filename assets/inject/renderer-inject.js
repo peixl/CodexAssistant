@@ -1,5 +1,11 @@
 (() => {
   const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";
+  const helperToken = window.__CODEX_PLUS_HELPER_TOKEN__ || "";
+  async function helperFetch(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    if (helperToken) headers.set("X-Codex-Helper-Token", helperToken);
+    return fetch(`${helperBase}${path}`, { ...init, headers });
+  }
   const buttonClass = "codex-delete-button";
   const exportButtonClass = "codex-export-button";
   const projectMoveButtonClass = "codex-project-move-button";
@@ -2304,17 +2310,11 @@
       window.__codexSessionDeleteBridge("/diagnostics/log", payload).catch(() => {});
     }
     const body = JSON.stringify(payload);
-    try {
-      if (navigator.sendBeacon) {
-        const blob = new Blob([body], { type: "application/json" });
-        if (navigator.sendBeacon(`${helperBase}/diagnostics/log`, blob)) return;
-      }
-    } catch (_) {}
-    fetch(`${helperBase}/diagnostics/log`, {
+    helperFetch("/diagnostics/log", {
       method: "POST",
+      keepalive: true,
       headers: { "Content-Type": "application/json" },
       body,
-      keepalive: true,
     }).catch(() => {});
   }
 
@@ -2946,7 +2946,7 @@
     if (!window.__codexSessionDeleteBridge) {
       if (path === "/backend/status" || path === "/backend/repair") {
         try {
-          const response = await fetch(`${helperBase}${path}`, {
+          const response = await helperFetch(path, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload || {}),
@@ -2967,7 +2967,7 @@
     }
     async function fetchBackendStatusFromHelper(path, payload) {
       try {
-        const response = await fetch(`${helperBase}${path}`, {
+        const response = await helperFetch(path, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload || {}),
