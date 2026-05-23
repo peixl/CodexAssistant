@@ -122,9 +122,9 @@ pub fn remove_owned_data() -> std::io::Result<()> {
 pub fn default_install_root() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        return crate::windows_integration::desktop_dir().or_else(|| {
+        crate::windows_integration::desktop_dir().or_else(|| {
             directories::UserDirs::new().and_then(|dirs| dirs.desktop_dir().map(PathBuf::from))
-        });
+        })
     }
 
     #[cfg(target_os = "macos")]

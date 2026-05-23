@@ -1,141 +1,113 @@
+<div align="center">
+
+<img src="docs/images/codex-plus-plus.png" alt="CodexAssistant" width="128">
+
 # CodexAssistant
 
-<p align="center">
-  <img src="docs/images/codex-plus-plus.png" alt="CodexAssistant icon" width="160">
-</p>
+**External enhancement launcher and manager for the Codex App**
 
-<p align="center">
-  <a href="README.md">中文</a> | English
-</p>
+[中文](README.md) · English
 
-<p align="center">
-  <img alt="Release" src="https://img.shields.io/github/v/release/peixl/CodexAssistant">
-  <img alt="Stars" src="https://img.shields.io/github/stars/peixl/CodexAssistant">
-  <img alt="License" src="https://img.shields.io/github/license/peixl/CodexAssistant">
-  <img alt="Rust" src="https://img.shields.io/badge/rust-1.85%2B-orange">
-  <img alt="Tauri" src="https://img.shields.io/badge/tauri-2.x-24C8DB">
-</p>
+[![Release](https://img.shields.io/github/v/release/peixl/CodexAssistant?style=flat-square)](https://github.com/peixl/CodexAssistant/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/peixl/CodexAssistant/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/peixl/CodexAssistant/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/peixl/CodexAssistant?style=flat-square)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange?style=flat-square)](https://www.rust-lang.org/)
+[![Tauri](https://img.shields.io/badge/tauri-2.x-24C8DB?style=flat-square)](https://tauri.app/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-blue?style=flat-square)](#platform-support)
 
-CodexAssistant is an external enhancement launcher and manager for the Codex App, produced by IFQ.AI. It does not modify the original Codex installation. Instead, it starts Codex externally and injects enhancements through the Chromium DevTools Protocol.
+[Install](#install) · [Architecture](#architecture) · [Development](#development) · [FAQ](#faq) · [Contributing](CONTRIBUTING.md)
 
-## Quick Start
+</div>
 
-Download the latest installer from [GitHub Releases](https://github.com/peixl/CodexAssistant/releases):
+---
 
-- Windows: `CodexAssistant-*-windows-x64-setup.exe`
-- macOS Intel: `CodexAssistant-*-macos-x64.dmg`
-- macOS Apple Silicon: `CodexAssistant-*-macos-arm64.dmg`
+CodexAssistant is an **external enhancement tool** for the [Codex App](https://chatgpt.com/codex). It never modifies the Codex installation (`app.asar`, binaries, …); instead, it attaches over the Chromium DevTools Protocol (CDP) and injects scripts into the Codex renderer on demand to unlock plugin entries, enable session deletion and Markdown export, route requests through custom relays, run user scripts, and more.
 
-After installation, two entry points are available:
+The system is built from three pieces — a **Rust silent launcher**, a **Tauri (Rust + React) manager**, and the **renderer injection script** — and ships for Windows and macOS (Intel + Apple Silicon).
 
-- `CodexAssistant`: a silent launcher. It does not show the manager UI and only starts Codex with CodexAssistant injection.
-- `CodexAssistant Manager`: a Tauri control panel for launch, diagnostics, repair, updates, relay injection, enhancements, and user scripts.
+## ✨ Features
 
-The Windows installer creates desktop and Start Menu shortcuts. The macOS DMG installs `/Applications/CodexAssistant.app` and `/Applications/CodexAssistant 管理工具.app`.
+- 🚀 **Zero-touch injection** — CDP-attaches to a running Codex process. No `app.asar` patching, no DLLs written into the Codex install directory.
+- 🔌 **Relay injection** — Writes an OpenAI Responses-compatible relay profile into `~/.codex/config.toml` as a dedicated provider; switch between multiple relay profiles and revert to the official ChatGPT login mode with one click.
+- ⚡ **Silent launcher** — `codex-plus-plus`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
+- 🎛️ **Tauri manager** — React 19 + TypeScript (strict) frontend with a Rust backend. Includes Diagnostics, Logs, Settings, Relay Injection, User Scripts, and Provider Sync panels with dark/light themes.
+- 🧩 **Enhancements** — Plugin entry unlock, forced install for restricted plugins, session delete, Markdown export, project move, Timeline, recommended content.
+- 📜 **User scripts** — Managed independently and injected after Codex starts.
+- 🔄 **Provider Sync** — Rewrites provider metadata in the local SQLite DB when switching between relays / official accounts, keeping old sessions visible.
+- 🌐 **Zed Remote integration** — Detects remote SSH context and opens the corresponding file in Zed Remote Development directly from Codex.
+- 🔁 **Automatic updates** — Both the manager and the silent launcher check GitHub Releases and prompt when a newer version is available.
+- 📦 **First-class installers** — Windows NSIS installer and macOS dual-architecture DMGs (x64 / arm64), all built by GitHub Actions.
 
-## Sponsors
+## 📥 Install
 
-<p align="center">
-  <a href="mailto:1727532@qq.com">Want to be shown below?</a>
-</p>
-<table>
-  <tr>
-    <th width="180">🏆 Sponsor 🏆</th>
-    <th>Introduction</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://jojocode.com/">
-        <img src="docs/images/sponsor-jojocode.svg" alt="JOJO Code" width="150">
-      </a>
-    </td>
-    <td><a href="https://jojocode.com/"><strong>JOJO Code | Official CodexAssistant Relay</strong></a><br>Thanks to JOJO Code for sponsoring this project! JOJO Code is the official CodexAssistant relay service. It is built for daily development and team collaboration, providing stable Codex API access for quick onboarding, long-term use, and project workflows.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://aigocode.com/invite/CodexAssistant">
-        <img src="docs/images/sponsor-aigocode.png" alt="AIGoCode" width="150">
-      </a>
-    </td>
-    <td><a href="https://aigocode.com/invite/CodexAssistant"><strong>AIGoCode</strong></a><br>Thanks to AIGoCode for sponsoring this project! AIGoCode is an all-in-one platform integrating the latest Claude Code, Codex, and Gemini models, providing stable, efficient, and cost-effective AI programming services. It offers flexible subscription plans, direct access in China, no extra network setup, and fast responses. AIGoCode provides a special benefit for CodexAssistant users: users who <a href="https://aigocode.com/invite/CodexAssistant">register through this link</a> can receive an extra 10% bonus credit on their first recharge.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://www.packyapi.com/">
-        <img src="docs/images/sponsor-packycode.png" alt="PackyCode" width="150">
-      </a>
-    </td>
-    <td><a href="https://www.packyapi.com/"><strong>PackyCode</strong></a><br>Thanks to PackyCode for sponsoring this project! PackyCode is a stable and efficient API relay service provider, offering relay services for Claude Code, Codex, Gemini, and more. PackyCode provides a special discount for users of this software: register through this link and enter the "CodexAssistant" coupon code when recharging to get 10% off your first recharge.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://apikey.fun/register?aff=CODEX">
-        <img src="docs/images/sponsor-apikey-fun.png" alt="APIKEY.FUN" width="150">
-      </a>
-    </td>
-    <td><a href="https://apikey.fun/register?aff=CODEX"><strong>APIKEY.FUN</strong></a><br>Thanks to APIKEY.FUN for sponsoring this project! APIKEY.FUN is an AI relay platform focused on open, stable, and cost-effective access to mainstream global models. It supports API relay services for Claude, OpenAI, Gemini, and other popular models, with prices as low as 7% of the official rate. Register through the dedicated link to receive up to a permanent 5% recharge discount.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://runapi.co/register?aff=AWJq">
-        <img src="docs/images/sponsor-runapi.png" alt="RunAPI" width="150">
-      </a>
-    </td>
-    <td><a href="https://runapi.co/register?aff=AWJq"><strong>RunAPI</strong></a><br>Thanks to RunAPI for sponsoring this project! RunAPI is an efficient and stable OpenRouter alternative API platform. One API key can access OpenAI, Claude, Gemini, DeepSeek, Grok, and 150+ mainstream models at prices as low as 10% of the original rate, with seamless compatibility for tools such as Claude Code and OpenClaw.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://www.0029.org/?promo=AFF11F">
-        <img src="docs/images/sponsor-0029.svg" alt="0029 Cloud Bridge" width="150">
-      </a>
-    </td>
-    <td><a href="https://www.0029.org/?promo=AFF11F"><strong>0029 Cloud Bridge | Codex API Relay Station (gpt5.5 gpt-image-2)</strong></a><br>Supports individual and enterprise access. Monthly plans and pay-as-you-go billing are available, with Pro/Plus account pools, stable site-wide APIs, and 24/7 technical support.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://rawchat.cn">
-        <img src="docs/images/sponsor-rawchat.svg" alt="RawChat" width="150">
-      </a>
-    </td>
-    <td><a href="https://rawchat.cn"><strong>RawChat | Codex Relay Station</strong></a><br>A long-running relay station with monthly plans, low-rate usage, high cache hit rates, Pro/Plus account pools, and dedicated all-day maintenance.</td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://coder.visioncoder.cn">
-        <img src="https://coder.visioncoder.cn/logo.png" alt="VisionCoder" width="110">
-      </a>
-    </td>
-    <td><a href="https://coder.visioncoder.cn"><strong>VisionCoder Developer Platform</strong></a><br>Thanks to VisionCoder for supporting this project. VisionCoder Developer Platform is a reliable and efficient API relay service provider, offering access to mainstream AI models such as Claude Code, Codex, and Gemini. It helps developers and teams integrate AI capabilities more easily and improve productivity. VisionCoder is also offering our users a limited-time <a href="https://coder.visioncoder.cn">Token Plan</a> promotion: buy 1 month and get 1 month free.</td>
-  </tr>
-</table>
+Grab the right installer from [Releases](https://github.com/peixl/CodexAssistant/releases):
 
+| Platform | Asset |
+| :--- | :--- |
+| Windows x64 | `CodexAssistant-<version>-windows-x64-setup.exe` |
+| macOS Intel | `CodexAssistant-<version>-macos-x64.dmg` |
+| macOS Apple Silicon | `CodexAssistant-<version>-macos-arm64.dmg` |
 
-## Highlights
+You'll end up with two entry points:
 
-- Rust backend and silent launcher with no extra runtime requirement.
-- Tauri + React manager with dark/light theme support.
-- External CDP injection. No `app.asar` patching and no DLL writes into the Codex installation.
-- Relay injection mode with multiple relay profiles, `CodexAssistant` provider configuration, and a one-click switch back to official ChatGPT login mode.
-- Traditional enhancement mode with plugin entry unlock, forced plugin install, session delete, Markdown export, project move, Timeline, and more.
-- Independent user script management with startup injection.
-- Provider Sync to keep historical sessions visible after switching providers.
-- Zed open entry detects remote SSH context and opens the matching remote file in Zed Remote Development from Codex.
-- GitHub Release updates. Both the manager and silent launcher can detect available updates.
-- Windows single instance, no console window, administrator manifest, and system Desktop path detection.
-- Separate macOS x64 and arm64 DMGs. The silent launcher hides its Dock icon.
+- **`CodexAssistant`** — silent launcher. Starts Codex with injection enabled and **never opens a window**.
+- **`CodexAssistant Manager`** — Tauri control panel for inspecting injection state, viewing logs, configuring relays, managing user scripts, and toggling enhancements.
 
-## Relay Injection
+> macOS builds are currently neither Developer-ID-signed nor notarised. If Gatekeeper blocks the first launch, allow it from **System Settings → Privacy & Security**.
 
-Relay injection is for users who are already logged in with an official ChatGPT account in Codex/ChatGPT and want model requests to go through a custom compatible API.
+## 🏗️ Architecture
 
-In the manager's Relay Injection page:
+```
+┌─────────────────────────┐         ┌──────────────────────────┐
+│   CodexAssistant Manager │  IPC    │   codex-plus-plus.exe    │
+│   (Tauri: Rust + React)  │◀──────▶│   Silent launcher (Rust)  │
+└────────────┬─────────────┘  HTTP  └─────────────┬────────────┘
+             │ tauri commands                     │ spawn + monitor
+             ▼                                    ▼
+   ┌──────────────────────────────────────────────────┐
+   │            codex-plus-core (Rust crate)           │
+   │  · launcher / single-instance guard               │
+   │  · CDP client + renderer-inject.js bootstrap      │
+   │  · relay config writer & provider switcher        │
+   │  · settings / paths / proxy / update / models     │
+   │  · bridge.rs - 127.0.0.1 helper endpoint          │
+   └────────────────┬─────────────────────────────────┘
+                    │ uses
+                    ▼
+   ┌──────────────────────────────────────────────────┐
+   │            codex-plus-data (Rust crate)           │
+   │  · SQLite adapter for ~/.codex/state_5.sqlite     │
+   │  · Markdown export / Provider Sync                │
+   │  · transactional backup + undo                    │
+   └──────────────────────────────────────────────────┘
+                    │
+                    ▼
+            ┌──────────────────┐
+            │   Codex App       │   ←─ CDP attach
+            │   (Electron)      │   ←─ assets/inject/renderer-inject.js
+            └──────────────────┘
+```
 
-1. Make sure ChatGPT login status is detected.
-2. Add one or more relay profiles with Base URL and Key.
-3. Select the active profile and apply relay injection.
+### Engineering trade-offs
+
+| Decision | Rationale |
+| :--- | :--- |
+| **External CDP injection instead of patching `app.asar`** | Codex upgrades don't break injection; nothing is written into the Codex install directory; Windows doesn't need elevation. |
+| **Silent launcher split from the manager** | Starting Codex doesn't drag in the WebView runtime; the manager only opens on demand. |
+| **Rust workspace + Tauri** | A single core crate is reused by both binaries; the GUI talks to Rust through Tauri commands with no double serialization layer. |
+| **Local HTTP bridge on `127.0.0.1:57321`** | Decouples the injection script from the Rust backend; the manager and the renderer script share one API. |
+| **Every enhancement is cfg-gated per platform** | Windows / macOS specific code paths never leak into the other build; Linux still passes `cargo check` for development purposes. |
+
+## 🔌 Relay Injection
+
+Relay injection is for users **already logged into the official ChatGPT account in Codex** who want model traffic to flow through a custom OpenAI-compatible API. In the manager's "Relay Injection" panel:
+
+1. Confirm the ChatGPT login status is detected.
+2. Add one or more relay profiles (Base URL + Key).
+3. Select the active profile and click **Apply**.
 4. Launch `CodexAssistant`.
 
-CodexAssistant writes configuration similar to this into `~/.codex/config.toml`:
+CodexAssistant writes the following into `~/.codex/config.toml`:
 
 ```toml
 model_provider = "CodexAssistant"
@@ -148,112 +120,126 @@ base_url = "https://example.com/v1"
 experimental_bearer_token = "sk-..."
 ```
 
-To return to the official login mode, use the clear API mode button in the Relay Injection page. This removes `OPENAI_API_KEY` related configuration and switches Codex back to official ChatGPT authentication.
+Click **Clear API mode** to remove the relay provider and revert to the official ChatGPT login flow.
 
-## Enhancements
+## 📂 Data Locations
 
-Enhancements are controlled in the manager. Enhancement injection is enabled by default. When disabled, CodexAssistant will not inject its menu or scripts.
+| Path | Purpose |
+| :--- | :--- |
+| `~/.codex/config.toml` | Codex main config — CodexAssistant writes its provider here |
+| `~/.codex/auth.json` | Codex login state (official ChatGPT) |
+| `~/.codex/state_5.sqlite` | Codex local session database |
+| `~/.codex/backups_state/provider-sync` | Provider Sync transactional backups |
+| `~/.codex-session-delete/` | CodexAssistant state, logs, and injection cache |
 
-When relay injection mode is active, plugin entry unlock and forced plugin install are unnecessary, and the UI will say so. Other enhancements, including session delete, export, move, Timeline, recommendations, and user scripts, can still be used.
+## 🛠️ Development
 
-## Recommendations
+### Toolchain
 
-Recommended content is loaded from:
+- Rust 1.85+ (the workspace uses `edition = "2024"`)
+- Node.js 20+ and npm
+- macOS and Windows ship the required system SDKs; on Linux install Tauri's deps (`libwebkit2gtk-4.1-dev`, …)
 
-```text
-https://raw.githubusercontent.com/peixl/Ad-List/main/ads.json
-https://cdn.jsdelivr.net/gh/peixl/Ad-List@main/ads.json
-```
-
-Requests automatically append a `?v=timestamp` cache buster to avoid stale CDN content. Slow recommendation loading does not mark the backend connection as failed.
-
-## Updates and Packages
-
-CodexAssistant publishes installers through GitHub Releases. Windows builds an NSIS installer, while macOS builds separate Intel x64 and Apple Silicon arm64 DMGs.
-
-The manager's About page can check and start updates. When the silent launcher finds a new version, it opens the manager directly on the update prompt.
-
-## Data Locations
-
-- Codex config: `~/.codex/config.toml`
-- Codex auth state: `~/.codex/auth.json`
-- Codex local database: `~/.codex/state_5.sqlite`
-- CodexAssistant state and logs: `~/.codex-session-delete/`
-- Provider Sync backups: `~/.codex/backups_state/provider-sync`
-
-## FAQ
-
-### The CodexAssistant menu does not appear
-
-Make sure Codex was launched from the `CodexAssistant` entry instead of the original Codex entry. You can also inspect the Diagnostics and Logs pages in the manager.
-
-### The plugin says the backend is disconnected
-
-First test the helper endpoint:
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:57321/backend/status -Body "{}" -ContentType "application/json"
-```
-
-If the endpoint works but the plugin still times out, it is usually a Codex page CDP bridge or script cache issue. Restart CodexAssistant, or check manager logs for `renderer.script_loaded`, `bridge.request`, and `bridge.response`.
-
-### macOS says the app cannot be opened or is damaged
-
-Unsigned and unnotarized builds may be blocked by Gatekeeper. Allow the app in System Settings -> Privacy & Security. For formal distribution, configure Apple Developer ID signing and notarization.
-
-### Does it support Intel Macs?
-
-Yes. Releases provide both `macos-x64.dmg` and `macos-arm64.dmg`. Intel Macs should use the x64 package, while Apple Silicon Macs should use the arm64 package.
-
-## Development
+### Build
 
 ```bash
-# Frontend checks
-cd apps/codex-plus-manager
-npm install
-npm run check
-npm run vite:build
+# 1. Install frontend deps
+npm --prefix apps/codex-plus-manager ci
 
-# Rust checks
-cd ../..
-cargo fmt --check
-cargo test
+# 2. Build the frontend — tauri::generate_context! reads dist/ at compile time
+npm --prefix apps/codex-plus-manager run vite:build
+
+# 3. Build all Rust artefacts (silent launcher + manager)
 cargo build --release
 ```
 
-Project structure:
+### Run the manager in dev mode
 
-```text
-apps/
-  codex-plus-launcher/          Silent launcher
-  codex-plus-manager/           Tauri manager
-assets/inject/
-  renderer-inject.js            Enhancement script injected into Codex
-crates/
-  codex-plus-core/              Launch, injection, config, update, install, bridge
-  codex-plus-data/              Session data, export, Provider Sync
-scripts/installer/
-  windows/CodexAssistant.nsi    Windows NSIS installer
-  macos/package-dmg.sh          macOS DMG packager
+```bash
+npm --prefix apps/codex-plus-manager run dev
 ```
 
-## Community and Support
+### Full local check (same gates as CI)
 
-Scan the QR code to join the CodexAssistant discussion group, report issues, share usage notes, or suggest features:
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+npm --prefix apps/codex-plus-manager run check
+npm --prefix apps/codex-plus-manager run test
+```
 
-<img src="docs/images/discussion-group-qr.jpg" alt="CodexAssistant discussion group QR code" width="260">
+### Project layout
 
-If CodexAssistant has helped you, you can buy me a coffee or send a small tip to support continued maintenance.
+```
+CodexAssistant/
+├── apps/
+│   ├── codex-plus-launcher/     Silent launcher binary (codex-plus-plus)
+│   └── codex-plus-manager/      Tauri manager
+│       ├── src/                 React + TypeScript UI
+│       └── src-tauri/           Tauri commands & window management
+├── assets/inject/               JS injected into the Codex renderer
+├── crates/
+│   ├── codex-plus-core/         Launch, CDP, settings, relay, provider, update, bridge
+│   └── codex-plus-data/         SQLite adapter, Markdown export, Provider Sync
+├── scripts/installer/
+│   ├── macos/package-dmg.sh     macOS DMG packaging script
+│   └── windows/CodexAssistant.nsi  Windows NSIS installer script
+└── .github/workflows/           CI and Release Assets workflows
+```
 
-<p align="center">
-  <img src="docs/images/sponsor-alipay.jpg" alt="Alipay sponsor QR code" width="220">
-  <img src="docs/images/sponsor-wechat.jpg" alt="WeChat sponsor QR code" width="220">
-</p>
+## 🚦 Platform Support
 
-## Friendly Links
+| Platform | Silent launcher | Manager | Installer | CI |
+| :--- | :---: | :---: | :---: | :---: |
+| Windows x64 | ✅ | ✅ | NSIS `.exe` | ✅ |
+| macOS arm64 (Apple Silicon) | ✅ | ✅ | `.dmg` | ✅ |
+| macOS x64 (Intel) | ✅ | ✅ | `.dmg` | ✅ |
+| Linux | — | — | — | ✅ (lint & test) |
 
-- [LINUX DO](https://linux.do)
+Linux is not a distribution target, but the workspace stays buildable and CI runs lint + tests there as the canonical dev / CI environment.
 
-## Notes
+## ❓ FAQ
 
-CodexAssistant is an external enhancement tool and does not modify original Codex App files. If a future Codex App update changes page structure, the injection script may need updates.
+### The CodexAssistant menu never appears
+
+Make sure you launched from the `CodexAssistant` entry, not the original Codex shortcut. Open the manager's **Diagnostics** / **Logs** panels and look for `renderer.script_loaded` and `bridge.request` events to confirm injection succeeded.
+
+### The plugin says the backend is disconnected
+
+Test the helper endpoint first:
+
+```bash
+curl -X POST http://127.0.0.1:57321/backend/status -d '{}' -H 'Content-Type: application/json'
+```
+
+If the endpoint works but injection still reports failure, it's typically a CDP bridge reconnect or a script-cache issue. Restart CodexAssistant, or clear the injection cache from the manager.
+
+### macOS says "cannot be opened" or "damaged"
+
+Current releases are not Developer-ID-signed/notarised. Allow the app from **System Settings → Privacy & Security**, or remove the quarantine attribute:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/CodexAssistant.app
+xattr -dr com.apple.quarantine "/Applications/CodexAssistant 管理工具.app"
+```
+
+### Does Intel Mac work?
+
+Yes. Each release ships both `macos-x64.dmg` and `macos-arm64.dmg`; pick the one that matches your CPU.
+
+### Can I run it on Linux?
+
+The repo builds and passes lint / tests on Linux, but the Codex App itself has no Linux release — there is **nothing to inject into**. Linux is a development / CI platform only.
+
+## 🤝 Contributing
+
+PRs and issues are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first and run the full local check before pushing. Security-related issues should go through the channels in [SECURITY.md](SECURITY.md). All contributors are expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## 📄 License
+
+[MIT License](LICENSE) — © 2026 peixl / IFQ.AI
+
+## ⚠️ Disclaimer
+
+CodexAssistant is a **third-party enhancement tool** with no affiliation to OpenAI or the Codex team. It does not modify any original Codex App files. Future Codex App releases may change the page structure and require updates to the injection script. Any account, data, or service issue arising from using this tool is the user's own responsibility.

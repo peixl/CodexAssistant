@@ -381,6 +381,7 @@ mod sha256_tests {
     use super::*;
     use serde_json::json;
 
+    #[cfg(any(windows, target_os = "macos"))]
     fn platform_asset_name(version: &str) -> String {
         if cfg!(windows) {
             format!("codex-plus_{version}_x64-setup.exe")
@@ -390,6 +391,7 @@ mod sha256_tests {
     }
 
     #[test]
+    #[cfg(any(windows, target_os = "macos"))]
     fn latest_json_parses_sha256() {
         let asset_name = platform_asset_name("1.4.0");
         let sha256_val = "ab".repeat(32);
@@ -407,6 +409,7 @@ mod sha256_tests {
     }
 
     #[test]
+    #[cfg(any(windows, target_os = "macos"))]
     fn latest_json_missing_sha256_yields_none() {
         let asset_name = platform_asset_name("1.4.0");
         let payload = json!({
