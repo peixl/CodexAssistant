@@ -1,0 +1,122 @@
+name: Release Assets
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.1.6) to attach assets to'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-tag:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: Build macOS DMG (${{ matrix.arch }})
+    needs: resolve-tag
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+            target: x86_64-apple-darwin
+          - runner: macos-14
+            arch: arm64
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.resolve-tag.outputs.version }}
+      TAG: ${{ needs.resolve-tag.outputs.tag }}
+      BINARY_DIR: ${{ github.workspace }}/target/${{ matrix.target }}/release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/codex-plus-manager/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/codex-plus-manager
+        run: npm ci
+
+      - name: Build frontend assets
+        working-directory: apps/codex-plus-manager
+        run: npm run vite:build
+
+      - name: Build silent launcher
+        run: cargo build --release --target ${{ matrix.target }} -p codex-plus-launcher
+
+      - name: Build manager binary
+        run: cargo build --release --target ${{ matrix.target }} -p codex-plus-manager
+
+      - name: Package DMG
+        run: scripts/installer/macos/package-dmg.sh "$VERSION" "${{ matrix.arch }}"
+
+      - name: Upload DMG to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DMG="dist/macos/CodexAssistant-${VERSION}-macos-${{ matrix.arch }}.dmg"
+          gh release upload "$TAG" "$DMG" --clobber
+
+  latest-json:
+    name: Publish latest.json
+    needs: [resolve-tag, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate latest.json
+        env:
+          VERSION: ${{ needs.resolve-tag.outputs.version }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          BASE="https://github.com/$REPO/releases/download/$TAG"
+          cat > latest.json <<EOF
+          {
+            "version": "$VERSION",
+            "tag_name": "$TAG",
+            "url": "https://github.com/$REPO/releases/tag/$TAG",
+            "assets": [
+              { "name": "CodexAssistant-${VERSION}-windows-x64-setup.exe", "url": "$BASE/CodexAssistant-${VERSION}-windows-x64-setup.exe" },
+              { "name": "CodexAssistant-${VERSION}-macos-x64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-x64.dmg" },
+              { "name": "CodexAssistant-${VERSION}-macos-arm64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-arm64.dmg" }
+            ]
+          }
+          EOF
+
+      - name: Upload latest.json to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
+        run: gh release upload "$TAG" latest.json --clobber

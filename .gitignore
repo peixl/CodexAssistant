@@ -1,0 +1,42 @@
+# ─── Build outputs ────────────────────────────────────────────
+# Cargo
+/target/
+**/*.rs.bk
+
+# Node / Vite
+node_modules/
+apps/codex-plus-manager/dist/
+
+# Tauri (generated at build time)
+apps/codex-plus-manager/src-tauri/gen/
+
+# Installer packaging output (scripts/installer/macos/package-dmg.sh writes here)
+/dist/
+
+# ─── Logs ─────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Secrets / local env ──────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Editor / IDE ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── OS metadata ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Local tooling state ──────────────────────────────────────
+.claude/settings.local.json
+.omx/
