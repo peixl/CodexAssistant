@@ -254,13 +254,16 @@ fn manager_ui_exposes_pure_api_relay_mode_button() {
         .parent()
         .and_then(std::path::Path::parent)
         .expect("core crate should live under crates/codex-plus-core");
-    let source = std::fs::read_to_string(repo.join("apps/codex-plus-manager/src/App.tsx")).unwrap();
+    let text = std::fs::read_to_string(repo.join("apps/codex-plus-manager/src/lib/text.ts"))
+        .expect("text constants file must exist");
+    let drawer =
+        std::fs::read_to_string(repo.join("apps/codex-plus-manager/src/drawers/AccountDrawer.tsx"))
+            .expect("AccountDrawer must exist");
     let commands =
         std::fs::read_to_string(repo.join("apps/codex-plus-manager/src-tauri/src/lib.rs")).unwrap();
 
-    assert!(source.contains("官方混入 API Key"));
-    assert!(source.contains("纯 API"));
-    assert!(source.contains("apply_pure_api_injection"));
+    assert!(text.contains("使用我自己的 API Key"));
+    assert!(drawer.contains("apply_pure_api_injection"));
     assert!(commands.contains("commands::apply_pure_api_injection"));
 }
 

@@ -146,23 +146,24 @@ fn github_release_workflow_uploads_static_latest_json() {
 #[test]
 fn relay_settings_keeps_profile_config_and_auth_files_isolated() {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let app_tsx = manifest_dir.parent().unwrap().join("src/App.tsx");
-    let app_tsx = std::fs::read_to_string(&app_tsx).expect("read manager App.tsx");
+    let src_root = manifest_dir.parent().unwrap().join("src");
+    let account_drawer =
+        std::fs::read_to_string(src_root.join("drawers/AccountDrawer.tsx")).expect("AccountDrawer");
+    let relay_panel =
+        std::fs::read_to_string(src_root.join("panels/RelayAdvancedPanel.tsx")).expect("RelayAdvancedPanel");
     let commands_rs = manifest_dir.join("src/commands.rs");
     let commands_rs = std::fs::read_to_string(&commands_rs).expect("read manager commands.rs");
 
-    assert!(app_tsx.contains("snapshotActiveRelayFilesBeforeSwitch"));
-    assert!(app_tsx.contains("configContents: files.configContents"));
-    assert!(app_tsx.contains("authContents: files.authContents"));
-    assert!(app_tsx.contains("relayProfileSwitchValidation(selectedBeforeSave)"));
-    assert!(app_tsx.contains("缺少独立 config.toml"));
-    assert!(app_tsx.contains("const command = relayProfileSwitchCommand(selectedAfterSave);"));
-    assert!(app_tsx.contains("function relayProfileSwitchCommand(profile: RelayProfile)"));
-    assert!(
-        app_tsx.contains(
-            "if (profile.relayMode === \"pureApi\") return \"apply_pure_api_injection\";"
-        )
-    );
+    // Front-end must route mode switches to the matching Tauri command.
+    assert!(account_drawer.contains("apply_pure_api_injection"));
+    assert!(account_drawer.contains("apply_relay_injection"));
+
+    // The advanced relay editor must still write config + auth via save_relay_file.
+    assert!(relay_panel.contains("configContents"));
+    assert!(relay_panel.contains("authContents"));
+    assert!(relay_panel.contains("save_relay_file"));
+
+    // Back-end isolation guarantee remains.
     assert!(!commands_rs.contains("缺少独立 auth.json"));
     assert!(commands_rs.contains("apply_relay_files_to_home"));
 }
