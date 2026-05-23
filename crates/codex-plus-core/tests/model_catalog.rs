@@ -168,6 +168,12 @@ fn spawn_models_server(payload: serde_json::Value) -> ModelsServer {
                 std::thread::sleep(std::time::Duration::from_millis(10));
                 continue;
             };
+            stream
+                .set_nonblocking(false)
+                .expect("stream should switch to blocking mode");
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+                .expect("stream should accept read timeout");
             let mut buffer = [0u8; 4096];
             let read = stream.read(&mut buffer).unwrap();
             let request = String::from_utf8_lossy(&buffer[..read]).to_string();

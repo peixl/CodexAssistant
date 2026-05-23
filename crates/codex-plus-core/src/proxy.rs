@@ -17,6 +17,7 @@ pub fn detect_system_proxy() -> Option<String> {
     platform_system_proxy()
 }
 
+#[cfg(any(test, windows, target_os = "macos"))]
 fn normalize_proxy_url(value: &str) -> Option<String> {
     let value = value.trim();
     if value.is_empty() {
