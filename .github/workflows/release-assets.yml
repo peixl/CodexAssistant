@@ -76,7 +76,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }} -p codex-plus-launcher
 
       - name: Build manager binary
-        run: cargo build --release --target ${{ matrix.target }} -p codex-plus-manager
+        run: cargo build --release --target ${{ matrix.target }} -p codex-assistant
 
       - name: Package DMG
         run: scripts/installer/macos/package-dmg.sh "$VERSION" "${{ matrix.arch }}"

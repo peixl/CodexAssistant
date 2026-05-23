@@ -351,6 +351,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "codex-assistant"
+version = "1.1.6"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codex-plus-core",
+ "codex-plus-data",
+ "directories",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tempfile",
+]
+
+[[package]]
 name = "codex-plus-core"
 version = "1.1.6"
 dependencies = [
@@ -400,23 +417,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "winresource",
-]
-
-[[package]]
-name = "codex-plus-manager"
-version = "1.1.6"
-dependencies = [
- "anyhow",
- "async-trait",
- "codex-plus-core",
- "codex-plus-data",
- "directories",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tempfile",
 ]
 
 [[package]]

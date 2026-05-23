@@ -1,5 +1,5 @@
 [package]
-name = "codex-plus-manager"
+name = "codex-assistant"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

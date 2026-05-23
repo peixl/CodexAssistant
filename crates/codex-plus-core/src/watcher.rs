@@ -245,3 +245,15 @@ fn startup_shortcut_path() -> Option<PathBuf> {
             .join(WATCHER_STARTUP_SHORTCUT_NAME)
     })
 }
+
+#[cfg(windows)]
+pub fn is_watcher_installed() -> bool {
+    startup_shortcut_path()
+        .map(|path| path.exists())
+        .unwrap_or(false)
+}
+
+#[cfg(not(windows))]
+pub fn is_watcher_installed() -> bool {
+    true
+}

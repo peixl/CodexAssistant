@@ -8,6 +8,7 @@ import { EntryPointsPanel } from "@/panels/EntryPointsPanel";
 import { DiagnosticsPanel } from "@/panels/DiagnosticsPanel";
 import { RelayAdvancedPanel } from "@/panels/RelayAdvancedPanel";
 import { AboutPanel } from "@/panels/AboutPanel";
+import { ThemePanel } from "@/panels/ThemePanel";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function MoreDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Drawer open={open} title={TEXT.more.title} onClose={onClose}>
       <div className="space-y-3">
+        <Section title={TEXT.more.sections.appearance}><ThemePanel /></Section>
         <Section title={TEXT.more.sections.scripts}><ScriptsPanel /></Section>
         <Section title={TEXT.more.sections.providers}><ProvidersPanel /></Section>
         <Section title={TEXT.more.sections.entryPoints}><EntryPointsPanel /></Section>

@@ -103,11 +103,17 @@ pub struct SaveRelayFileRequest {
 #[serde(rename_all = "camelCase")]
 pub struct LaunchRequest {
     #[serde(default)]
-    pub app_path: String,
+    pub app_path: Option<String>,
     #[serde(default = "default_debug_port")]
     pub debug_port: u16,
     #[serde(default = "default_helper_port")]
     pub helper_port: u16,
+}
+
+impl LaunchRequest {
+    fn app_path_trimmed(&self) -> &str {
+        self.app_path.as_deref().unwrap_or("").trim()
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -131,6 +137,7 @@ pub struct DiagnosticsPayload {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WatcherPayload {
+    pub installed: bool,
     pub enabled: bool,
     pub disabled_flag: String,
 }
@@ -253,7 +260,7 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
         json!({
             "debug_port": debug_port,
             "helper_port": helper_port,
-            "app_path": request.app_path.trim()
+            "app_path": request.app_path_trimmed()
         }),
     );
     match spawn_silent_launcher(&request) {
@@ -278,8 +285,9 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
 fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
     let launcher = codex_plus_core::install::companion_binary_path(SILENT_BINARY);
     let mut command = std::process::Command::new(&launcher);
-    if !request.app_path.trim().is_empty() {
-        command.arg("--app-path").arg(request.app_path.trim());
+    let app_path = request.app_path_trimmed();
+    if !app_path.is_empty() {
+        command.arg("--app-path").arg(app_path);
     }
     command
         .arg("--debug-port")
@@ -1354,6 +1362,7 @@ fn install_background_failure(action: &str, error: impl std::fmt::Display) -> In
 fn watcher_payload() -> WatcherPayload {
     let flag = codex_plus_core::watcher::default_watcher_disabled_flag();
     WatcherPayload {
+        installed: codex_plus_core::watcher::is_watcher_installed(),
         enabled: !flag.exists(),
         disabled_flag: flag.to_string_lossy().to_string(),
     }

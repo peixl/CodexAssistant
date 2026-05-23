@@ -28,27 +28,30 @@ async function loadProbe(): Promise<
   const settings = await callSafe<Record<string, unknown>>("load_settings");
   if (!settings.ok) return settings.error;
 
-  const ov = overview.data as { has_account?: boolean; app_path?: string|null; debug_port?: number; helper_port?: number };
+  const ov = overview.data as {
+    codex_app?: { status?: string; path?: string | null };
+  };
   const wa = watcher.data as { installed?: boolean; enabled?: boolean };
-  const re = relay.data as { applied?: boolean };
+  const re = relay.data as { authenticated?: boolean; configured?: boolean };
   const stRaw = settings.data as { settings?: Record<string, unknown> };
   const st = (stRaw.settings ?? {}) as { officialMixApiKey?: string|null; officialMixBaseUrl?: string|null };
 
   const apiKey = (st.officialMixApiKey ?? "").trim();
   const baseUrl = (st.officialMixBaseUrl ?? "").trim();
+  const hasAccount = !!re.authenticated || apiKey.length > 0;
 
   return {
     overview: {
-      hasAccount: !!ov.has_account,
-      appPath: ov.app_path ?? null,
-      debugPort: ov.debug_port ?? 9229,
-      helperPort: ov.helper_port ?? 57321,
+      hasAccount,
+      appPath: ov.codex_app?.path ?? null,
+      debugPort: 9229,
+      helperPort: 57321,
     },
     probe: {
       watcherInstalled: !!wa.installed,
       watcherEnabled: !!wa.enabled,
-      relayApplied: !!re.applied,
-      hasAccount: !!ov.has_account,
+      relayApplied: !!re.configured,
+      hasAccount,
     },
     settings: { hasApiKey: apiKey.length > 0, apiKey, baseUrl },
   };

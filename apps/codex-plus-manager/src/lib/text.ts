@@ -1,10 +1,10 @@
 export const TEXT = {
   appName: "Codex Assistant",
   launcher: {
-    ready: "打开 ChatGPT",
+    ready: "唤起 Codex",
     readyHint: "已为你增强",
-    launching: "正在打开…",
-    needAccount: "先登录 ChatGPT",
+    launching: "正在唤起 Codex…",
+    needAccount: "唤起 Codex",
     preparing: "准备增强…",
     errorPrefix: "再试一次",
     errorAction: "查看原因",
@@ -26,6 +26,7 @@ export const TEXT = {
   more: {
     title: "更多设置",
     sections: {
+      appearance: "外观（主题）",
       scripts: "增强能力（脚本市场）",
       providers: "服务源同步（高级）",
       entryPoints: "桌面快捷方式 / 卸载",
