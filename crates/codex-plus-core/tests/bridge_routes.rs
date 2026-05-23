@@ -373,7 +373,7 @@ async fn user_script_manager_deletes_market_script_metadata_and_rejects_builtin_
         tags: Vec::new(),
         homepage: "https://example.com/demo".to_string(),
         script_url: "https://example.com/demo.js".to_string(),
-        sha256: String::new(),
+        sha256: "5cc41099e023f38d76f44f1a0a4cfa1c11b931b59b25cc423e092117a27a132c".to_string(),
     };
 
     codex_plus_core::script_market::install_market_script_content(
@@ -551,10 +551,11 @@ fn script_market_manifest_filters_invalid_entries() {
                 "tags": ["ui", 42],
                 "homepage": "https://example.com/demo",
                 "script_url": "https://example.com/demo.js",
-                "sha256": ""
+                "sha256": "5cc41099e023f38d76f44f1a0a4cfa1c11b931b59b25cc423e092117a27a132c"
             },
             { "id": "", "name": "Bad", "version": "1", "script_url": "https://example.com/bad.js" },
-            { "id": "missing-url", "name": "Bad", "version": "1" }
+            { "id": "missing-url", "name": "Bad", "version": "1" },
+            { "id": "no-sha", "name": "NoSha", "version": "1", "script_url": "https://example.com/nosha.js" }
         ]
     });
 
@@ -626,7 +627,7 @@ fn install_market_script_writes_file_and_records_metadata() {
         tags: Vec::new(),
         homepage: "https://example.com/demo".to_string(),
         script_url: "https://example.com/demo.js".to_string(),
-        sha256: String::new(),
+        sha256: "5cc41099e023f38d76f44f1a0a4cfa1c11b931b59b25cc423e092117a27a132c".to_string(),
     };
 
     codex_plus_core::script_market::install_market_script_content(
@@ -672,7 +673,7 @@ fn install_market_script_rejects_checksum_mismatch_without_replacing_existing_fi
             .unwrap_err()
             .to_string();
 
-    assert!(error.contains("checksum"));
+    assert!(error.contains("sha256 mismatch"), "error was: {error}");
     assert_eq!(
         std::fs::read_to_string(user_dir.join("market-demo.js")).unwrap(),
         "old"

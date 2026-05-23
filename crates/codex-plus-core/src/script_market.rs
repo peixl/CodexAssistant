@@ -41,15 +41,43 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned);
-    let scripts = raw
+    let raw_scripts: Vec<Value> = raw
         .get("scripts")
         .and_then(Value::as_array)
         .cloned()
-        .unwrap_or_default()
+        .unwrap_or_default();
+    let raw_total = raw_scripts.len();
+    let mut dropped_ids: Vec<String> = Vec::new();
+    let scripts: Vec<MarketScript> = raw_scripts
         .into_iter()
-        .filter_map(parse_market_script)
+        .filter_map(|entry| {
+            let candidate_id = entry
+                .get("id")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .unwrap_or_default()
+                .to_string();
+            match parse_market_script(entry) {
+                Some(parsed) => Some(parsed),
+                None => {
+                    if !candidate_id.is_empty() {
+                        dropped_ids.push(candidate_id);
+                    }
+                    None
+                }
+            }
+        })
         .collect();
-
+    if scripts.len() != raw_total {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "security.script_market_dropped_no_sha256",
+            serde_json::json!({
+                "total": raw_total,
+                "kept": scripts.len(),
+                "dropped_ids": dropped_ids,
+            }),
+        );
+    }
     Ok(ScriptMarketManifest {
         version,
         updated_at,
@@ -70,7 +98,13 @@ pub async fn fetch_market_manifest(url: &str) -> anyhow::Result<ScriptMarketMani
 }
 
 pub async fn download_script(url: &str) -> anyhow::Result<Vec<u8>> {
-    Ok(reqwest::get(url)
+    let client = crate::http_client::proxied_client(&format!(
+        "CodexAssistant/{}",
+        crate::version::VERSION
+    ))?;
+    Ok(client
+        .get(url)
+        .send()
         .await
         .with_context(|| format!("failed to request script {url}"))?
         .error_for_status()
@@ -115,6 +149,7 @@ fn parse_market_script(raw: Value) -> Option<MarketScript> {
     let name = required_string(&raw, "name")?;
     let version = required_string(&raw, "version")?;
     let script_url = required_string(&raw, "script_url")?;
+    let sha256 = required_string(&raw, "sha256")?;
     Some(MarketScript {
         id,
         name,
@@ -136,7 +171,7 @@ fn parse_market_script(raw: Value) -> Option<MarketScript> {
             .unwrap_or_default(),
         homepage: optional_string(&raw, "homepage"),
         script_url,
-        sha256: optional_string(&raw, "sha256"),
+        sha256,
     })
 }
 
@@ -158,15 +193,23 @@ fn optional_string(raw: &Value, key: &str) -> String {
 
 fn verify_sha256(script: &MarketScript, content: &[u8]) -> anyhow::Result<()> {
     let expected = script.sha256.trim().to_ascii_lowercase();
-    if expected.is_empty() {
-        return Ok(());
-    }
-    let actual = to_hex(&Sha256::digest(content));
     anyhow::ensure!(
-        actual == expected,
-        "checksum mismatch for market script {}",
+        !expected.is_empty(),
+        "script {} missing sha256",
         script.id
     );
+    let actual = to_hex(&Sha256::digest(content));
+    if actual != expected {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "security.script_market_sha256_mismatch",
+            serde_json::json!({
+                "id": script.id,
+                "expected": expected,
+                "actual": actual,
+            }),
+        );
+        anyhow::bail!("script {} sha256 mismatch", script.id);
+    }
     Ok(())
 }
 
@@ -178,4 +221,66 @@ fn to_hex(bytes: &[u8]) -> String {
         out.push(HEX[(byte & 0x0f) as usize] as char);
     }
     out
+}
+
+#[cfg(test)]
+mod hardening_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn script_obj(id: &str, with_sha: bool) -> Value {
+        let mut obj = json!({
+            "id": id,
+            "name": id,
+            "version": "1.0.0",
+            "script_url": format!("https://example.com/{id}.js"),
+        });
+        if with_sha {
+            obj["sha256"] = json!("aa".repeat(32));
+        }
+        obj
+    }
+
+    #[test]
+    fn manifest_drops_entries_without_sha256() {
+        let raw = json!({
+            "version": 1,
+            "scripts": [script_obj("good", true), script_obj("bad", false)],
+        });
+        let manifest = parse_market_manifest(raw).expect("parse");
+        let ids: Vec<&str> = manifest.scripts.iter().map(|s| s.id.as_str()).collect();
+        assert_eq!(ids, vec!["good"]);
+    }
+
+    #[test]
+    fn verify_sha256_rejects_empty() {
+        let script = MarketScript {
+            id: "x".into(),
+            name: "x".into(),
+            description: String::new(),
+            version: "1".into(),
+            author: String::new(),
+            tags: vec![],
+            homepage: String::new(),
+            script_url: "https://example.com/x.js".into(),
+            sha256: String::new(),
+        };
+        assert!(verify_sha256(&script, b"content").is_err());
+    }
+
+    #[test]
+    fn verify_sha256_rejects_mismatch() {
+        let script = MarketScript {
+            id: "x".into(),
+            name: "x".into(),
+            description: String::new(),
+            version: "1".into(),
+            author: String::new(),
+            tags: vec![],
+            homepage: String::new(),
+            script_url: "https://example.com/x.js".into(),
+            sha256: "00".repeat(32),
+        };
+        assert!(verify_sha256(&script, b"content").is_err());
+    }
 }
