@@ -379,6 +379,7 @@ pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<(
 #[cfg(test)]
 mod sha256_tests {
     use super::*;
+    #[cfg(any(windows, target_os = "macos"))]
     use serde_json::json;
 
     #[cfg(any(windows, target_os = "macos"))]
