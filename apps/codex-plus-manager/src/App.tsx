@@ -217,6 +217,7 @@ type UpdateResult = CommandResult<{
   releaseSummary?: string;
   assetName?: string | null;
   assetUrl?: string | null;
+  assetSha256?: string | null;
   updateAvailable?: boolean;
   installedPath?: string;
   progress?: number;
@@ -601,6 +602,7 @@ export function App() {
             body: update.releaseSummary ?? "",
             asset_name: update.assetName,
             asset_url: update.assetUrl,
+            asset_sha256: update.assetSha256 ?? null,
           }
         : null;
     const result = await run(() => call<UpdateResult>("perform_update", { release }));

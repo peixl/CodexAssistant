@@ -33,6 +33,7 @@ pub struct UpdateCheck {
     pub release_summary: String,
     pub asset_name: Option<String>,
     pub asset_url: Option<String>,
+    pub asset_sha256: Option<String>,
     pub update_available: bool,
 }
 
@@ -192,6 +193,7 @@ pub async fn check_for_update(current_version: &str) -> anyhow::Result<UpdateChe
         release_summary: release.body,
         asset_name: release.asset_name,
         asset_url: release.asset_url,
+        asset_sha256: release.asset_sha256,
         update_available,
     })
 }
@@ -213,6 +215,7 @@ pub async fn perform_update(
             .bytes()
             .await?;
     let installer_path = download_asset_to(release, &bytes, download_dir)?;
+    validate_downloaded_installer(release, &installer_path, &bytes)?;
     launch_installer(&installer_path)?;
     Ok(UpdateInstall {
         release: release.clone(),
@@ -308,6 +311,40 @@ pub fn launch_installer(path: &Path) -> anyhow::Result<()> {
     }
 }
 
+pub fn validate_downloaded_installer(
+    release: &Release,
+    installer_path: &Path,
+    bytes: &[u8],
+) -> anyhow::Result<()> {
+    let expected = match release.asset_sha256.as_deref() {
+        Some(sha) if !sha.trim().is_empty() => sha,
+        _ => {
+            let _ = std::fs::remove_file(installer_path);
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "security.update_missing_sha256",
+                serde_json::json!({
+                    "version": release.version,
+                    "asset_name": release.asset_name,
+                }),
+            );
+            anyhow::bail!("更新包缺少校验和，已拒绝安装");
+        }
+    };
+    if let Err(error) = verify_asset_sha256(expected, bytes) {
+        let _ = std::fs::remove_file(installer_path);
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "security.update_sha256_mismatch",
+            serde_json::json!({
+                "version": release.version,
+                "asset_name": release.asset_name,
+                "error": error.to_string(),
+            }),
+        );
+        return Err(error);
+    }
+    Ok(())
+}
+
 pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<()> {
     let expected = expected_hex.trim().to_ascii_lowercase();
     anyhow::ensure!(
@@ -394,5 +431,53 @@ mod sha256_tests {
     fn verify_rejects_non_hex() {
         let expected = format!("{}gg", "a".repeat(62));
         assert!(verify_asset_sha256(&expected, b"x").is_err());
+    }
+
+    use tempfile::TempDir;
+
+    fn release_with_sha(sha: Option<&str>) -> Release {
+        Release {
+            version: "1.4.0".into(),
+            url: "https://example.com".into(),
+            body: "".into(),
+            asset_name: Some("codex-plus_1.4.0_x64-setup.exe".into()),
+            asset_url: Some("https://example.com/x.exe".into()),
+            asset_sha256: sha.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn validate_download_rejects_missing_sha256() {
+        let dir = TempDir::new().unwrap();
+        let release = release_with_sha(None);
+        let installer = dir.path().join("x.exe");
+        std::fs::write(&installer, b"payload").unwrap();
+        let err = validate_downloaded_installer(&release, &installer, b"payload").unwrap_err();
+        assert!(err.to_string().contains("缺少校验和"), "{err}");
+        assert!(!installer.exists(), "installer should be removed on failure");
+    }
+
+    #[test]
+    fn validate_download_rejects_mismatch() {
+        let dir = TempDir::new().unwrap();
+        let release = release_with_sha(Some(&"00".repeat(32)));
+        let installer = dir.path().join("x.exe");
+        std::fs::write(&installer, b"payload").unwrap();
+        let err = validate_downloaded_installer(&release, &installer, b"payload").unwrap_err();
+        assert!(err.to_string().contains("校验失败"), "{err}");
+        assert!(!installer.exists());
+    }
+
+    #[test]
+    fn validate_download_accepts_match() {
+        let dir = TempDir::new().unwrap();
+        // sha256("payload") = 239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5
+        let release = release_with_sha(Some(
+            "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5",
+        ));
+        let installer = dir.path().join("x.exe");
+        std::fs::write(&installer, b"payload").unwrap();
+        validate_downloaded_installer(&release, &installer, b"payload").expect("ok");
+        assert!(installer.exists());
     }
 }
