@@ -36,7 +36,7 @@ fn bridge_script_defines_expected_globals_and_binding() {
 
 #[test]
 fn injection_script_prefixes_helper_url_and_sponsor_images() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("window.__CODEX_SESSION_DELETE_HELPER__"));
     assert!(script.contains("http://127.0.0.1:57321"));
@@ -49,7 +49,7 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
 
 #[test]
 fn injection_script_marks_diagnostic_build_and_reports_script_loaded() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("window.__CODEX_PLUS_BUILD__"));
     assert!(script.contains(codex_plus_core::assets::DIAGNOSTIC_BUILD_ID));
@@ -59,7 +59,7 @@ fn injection_script_marks_diagnostic_build_and_reports_script_loaded() {
 
 #[test]
 fn injection_script_fetches_ads_without_bridge() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("directFetchCodexPlusAds"));
     assert!(script.contains("cacheBustCodexPlusAdUrl"));
@@ -72,7 +72,7 @@ fn injection_script_fetches_ads_without_bridge() {
 
 #[test]
 fn injection_script_times_out_backend_bridge_calls_and_falls_back_to_helper() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("bridgeWithBackendTimeout"));
     assert!(script.contains("backend_bridge_timeout"));
@@ -83,14 +83,14 @@ fn injection_script_times_out_backend_bridge_calls_and_falls_back_to_helper() {
 
 #[test]
 fn injection_script_explains_plugin_patch_is_unneeded_in_relay_mode() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("兼容增强模式下无需开启"));
 }
 
 #[test]
 fn injection_script_skips_plugin_patch_work_in_relay_mode() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("function pluginPatchDisabledInRelayMode()"));
     assert!(script.contains("!codexPlusBackendSettingsLoaded"));
@@ -100,7 +100,7 @@ fn injection_script_skips_plugin_patch_work_in_relay_mode() {
 
 #[test]
 fn injection_script_unlocks_nested_disabled_plugin_install_buttons() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("button[aria-disabled=\"true\"]"));
     assert!(script.contains("[role=\"button\"][data-disabled]"));
@@ -113,7 +113,7 @@ fn injection_script_unlocks_nested_disabled_plugin_install_buttons() {
 
 #[test]
 fn injection_script_keeps_force_install_unlock_visual_state_sticky() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("codex-force-install-unlocked"));
     assert!(script.contains("codexForcePluginInstallRefreshIntervalMs"));
@@ -123,7 +123,7 @@ fn injection_script_keeps_force_install_unlock_visual_state_sticky() {
 
 #[test]
 fn injection_script_loads_backend_settings_before_initial_scan() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
     let startup_call = script
         .rfind("void loadBackendSettingsForStartup();")
         .expect("script should load backend settings on startup");
@@ -141,7 +141,7 @@ fn injection_script_loads_backend_settings_before_initial_scan() {
 
 #[test]
 fn injection_script_exposes_conversation_view_width_control() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("conversationView: false"));
     assert!(script.contains("conversationView"));
@@ -154,7 +154,7 @@ fn injection_script_exposes_conversation_view_width_control() {
 
 #[test]
 fn injection_script_keeps_session_action_buttons_in_pr_style() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("actionButtonClass = \"codex-session-action-button\""));
     assert!(script.contains("background: transparent;"));
@@ -164,7 +164,7 @@ fn injection_script_keeps_session_action_buttons_in_pr_style() {
 
 #[test]
 fn injection_script_unlocks_custom_model_catalog() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("/codex-model-catalog"));
     assert!(script.contains("codexModelCatalog"));
@@ -178,7 +178,7 @@ fn injection_script_unlocks_custom_model_catalog() {
 
 #[test]
 fn injection_script_exposes_fast_service_tier_control() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("default-service-tier"));
     assert!(script.contains("setting-storage-"));
@@ -238,7 +238,7 @@ fn injection_script_exposes_fast_service_tier_control() {
 
 #[test]
 fn injection_script_restores_thread_scroll_positions() {
-    let script = assets::injection_script(57321);
+    let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("threadScrollRestore"));
     assert!(script.contains("codexThreadScroll"));
