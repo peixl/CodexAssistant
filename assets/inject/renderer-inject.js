@@ -1425,14 +1425,14 @@
   let codexPlusBackendStatus = { status: "checking", message: "正在检查后端…" };
   let codexPlusBackendCheckSeq = 0;
 
+  const codexPlusTriggerLabel = "CodexAssistant - by IFQ.AI";
+  const codexPlusBrandUrl = "https://ifq.ai/";
+
   function renderBackendStatus() {
     const status = codexPlusBackendStatus.status || "failed";
     if (codexPlusBackendStatus.version) {
       codexPlusVersion = codexPlusBackendStatus.version;
       document.querySelectorAll("[data-codex-plus-version]").forEach((node) => {
-        node.textContent = `CodexAssistant ${codexPlusVersion}`;
-      });
-      document.querySelectorAll(`#${codexPlusMenuId} .codex-plus-trigger`).forEach((node) => {
         node.textContent = `CodexAssistant ${codexPlusVersion}`;
       });
     }
@@ -1917,7 +1917,7 @@
       if (node !== keep) node.remove();
     });
     Array.from(document.querySelectorAll("button")).forEach((button) => {
-      if ((button.textContent || "").trim() === `CodexAssistant ${codexPlusVersion}` && !button.closest(`#${codexPlusMenuId}`)) {
+      if ((button.textContent || "").trim() === codexPlusTriggerLabel && !button.closest(`#${codexPlusMenuId}`)) {
         button.remove();
       }
     });
@@ -1926,9 +1926,15 @@
   function configureCodexPlusTrigger(menu, trigger, nativeButtonClass) {
     if (!trigger) return;
     if (nativeButtonClass) trigger.className = nativeButtonClass;
-    if (trigger.dataset.codexPlusTriggerInstalled === "5") return;
-    trigger.dataset.codexPlusTriggerInstalled = "5";
+    trigger.title = "左键访问 IFQ.AI，右键打开 CodexAssistant 设置";
+    if (trigger.dataset.codexPlusTriggerInstalled === "6") return;
+    trigger.dataset.codexPlusTriggerInstalled = "6";
     trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try { window.open(codexPlusBrandUrl, "_blank", "noreferrer"); } catch { /* ignore */ }
+    }, true);
+    trigger.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       event.stopPropagation();
       openCodexPlusModal();
@@ -1996,7 +2002,7 @@
     const existing = document.getElementById(codexPlusMenuId);
     removeDuplicateCodexPlusMenus(existing);
     let insertionPoint = findNativeMenuInsertionPoint();
-    if (existing && existing.dataset.codexPlusMenuVersion !== "6") {
+    if (existing && existing.dataset.codexPlusMenuVersion !== "7") {
       existing.remove();
       insertionPoint = findNativeMenuInsertionPoint();
     } else if (existing && insertionPoint && existing.parentElement === insertionPoint.parent) {
@@ -2007,10 +2013,10 @@
     const menu = document.createElement("div");
     menu.id = codexPlusMenuId;
     menu.dataset.codexPlusMenu = "true";
-    menu.dataset.codexPlusMenuVersion = "6";
+    menu.dataset.codexPlusMenuVersion = "7";
     const trigger = document.createElement("button");
     trigger.type = "button";
-    trigger.textContent = `CodexAssistant ${codexPlusVersion}`;
+    trigger.textContent = codexPlusTriggerLabel;
     const indicator = document.createElement("span");
     indicator.className = "codex-plus-backend-indicator";
     indicator.dataset.codexBackendIndicator = "true";
