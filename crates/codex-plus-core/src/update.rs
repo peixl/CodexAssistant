@@ -11,6 +11,8 @@ pub const DEFAULT_LATEST_JSON_URL: &str =
 pub struct ReleaseAsset {
     pub name: String,
     pub browser_download_url: String,
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,6 +22,8 @@ pub struct Release {
     pub body: String,
     pub asset_name: Option<String>,
     pub asset_url: Option<String>,
+    #[serde(default)]
+    pub asset_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -82,24 +86,18 @@ pub fn release_from_github_payload(payload: &Value) -> anyhow::Result<Release> {
             Some((
                 asset.get("name")?.as_str()?.to_string(),
                 asset.get("browser_download_url")?.as_str()?.to_string(),
+                None::<String>,
             ))
         })
         .collect::<Vec<_>>();
     let selected = select_update_asset(&assets);
     Ok(Release {
         version,
-        url: payload
-            .get("html_url")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        body: payload
-            .get("body")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
+        url: payload.get("html_url").and_then(Value::as_str).unwrap_or_default().to_string(),
+        body: payload.get("body").and_then(Value::as_str).unwrap_or_default().to_string(),
         asset_name: selected.as_ref().map(|asset| asset.name.clone()),
-        asset_url: selected.map(|asset| asset.browser_download_url),
+        asset_url: selected.as_ref().map(|asset| asset.browser_download_url.clone()),
+        asset_sha256: selected.and_then(|asset| asset.sha256),
     })
 }
 
@@ -122,7 +120,13 @@ pub fn release_from_latest_json_payload(payload: &Value) -> anyhow::Result<Relea
                 .or_else(|| asset.get("browser_download_url"))?
                 .as_str()?
                 .to_string();
-            Some((name, url))
+            let sha256 = asset
+                .get("sha256")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_ascii_lowercase);
+            Some((name, url, sha256))
         })
         .collect::<Vec<_>>();
     let selected = select_update_asset(&assets);
@@ -142,21 +146,23 @@ pub fn release_from_latest_json_payload(payload: &Value) -> anyhow::Result<Relea
             .unwrap_or_default()
             .to_string(),
         asset_name: selected.as_ref().map(|asset| asset.name.clone()),
-        asset_url: selected.map(|asset| asset.browser_download_url),
+        asset_url: selected.as_ref().map(|asset| asset.browser_download_url.clone()),
+        asset_sha256: selected.and_then(|asset| asset.sha256),
     })
 }
 
-pub fn select_update_asset(assets: &[(String, String)]) -> Option<ReleaseAsset> {
+pub fn select_update_asset(assets: &[(String, String, Option<String>)]) -> Option<ReleaseAsset> {
     let named = assets
         .iter()
-        .filter(|(name, url)| !name.trim().is_empty() && !url.trim().is_empty())
+        .filter(|(name, url, _)| !name.trim().is_empty() && !url.trim().is_empty())
         .collect::<Vec<_>>();
-    for (name, url) in &named {
+    for (name, url, sha256) in &named {
         let lower = name.to_ascii_lowercase();
         if platform_asset_rank(&lower) == 0 {
             return Some(ReleaseAsset {
                 name: (*name).clone(),
                 browser_download_url: (*url).clone(),
+                sha256: sha256.clone(),
             });
         }
     }
@@ -299,5 +305,94 @@ pub fn launch_installer(path: &Path) -> anyhow::Result<()> {
     {
         let _ = path;
         anyhow::bail!("当前平台不支持启动安装包")
+    }
+}
+
+pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<()> {
+    let expected = expected_hex.trim().to_ascii_lowercase();
+    anyhow::ensure!(
+        expected.len() == 64 && expected.bytes().all(|b| b.is_ascii_hexdigit()),
+        "更新包校验失败：非法 sha256 长度或字符"
+    );
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    let actual = hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    anyhow::ensure!(actual == expected, "更新包校验失败：sha256 不匹配");
+    Ok(())
+}
+
+#[cfg(test)]
+mod sha256_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn platform_asset_name(version: &str) -> String {
+        if cfg!(windows) {
+            format!("codex-plus_{version}_x64-setup.exe")
+        } else {
+            format!("codex-assistant_{version}_aarch64.dmg")
+        }
+    }
+
+    #[test]
+    fn latest_json_parses_sha256() {
+        let asset_name = platform_asset_name("1.4.0");
+        let sha256_val = "ab".repeat(32);
+        let payload = json!({
+            "version": "1.4.0",
+            "assets": [{
+                "name": asset_name,
+                "url": "https://example.com/x",
+                "sha256": sha256_val
+            }]
+        });
+        let release = release_from_latest_json_payload(&payload).expect("parse");
+        assert_eq!(release.asset_name.as_deref(), Some(asset_name.as_str()));
+        assert_eq!(release.asset_sha256.as_deref(), Some(&*"ab".repeat(32)));
+    }
+
+    #[test]
+    fn latest_json_missing_sha256_yields_none() {
+        let asset_name = platform_asset_name("1.4.0");
+        let payload = json!({
+            "version": "1.4.0",
+            "assets": [{
+                "name": asset_name,
+                "url": "https://example.com/x"
+            }]
+        });
+        let release = release_from_latest_json_payload(&payload).expect("parse");
+        assert!(release.asset_sha256.is_none());
+    }
+
+    #[test]
+    fn verify_matches_real_sha256() {
+        let body = b"hello world";
+        let expected = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+        verify_asset_sha256(expected, body).expect("matches");
+    }
+
+    #[test]
+    fn verify_rejects_mismatch() {
+        let body = b"hello world";
+        let expected = "00".repeat(32);
+        let err = verify_asset_sha256(&expected, body).unwrap_err();
+        assert!(err.to_string().contains("校验失败"), "{err}");
+    }
+
+    #[test]
+    fn verify_rejects_bad_length() {
+        assert!(verify_asset_sha256("abc", b"x").is_err());
+    }
+
+    #[test]
+    fn verify_rejects_non_hex() {
+        let expected = format!("{}gg", "a".repeat(62));
+        assert!(verify_asset_sha256(&expected, b"x").is_err());
     }
 }

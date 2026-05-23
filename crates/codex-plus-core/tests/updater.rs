@@ -86,18 +86,22 @@ fn asset_selection_prefers_current_platform_artifacts() {
         (
             "CodexAssistant.zip".to_string(),
             "https://example.test/source.zip".to_string(),
+            None::<String>,
         ),
         (
             "codex-plus-plus-manager.exe".to_string(),
             "https://example.test/manager.exe".to_string(),
+            None::<String>,
         ),
         (
             "CodexAssistant_1.0.9_x64-setup.exe".to_string(),
             "https://example.test/setup.exe".to_string(),
+            None::<String>,
         ),
         (
             "CodexAssistant_1.0.9_x64.dmg".to_string(),
             "https://example.test/app.dmg".to_string(),
+            None::<String>,
         ),
     ];
 
@@ -128,6 +132,7 @@ fn download_asset_to_writes_bytes() {
         body: "fixes".to_string(),
         asset_name: Some("pkg.zip".to_string()),
         asset_url: Some("https://example.test/pkg.zip".to_string()),
+        asset_sha256: None,
     };
 
     let path = download_asset_to(&release, b"abcdef", dir.path()).unwrap();
