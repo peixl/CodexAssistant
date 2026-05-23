@@ -1,0 +1,11 @@
+{
+  "name": "codex-assistant-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/codex-plus-manager run dev",
+    "build": "npm --prefix apps/codex-plus-manager run build",
+    "check": "npm --prefix apps/codex-plus-manager run check",
+    "test": "npm --prefix apps/codex-plus-manager run test",
+    "vite:build": "npm --prefix apps/codex-plus-manager run vite:build"
+  }
+}
