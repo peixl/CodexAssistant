@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 pub const DEFAULT_REPOSITORY: &str = "peixl/CodexAssistant";
 pub const DEFAULT_LATEST_JSON_URL: &str =
@@ -351,14 +352,14 @@ pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<(
         expected.len() == 64 && expected.bytes().all(|b| b.is_ascii_hexdigit()),
         "更新包校验失败：非法 sha256 长度或字符"
     );
-    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    let actual = hasher
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+    let digest = hasher.finalize();
+    let mut actual = String::with_capacity(64);
+    for byte in digest {
+        use std::fmt::Write as _;
+        write!(&mut actual, "{byte:02x}").expect("writing to String never fails");
+    }
     anyhow::ensure!(actual == expected, "更新包校验失败：sha256 不匹配");
     Ok(())
 }

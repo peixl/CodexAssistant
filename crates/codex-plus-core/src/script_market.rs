@@ -91,7 +91,13 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
 }
 
 pub async fn fetch_market_manifest(url: &str) -> anyhow::Result<ScriptMarketManifest> {
-    let raw = reqwest::get(url)
+    let client = crate::http_client::proxied_client(&format!(
+        "CodexAssistant/{}",
+        crate::version::VERSION
+    ))?;
+    let raw = client
+        .get(url)
+        .send()
         .await
         .with_context(|| format!("failed to request script market index {url}"))?
         .error_for_status()

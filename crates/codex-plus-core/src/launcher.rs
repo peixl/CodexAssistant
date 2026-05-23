@@ -970,10 +970,10 @@ fn http_request_body(request: &str) -> &str {
 fn extract_helper_token_header(request: &str) -> Option<&str> {
     let headers = request.split_once("\r\n\r\n").map(|(h, _)| h).unwrap_or(request);
     for line in headers.lines() {
-        if let Some((name, value)) = line.split_once(':') {
-            if name.trim().eq_ignore_ascii_case("x-codex-helper-token") {
-                return Some(value.trim());
-            }
+        if let Some((name, value)) = line.split_once(':')
+            && name.trim().eq_ignore_ascii_case("x-codex-helper-token")
+        {
+            return Some(value.trim());
         }
     }
     None

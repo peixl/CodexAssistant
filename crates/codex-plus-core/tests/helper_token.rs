@@ -35,10 +35,8 @@ async fn missing_token_returns_401() {
 #[tokio::test]
 async fn wrong_token_returns_401() {
     let HelperHandle { port, shutdown } = spawn_helper_listener().await;
-    let raw = format!(
-        "POST /backend/status HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Codex-Helper-Token: not-a-real-token\r\nContent-Length: 0\r\n\r\n"
-    );
-    let response = send_raw(port, &raw).await;
+    let raw = "POST /backend/status HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Codex-Helper-Token: not-a-real-token\r\nContent-Length: 0\r\n\r\n";
+    let response = send_raw(port, raw).await;
     assert!(response.starts_with("HTTP/1.1 401"), "got: {response}");
     shutdown_helper_listener(shutdown).await;
 }
