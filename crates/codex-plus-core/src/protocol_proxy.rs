@@ -4,14 +4,30 @@
 //! 相关思路来自 cc-switch，Copyright (c) 2025 Jason Young。
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use serde_json::{Value, json};
 
 use crate::settings::{RelayProtocol, SettingsStore};
 
 pub const DEFAULT_PROTOCOL_PROXY_PORT: u16 = 57321;
+const UPSTREAM_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const UPSTREAM_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 const THINK_OPEN_TAG: &str = "<think>";
 const THINK_CLOSE_TAG: &str = "</think>";
+
+fn upstream_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .connect_timeout(UPSTREAM_CONNECT_TIMEOUT)
+            .pool_idle_timeout(UPSTREAM_POOL_IDLE_TIMEOUT)
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
 const EXTRA_CHAT_PASSTHROUGH_FIELDS: &[&str] = &[
     "frequency_penalty",
     "logit_bias",
@@ -276,7 +292,7 @@ pub async fn open_responses_proxy_request(body: &str) -> anyhow::Result<Upstream
         .and_then(Value::as_bool)
         .unwrap_or(false);
     let chat_request = responses_to_chat_completions(request_json)?;
-    let upstream = reqwest::Client::new()
+    let upstream = upstream_client()
         .post(chat_completions_url(&relay.base_url))
         .bearer_auth(relay.api_key.trim())
         .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -312,7 +328,7 @@ pub async fn open_models_proxy_request() -> anyhow::Result<UpstreamProxyResponse
         anyhow::bail!("Chat Completions 上游 Key 不能为空");
     }
 
-    let upstream = reqwest::Client::new()
+    let upstream = upstream_client()
         .get(models_url(&relay.base_url))
         .bearer_auth(relay.api_key.trim())
         .send()

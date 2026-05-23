@@ -40,7 +40,17 @@ async fn main() -> Result<()> {
     };
     let options = parse_launch_options(std::env::args().skip(1));
     tokio::spawn(async {
-        let _ = notify_manager_when_update_available().await;
+        let check = tokio::time::timeout(
+            std::time::Duration::from_secs(45),
+            notify_manager_when_update_available(),
+        )
+        .await;
+        if check.is_err() {
+            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                "launcher.update_check_timeout",
+                json!({ "timeout_seconds": 45 }),
+            );
+        }
     });
     let hooks = LauncherHooks::default();
     let handle = launch_and_inject_with_hooks(options, &hooks).await?;

@@ -461,12 +461,12 @@ impl LaunchHooks for DefaultLaunchHooks {
                 }
             }
         });
-        if let Some(runtime) = self
+        let previous = self
             .bridge_watchdog
             .lock()
             .await
-            .replace(BridgeWatchdogRuntime { shutdown, task })
-        {
+            .replace(BridgeWatchdogRuntime { shutdown, task });
+        if let Some(runtime) = previous {
             let _ = runtime.shutdown.send(());
             let _ = runtime.task.await;
         }
@@ -478,7 +478,8 @@ impl LaunchHooks for DefaultLaunchHooks {
     async fn wait_for_codex_exit(&self, launch: &CodexLaunch) -> anyhow::Result<()> {
         match launch {
             CodexLaunch::Process { .. } => {
-                if let Some(mut child) = self.child.lock().await.take() {
+                let child_opt = self.child.lock().await.take();
+                if let Some(mut child) = child_opt {
                     let _ = child.wait().await;
                 }
                 Ok(())
@@ -493,11 +494,13 @@ impl LaunchHooks for DefaultLaunchHooks {
     }
 
     async fn shutdown_helper(&self, _helper_port: u16) {
-        if let Some(runtime) = self.bridge_watchdog.lock().await.take() {
+        let bridge = self.bridge_watchdog.lock().await.take();
+        if let Some(runtime) = bridge {
             let _ = runtime.shutdown.send(());
             let _ = runtime.task.await;
         }
-        if let Some(runtime) = self.helper.lock().await.take() {
+        let helper = self.helper.lock().await.take();
+        if let Some(runtime) = helper {
             let _ = runtime.shutdown.send(());
             let _ = runtime.task.await;
         }
@@ -510,7 +513,8 @@ impl LaunchHooks for DefaultLaunchHooks {
                 command,
                 macos_cleanup_policy,
             } => {
-                if let Some(mut child) = self.child.lock().await.take() {
+                let child_opt = self.child.lock().await.take();
+                if let Some(mut child) = child_opt {
                     let _ = child.kill().await;
                 }
                 if let (Some(app_dir), Some(cleanup_policy)) = (
@@ -521,7 +525,8 @@ impl LaunchHooks for DefaultLaunchHooks {
                 }
             }
             CodexLaunch::Process { .. } => {
-                if let Some(mut child) = self.child.lock().await.take() {
+                let child_opt = self.child.lock().await.take();
+                if let Some(mut child) = child_opt {
                     let _ = child.kill().await;
                 }
             }
@@ -812,8 +817,25 @@ async fn handle_protocol_proxy_connection(
         let mut converter = crate::protocol_proxy::ChatSseToResponsesConverter::default();
         let mut bytes_stream = upstream.response.bytes_stream();
         let mut stream_failed = false;
+        const SSE_IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 
-        while let Some(chunk) = bytes_stream.next().await {
+        loop {
+            let next = tokio::time::timeout(SSE_IDLE_TIMEOUT, bytes_stream.next()).await;
+            let chunk = match next {
+                Ok(Some(chunk)) => chunk,
+                Ok(None) => break,
+                Err(_) => {
+                    let failed = converter.fail(
+                        "Upstream SSE idle timeout".to_string(),
+                        Some("idle_timeout".to_string()),
+                    );
+                    if !failed.is_empty() {
+                        let _ = stream.write_all(&failed).await;
+                    }
+                    stream_failed = true;
+                    break;
+                }
+            };
             match chunk {
                 Ok(bytes) => {
                     let converted = converter.push_bytes(&bytes);
@@ -914,13 +936,16 @@ fn log_helper_response(
 }
 
 async fn read_http_request(stream: &mut tokio::net::TcpStream) -> anyhow::Result<Vec<u8>> {
+    const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
     let mut buffer = Vec::new();
     let mut chunk = vec![0_u8; 4096];
     let mut header_end = None;
     let mut content_length = 0_usize;
 
     loop {
-        let read = stream.read(&mut chunk).await?;
+        let read = tokio::time::timeout(READ_TIMEOUT, stream.read(&mut chunk))
+            .await
+            .map_err(|_| anyhow::anyhow!("HTTP 请求读取超时"))??;
         if read == 0 {
             break;
         }

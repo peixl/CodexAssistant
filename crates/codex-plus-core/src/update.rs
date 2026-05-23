@@ -220,7 +220,7 @@ pub async fn perform_update(
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("没有可下载的 Release asset"))?;
     let bytes =
-        crate::http_client::proxied_client(&format!("CodexAssistant/{}", crate::version::VERSION))?
+        crate::http_client::download_client(&format!("CodexAssistant/{}", crate::version::VERSION))?
             .get(url)
             .send()
             .await?

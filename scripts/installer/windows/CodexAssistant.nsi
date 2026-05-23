@@ -10,7 +10,7 @@ Name "CodexAssistant"
 OutFile "${ROOT}\dist\windows\CodexAssistant-${VERSION}-windows-x64-setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\CodexAssistant"
 InstallDirRegKey HKCU "Software\CodexAssistant" "InstallDir"
-RequestExecutionLevel admin
+RequestExecutionLevel user
 SetCompressor /SOLID lzma
 
 !define MUI_ICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
@@ -32,6 +32,8 @@ Section "Install"
   Pop $0
   nsExec::ExecToLog 'taskkill /IM codex-plus-plus-manager.exe /F'
   Pop $0
+  ; Give Windows time to release the executable handle before File copy
+  Sleep 1500
 
   File "${ROOT}\dist\windows\app\codex-plus-plus.exe"
   File "${ROOT}\dist\windows\app\codex-plus-plus-manager.exe"
