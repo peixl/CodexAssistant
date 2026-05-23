@@ -403,9 +403,11 @@ async fn default_helper_serves_backend_status_over_http() {
     drop(listener);
 
     hooks.start_helper(port).await.unwrap();
+    let token = codex_plus_core::helper_auth::ensure_helper_token();
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     let response = client
         .post(format!("http://127.0.0.1:{port}/backend/status"))
+        .header("X-Codex-Helper-Token", token)
         .json(&serde_json::json!({}))
         .send()
         .await
@@ -417,6 +419,7 @@ async fn default_helper_serves_backend_status_over_http() {
 
     let repair_response = client
         .post(format!("http://127.0.0.1:{port}/backend/repair"))
+        .header("X-Codex-Helper-Token", token)
         .json(&serde_json::json!({}))
         .send()
         .await
@@ -440,11 +443,13 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
     drop(listener);
 
     hooks.start_helper(port).await.unwrap();
+    let token = codex_plus_core::helper_auth::ensure_helper_token();
     let response = reqwest::Client::builder()
         .no_proxy()
         .build()
         .unwrap()
         .post(format!("http://127.0.0.1:{port}/diagnostics/log"))
+        .header("X-Codex-Helper-Token", token)
         .json(&serde_json::json!({
             "event": "backend_check_failed",
             "message": "fetch failed",

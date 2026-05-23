@@ -562,6 +562,33 @@ async fn handle_helper_connection(
         }),
     );
 
+    if method != "OPTIONS" {
+        let provided = extract_helper_token_header(&request);
+        if !crate::helper_auth::verify_token(provided.unwrap_or("")) {
+            let body = serde_json::to_vec(&serde_json::json!({
+                "status": "failed",
+                "message": "unauthorized"
+            }))?;
+            let response = format!(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json; charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(response.as_bytes()).await?;
+            stream.write_all(&body).await?;
+            stream.shutdown().await?;
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "security.helper_token_invalid",
+                serde_json::json!({
+                    "method": method,
+                    "path": path,
+                    "provided_len": provided.map(str::len).unwrap_or(0),
+                    "remote_addr": remote_addr_text
+                }),
+            );
+            return Ok(());
+        }
+    }
+
     if crate::protocol_proxy::is_responses_proxy_path(path) && method == "POST" {
         return handle_protocol_proxy_connection(
             &mut stream,
@@ -644,10 +671,10 @@ async fn handle_helper_connection(
         }),
     );
     let response = if method == "OPTIONS" {
-        "HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string()
+        "HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string()
     } else {
         format!(
-            "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
             body.len()
         )
     };
@@ -848,7 +875,7 @@ async fn write_http_response(
     body: &[u8],
 ) -> anyhow::Result<()> {
     let response = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         body.len()
     );
     stream.write_all(response.as_bytes()).await?;
@@ -862,7 +889,7 @@ async fn write_http_stream_headers(
     content_type: &str,
 ) -> anyhow::Result<()> {
     let response = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nCache-Control: no-cache\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nConnection: close\r\n\r\n"
+        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nCache-Control: no-cache\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\r\nConnection: close\r\n\r\n"
     );
     stream.write_all(response.as_bytes()).await?;
     Ok(())
@@ -938,6 +965,18 @@ fn http_request_body(request: &str) -> &str {
         .split_once("\r\n\r\n")
         .map(|(_, body)| body)
         .unwrap_or_default()
+}
+
+fn extract_helper_token_header(request: &str) -> Option<&str> {
+    let headers = request.split_once("\r\n\r\n").map(|(h, _)| h).unwrap_or(request);
+    for line in headers.lines() {
+        if let Some((name, value)) = line.split_once(':') {
+            if name.trim().eq_ignore_ascii_case("x-codex-helper-token") {
+                return Some(value.trim());
+            }
+        }
+    }
+    None
 }
 
 fn sanitize_diagnostic_event(event: &str) -> String {
@@ -1465,5 +1504,42 @@ fn activate_packaged_app_blocking(app_user_model_id: &str, arguments: &str) -> a
             CoUninitialize();
         }
         result.map_err(Into::into)
+    }
+}
+
+pub mod test_support {
+    use super::*;
+    use tokio::sync::oneshot;
+
+    pub struct HelperHandle {
+        pub port: u16,
+        pub shutdown: oneshot::Sender<()>,
+    }
+
+    pub async fn spawn_helper_listener() -> HelperHandle {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let (tx, mut rx) = oneshot::channel();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = &mut rx => break,
+                    accepted = listener.accept() => {
+                        if let Ok((stream, addr)) = accepted {
+                            tokio::spawn(async move {
+                                let _ = handle_helper_connection(stream, Some(addr)).await;
+                            });
+                        }
+                    }
+                }
+            }
+        });
+        HelperHandle { port, shutdown: tx }
+    }
+
+    pub async fn shutdown_helper_listener(shutdown: oneshot::Sender<()>) {
+        let _ = shutdown.send(());
     }
 }
