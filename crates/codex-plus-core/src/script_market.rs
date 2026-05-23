@@ -57,10 +57,15 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
                 .map(str::trim)
                 .unwrap_or_default()
                 .to_string();
+            let has_sha256 = entry
+                .get("sha256")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .is_some_and(|s| !s.is_empty());
             match parse_market_script(entry) {
                 Some(parsed) => Some(parsed),
                 None => {
-                    if !candidate_id.is_empty() {
+                    if !has_sha256 && !candidate_id.is_empty() {
                         dropped_ids.push(candidate_id);
                     }
                     None
@@ -68,7 +73,7 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
             }
         })
         .collect();
-    if scripts.len() != raw_total {
+    if !dropped_ids.is_empty() {
         let _ = crate::diagnostic_log::append_diagnostic_log(
             "security.script_market_dropped_no_sha256",
             serde_json::json!({
