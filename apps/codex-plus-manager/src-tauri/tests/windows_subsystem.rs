@@ -149,8 +149,8 @@ fn relay_settings_keeps_profile_config_and_auth_files_isolated() {
     let src_root = manifest_dir.parent().unwrap().join("src");
     let account_drawer =
         std::fs::read_to_string(src_root.join("drawers/AccountDrawer.tsx")).expect("AccountDrawer");
-    let relay_panel =
-        std::fs::read_to_string(src_root.join("panels/RelayAdvancedPanel.tsx")).expect("RelayAdvancedPanel");
+    let relay_panel = std::fs::read_to_string(src_root.join("panels/RelayAdvancedPanel.tsx"))
+        .expect("RelayAdvancedPanel");
     let commands_rs = manifest_dir.join("src/commands.rs");
     let commands_rs = std::fs::read_to_string(&commands_rs).expect("read manager commands.rs");
 

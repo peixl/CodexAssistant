@@ -464,7 +464,10 @@ async fn try_inject_with_context(
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("selected CDP target has no websocket URL"))?;
     runtime.set_websocket_url(websocket_url);
-    let script = codex_plus_core::assets::injection_script(helper_port, codex_plus_core::helper_auth::ensure_helper_token());
+    let script = codex_plus_core::assets::injection_script(
+        helper_port,
+        codex_plus_core::helper_auth::ensure_helper_token(),
+    );
     let user_bundle = runtime
         .user_scripts
         .build_enabled_bundle()

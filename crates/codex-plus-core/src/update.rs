@@ -95,10 +95,20 @@ pub fn release_from_github_payload(payload: &Value) -> anyhow::Result<Release> {
     let selected = select_update_asset(&assets);
     Ok(Release {
         version,
-        url: payload.get("html_url").and_then(Value::as_str).unwrap_or_default().to_string(),
-        body: payload.get("body").and_then(Value::as_str).unwrap_or_default().to_string(),
+        url: payload
+            .get("html_url")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        body: payload
+            .get("body")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
         asset_name: selected.as_ref().map(|asset| asset.name.clone()),
-        asset_url: selected.as_ref().map(|asset| asset.browser_download_url.clone()),
+        asset_url: selected
+            .as_ref()
+            .map(|asset| asset.browser_download_url.clone()),
         asset_sha256: selected.and_then(|asset| asset.sha256),
     })
 }
@@ -148,7 +158,9 @@ pub fn release_from_latest_json_payload(payload: &Value) -> anyhow::Result<Relea
             .unwrap_or_default()
             .to_string(),
         asset_name: selected.as_ref().map(|asset| asset.name.clone()),
-        asset_url: selected.as_ref().map(|asset| asset.browser_download_url.clone()),
+        asset_url: selected
+            .as_ref()
+            .map(|asset| asset.browser_download_url.clone()),
         asset_sha256: selected.and_then(|asset| asset.sha256),
     })
 }
@@ -455,7 +467,10 @@ mod sha256_tests {
         std::fs::write(&installer, b"payload").unwrap();
         let err = validate_downloaded_installer(&release, &installer, b"payload").unwrap_err();
         assert!(err.to_string().contains("缺少校验和"), "{err}");
-        assert!(!installer.exists(), "installer should be removed on failure");
+        assert!(
+            !installer.exists(),
+            "installer should be removed on failure"
+        );
     }
 
     #[test]

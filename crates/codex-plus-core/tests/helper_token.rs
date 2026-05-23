@@ -4,13 +4,15 @@ use std::time::Duration;
 
 use codex_plus_core::helper_auth::ensure_helper_token;
 use codex_plus_core::launcher::test_support::{
-    spawn_helper_listener, shutdown_helper_listener, HelperHandle,
+    HelperHandle, shutdown_helper_listener, spawn_helper_listener,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 async fn send_raw(port: u16, raw: &str) -> String {
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).await.expect("connect");
+    let mut stream = TcpStream::connect(("127.0.0.1", port))
+        .await
+        .expect("connect");
     stream.write_all(raw.as_bytes()).await.expect("write");
     let mut buf = Vec::new();
     tokio::time::timeout(Duration::from_secs(2), stream.read_to_end(&mut buf))
@@ -60,7 +62,9 @@ async fn options_preflight_no_token_returns_204() {
     let response = send_raw(port, raw).await;
     assert!(response.starts_with("HTTP/1.1 204"), "got: {response}");
     assert!(
-        response.contains("Access-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token"),
+        response.contains(
+            "Access-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token"
+        ),
         "missing token in Allow-Headers: {response}"
     );
     shutdown_helper_listener(shutdown).await;

@@ -91,10 +91,8 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
 }
 
 pub async fn fetch_market_manifest(url: &str) -> anyhow::Result<ScriptMarketManifest> {
-    let client = crate::http_client::proxied_client(&format!(
-        "CodexAssistant/{}",
-        crate::version::VERSION
-    ))?;
+    let client =
+        crate::http_client::proxied_client(&format!("CodexAssistant/{}", crate::version::VERSION))?;
     let raw = client
         .get(url)
         .send()
@@ -109,10 +107,8 @@ pub async fn fetch_market_manifest(url: &str) -> anyhow::Result<ScriptMarketMani
 }
 
 pub async fn download_script(url: &str) -> anyhow::Result<Vec<u8>> {
-    let client = crate::http_client::proxied_client(&format!(
-        "CodexAssistant/{}",
-        crate::version::VERSION
-    ))?;
+    let client =
+        crate::http_client::proxied_client(&format!("CodexAssistant/{}", crate::version::VERSION))?;
     Ok(client
         .get(url)
         .send()
@@ -204,11 +200,7 @@ fn optional_string(raw: &Value, key: &str) -> String {
 
 fn verify_sha256(script: &MarketScript, content: &[u8]) -> anyhow::Result<()> {
     let expected = script.sha256.trim().to_ascii_lowercase();
-    anyhow::ensure!(
-        !expected.is_empty(),
-        "script {} missing sha256",
-        script.id
-    );
+    anyhow::ensure!(!expected.is_empty(), "script {} missing sha256", script.id);
     let actual = to_hex(&Sha256::digest(content));
     if actual != expected {
         let _ = crate::diagnostic_log::append_diagnostic_log(

@@ -43,7 +43,11 @@ mod tests {
     fn token_is_43_chars_url_safe_base64() {
         let token = ensure_helper_token();
         assert_eq!(token.len(), 43);
-        assert!(token.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_'));
+        assert!(
+            token
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+        );
     }
 
     #[test]
