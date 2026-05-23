@@ -40,6 +40,8 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
 
     assert!(script.contains("window.__CODEX_SESSION_DELETE_HELPER__"));
     assert!(script.contains("http://127.0.0.1:57321"));
+    assert!(script.contains("window.__CODEX_PLUS_HELPER_TOKEN__"));
+    assert!(script.contains("\"test-helper-token\""));
     assert!(script.contains("window.__CODEX_PLUS_SPONSOR_IMAGES__"));
     assert!(script.contains("window.__CODEX_PLUS_VERSION__"));
     assert!(script.contains(codex_plus_core::version::VERSION));
