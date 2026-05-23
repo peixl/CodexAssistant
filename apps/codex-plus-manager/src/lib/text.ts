@@ -1,0 +1,49 @@
+export const TEXT = {
+  appName: "Codex Assistant",
+  launcher: {
+    ready: "打开 ChatGPT",
+    readyHint: "已为你增强",
+    launching: "正在打开…",
+    needAccount: "先登录 ChatGPT",
+    preparing: "准备增强…",
+    errorPrefix: "再试一次",
+    errorAction: "查看原因",
+  },
+  capabilities: {
+    plugins: "插件解锁",
+    deleteChats: "一键删对话",
+    exportMd: "导出 Markdown",
+    autoUpdate: "自动更新",
+  },
+  account: {
+    title: "账号",
+    chatgpt: "使用 ChatGPT 账号（推荐，更稳定）",
+    apiKey: "使用我自己的 API Key",
+    openLogin: "打开登录页",
+    saveSwitch: "保存并切换",
+    current: "当前模式",
+  },
+  more: {
+    title: "更多设置",
+    sections: {
+      scripts: "增强能力（脚本市场）",
+      providers: "服务源同步（高级）",
+      entryPoints: "桌面快捷方式 / 卸载",
+      diagnostics: "反馈包导出",
+      relayAdvanced: "高级：中转配置文件编辑",
+      about: "关于 / 重置",
+    },
+  },
+  update: {
+    available: (v: string) => `发现新版本 ${v}`,
+    cta: "立即更新",
+    failedTitle: "更新校验失败，已拒绝安装",
+    diagnosticsCta: "导出反馈包",
+  },
+  errors: {
+    portBusy: "端口被占用，正在尝试自动修复",
+    portBusyFinal: "请手动重启应用",
+    networkFailed: "网络不通，请检查代理",
+    unknown: "出错了，请稍后再试",
+  },
+} as const;
