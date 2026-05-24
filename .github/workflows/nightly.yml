@@ -30,7 +30,7 @@ jobs:
       short_sha: ${{ steps.meta.outputs.short_sha }}
       tag: nightly
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: meta
         run: |
           BASE=$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)
@@ -50,7 +50,7 @@ jobs:
       ARCH: arm64
       BINARY_DIR: ${{ github.workspace }}/target/aarch64-apple-darwin/release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -102,7 +102,7 @@ jobs:
       VERSION: ${{ needs.metadata.outputs.version }}
       TARGET: x86_64-pc-windows-msvc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -180,7 +180,7 @@ jobs:
       SHORT_SHA: ${{ needs.metadata.outputs.short_sha }}
       TAG: ${{ needs.metadata.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
