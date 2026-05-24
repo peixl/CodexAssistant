@@ -28,6 +28,7 @@ export const TEXT = {
   more: {
     title: "更多设置",
     sections: {
+      codexPath: "Codex 程序路径",
       appearance: "外观（主题）",
       scripts: "增强能力（脚本市场）",
       providers: "服务源同步（高级）",
@@ -36,6 +37,20 @@ export const TEXT = {
       relayAdvanced: "高级：中转配置文件编辑",
       about: "关于 / 重置",
     },
+  },
+  codexPath: {
+    title: "Codex 安装位置",
+    hint: "如未自动识别，可点击“浏览”手动选择 Codex 的安装目录或可执行文件。",
+    inputLabel: "当前使用的路径",
+    placeholder: "例如：C:/Program Files/Codex 或 /Applications/Codex.app",
+    browse: "浏览",
+    save: "保存",
+    refresh: "重新检测",
+    detected: "自动检测到",
+    useDetected: "使用此路径",
+    version: "版本",
+    saved: "Codex 路径已保存。",
+    picked: "已填入所选路径，记得点击“保存”。",
   },
   update: {
     available: (v: string) => `发现新版本 ${v}`,

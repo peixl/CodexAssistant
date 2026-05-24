@@ -28,7 +28,10 @@ pub fn find_latest_codex_app_dir_from_roots(roots: &[PathBuf]) -> Option<PathBuf
 pub fn find_latest_codex_app_dir_default() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        find_latest_codex_app_dir_from_roots(&windows_app_package_roots())
+        if let Some(path) = find_latest_codex_app_dir_from_roots(&windows_app_package_roots()) {
+            return Some(path);
+        }
+        find_codex_in_windows_user_install_locations()
     }
 
     #[cfg(not(windows))]
@@ -46,9 +49,82 @@ fn windows_app_package_roots() -> Vec<PathBuf> {
     if let Some(program_files) = std::env::var_os("ProgramW6432") {
         roots.push(PathBuf::from(program_files).join("WindowsApps"));
     }
+    for drive in windows_available_drive_roots() {
+        roots.push(drive.join("Program Files").join("WindowsApps"));
+    }
     roots.push(PathBuf::from(r"C:\Program Files\WindowsApps"));
     roots.sort();
     roots.dedup();
+    roots
+}
+
+#[cfg(windows)]
+fn find_codex_in_windows_user_install_locations() -> Option<PathBuf> {
+    windows_user_install_search_dirs()
+        .into_iter()
+        .find_map(|dir| normalize_codex_app_path(&dir))
+}
+
+#[cfg(windows)]
+fn windows_user_install_search_dirs() -> Vec<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    let mut push_variants = |base: &Path| {
+        candidates.push(base.join("Programs").join("codex"));
+        candidates.push(base.join("Programs").join("Codex"));
+        candidates.push(base.join("Programs").join("OpenAI").join("Codex"));
+        candidates.push(base.join("Codex"));
+        candidates.push(base.join("OpenAI").join("Codex"));
+    };
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        push_variants(Path::new(&local));
+    }
+    if let Some(roaming) = std::env::var_os("APPDATA") {
+        push_variants(Path::new(&roaming));
+    }
+    if let Some(program_files) = std::env::var_os("ProgramFiles") {
+        let base = PathBuf::from(program_files);
+        candidates.push(base.join("Codex"));
+        candidates.push(base.join("OpenAI").join("Codex"));
+    }
+    if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+        let base = PathBuf::from(program_files_x86);
+        candidates.push(base.join("Codex"));
+        candidates.push(base.join("OpenAI").join("Codex"));
+    }
+    for drive in windows_available_drive_roots() {
+        let program_files = drive.join("Program Files");
+        candidates.push(program_files.join("Codex"));
+        candidates.push(program_files.join("OpenAI").join("Codex"));
+        let program_files_x86 = drive.join("Program Files (x86)");
+        candidates.push(program_files_x86.join("Codex"));
+        candidates.push(program_files_x86.join("OpenAI").join("Codex"));
+        candidates.push(drive.join("Codex"));
+        candidates.push(drive.join("OpenAI").join("Codex"));
+    }
+    candidates.sort();
+    candidates.dedup();
+    candidates
+}
+
+#[cfg(windows)]
+fn windows_available_drive_roots() -> Vec<PathBuf> {
+    use windows::Win32::Storage::FileSystem::GetLogicalDrives;
+    let mask = unsafe { GetLogicalDrives() };
+    if mask == 0 {
+        return Vec::new();
+    }
+    let mut roots = Vec::new();
+    for letter_index in 0..26u32 {
+        if mask & (1 << letter_index) == 0 {
+            continue;
+        }
+        let letter = (b'A' + letter_index as u8) as char;
+        // Skip A and B (legacy floppy) and C (already covered via ProgramFiles env var).
+        if matches!(letter, 'A' | 'B' | 'C') {
+            continue;
+        }
+        roots.push(PathBuf::from(format!("{letter}:\\")));
+    }
     roots
 }
 
@@ -261,4 +337,88 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .collect::<Result<Vec<_>, _>>()
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn make_temp_dir(label: &str) -> PathBuf {
+        let id = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "codex-plus-core-app-paths-{label}-{}-{}",
+            std::process::id(),
+            id
+        ));
+        fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn normalize_returns_parent_when_pointed_at_codex_exe() {
+        let dir = make_temp_dir("normalize-exe");
+        let exe = dir.join("Codex.exe");
+        fs::write(&exe, b"stub").unwrap();
+        let normalized = normalize_codex_app_path(&exe).unwrap();
+        assert_eq!(normalized, dir);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn normalize_returns_dir_when_dir_contains_codex_exe() {
+        let dir = make_temp_dir("normalize-dir");
+        fs::write(dir.join("Codex.exe"), b"stub").unwrap();
+        let normalized = normalize_codex_app_path(&dir).unwrap();
+        assert_eq!(normalized, dir);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn normalize_descends_into_nested_app_folder() {
+        let dir = make_temp_dir("normalize-nested");
+        let app = dir.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(app.join("codex.exe"), b"stub").unwrap();
+        let normalized = normalize_codex_app_path(&dir).unwrap();
+        assert_eq!(normalized, app);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn resolve_with_saved_prefers_explicit_arg() {
+        let dir = make_temp_dir("resolve-arg");
+        fs::write(dir.join("Codex.exe"), b"stub").unwrap();
+        let resolved =
+            resolve_codex_app_dir_with_saved(Some(dir.as_path()), Some("/non/existent")).unwrap();
+        assert_eq!(resolved, dir);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn resolve_with_saved_uses_saved_when_arg_missing() {
+        let dir = make_temp_dir("resolve-saved");
+        fs::write(dir.join("Codex.exe"), b"stub").unwrap();
+        let saved = dir.to_string_lossy().to_string();
+        let resolved = resolve_codex_app_dir_with_saved(None, Some(saved.as_str())).unwrap();
+        assert_eq!(resolved, dir);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_drive_roots_skip_c_and_floppies() {
+        let roots = windows_available_drive_roots();
+        for root in &roots {
+            let letter = root.to_string_lossy().chars().next().unwrap();
+            assert!(
+                !matches!(letter, 'A' | 'B' | 'C'),
+                "drive root {root:?} should have been skipped"
+            );
+        }
+    }
 }

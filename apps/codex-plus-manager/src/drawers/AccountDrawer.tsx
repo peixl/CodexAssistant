@@ -50,8 +50,13 @@ export function AccountDrawer({
       const profiles = Array.isArray(raw.relayProfiles) ? raw.relayProfiles : [];
       const activeId = typeof raw.activeRelayId === "string" ? raw.activeRelayId : "";
       const active = profiles.find((p) => p?.id === activeId) ?? profiles[0];
-      setApiKey((active?.apiKey ?? "").toString());
-      setBaseUrl((active?.baseUrl ?? "").toString());
+      const storedKey = (active?.apiKey ?? "").toString();
+      const storedBaseUrl = (active?.baseUrl ?? "").toString();
+      setApiKey(storedKey);
+      setBaseUrl(storedBaseUrl);
+      if (current === "none" && storedKey.trim().length > 0) {
+        setKind("apiKey");
+      }
     })();
   }, [open, current]);
 

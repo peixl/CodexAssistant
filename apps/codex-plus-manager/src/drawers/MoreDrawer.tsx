@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Drawer } from "@/components/Drawer";
 import { TEXT } from "@/lib/text";
+import { CodexPathPanel } from "@/panels/CodexPathPanel";
 import { ScriptsPanel } from "@/panels/ScriptsPanel";
 import { ProvidersPanel } from "@/panels/ProvidersPanel";
 import { EntryPointsPanel } from "@/panels/EntryPointsPanel";
@@ -10,9 +11,9 @@ import { RelayAdvancedPanel } from "@/panels/RelayAdvancedPanel";
 import { AboutPanel } from "@/panels/AboutPanel";
 import { ThemePanel } from "@/panels/ThemePanel";
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children, defaultOpen = false }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
   return (
-    <details className="group border border-border rounded">
+    <details className="group border border-border rounded" open={defaultOpen}>
       <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between text-sm">
         {title}
         <ChevronDown className="size-4 transition group-open:rotate-180" />
@@ -26,6 +27,7 @@ export function MoreDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Drawer open={open} title={TEXT.more.title} onClose={onClose}>
       <div className="space-y-3">
+        <Section title={TEXT.more.sections.codexPath} defaultOpen><CodexPathPanel /></Section>
         <Section title={TEXT.more.sections.appearance}><ThemePanel /></Section>
         <Section title={TEXT.more.sections.scripts}><ScriptsPanel /></Section>
         <Section title={TEXT.more.sections.providers}><ProvidersPanel /></Section>

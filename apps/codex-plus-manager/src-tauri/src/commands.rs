@@ -99,6 +99,13 @@ pub struct RelayProfileTestPayload {
     pub response_preview: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexAppPathPayload {
+    pub path: Option<String>,
+    pub version: Option<String>,
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveRelayFileRequest {
@@ -1073,6 +1080,97 @@ pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
                 relay_payload(status, None),
             )
         }
+    }
+}
+
+#[tauri::command]
+pub async fn detect_codex_app_path() -> CommandResult<CodexAppPathPayload> {
+    let path = tauri::async_runtime::spawn_blocking(|| {
+        codex_plus_core::app_paths::resolve_codex_app_dir(None)
+    })
+    .await
+    .ok()
+    .flatten();
+    match path {
+        Some(path) => {
+            let version = codex_plus_core::app_paths::codex_app_version(&path);
+            ok(
+                "已自动检测到 Codex 安装位置。",
+                CodexAppPathPayload {
+                    path: Some(path.to_string_lossy().to_string()),
+                    version,
+                },
+            )
+        }
+        None => failed(
+            "未在常见安装目录找到 Codex，请点击“浏览”手动选择。",
+            CodexAppPathPayload {
+                path: None,
+                version: None,
+            },
+        ),
+    }
+}
+
+#[tauri::command]
+pub async fn pick_codex_app_path(app: tauri::AppHandle) -> CommandResult<CodexAppPathPayload> {
+    use tauri_plugin_dialog::DialogExt;
+    let dialog = app.dialog().clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        let builder = dialog.file();
+        #[cfg(target_os = "windows")]
+        {
+            builder
+                .add_filter("Codex 可执行文件", &["exe"])
+                .blocking_pick_file()
+                .and_then(|p| p.as_path().map(Path::to_path_buf))
+        }
+        #[cfg(target_os = "macos")]
+        {
+            builder
+                .add_filter("Codex 应用", &["app"])
+                .blocking_pick_file()
+                .and_then(|p| p.as_path().map(Path::to_path_buf))
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        {
+            builder
+                .blocking_pick_file()
+                .and_then(|p| p.as_path().map(Path::to_path_buf))
+        }
+    })
+    .await
+    .ok()
+    .flatten();
+
+    let Some(raw) = picked else {
+        return ok(
+            "已取消选择。",
+            CodexAppPathPayload {
+                path: None,
+                version: None,
+            },
+        );
+    };
+
+    match codex_plus_core::app_paths::normalize_codex_app_path(&raw) {
+        Some(path) => {
+            let version = codex_plus_core::app_paths::codex_app_version(&path);
+            ok(
+                "已选择 Codex 路径。",
+                CodexAppPathPayload {
+                    path: Some(path.to_string_lossy().to_string()),
+                    version,
+                },
+            )
+        }
+        None => failed(
+            "所选位置不是有效的 Codex 应用，请重新选择。",
+            CodexAppPathPayload {
+                path: None,
+                version: None,
+            },
+        ),
     }
 }
 
