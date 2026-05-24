@@ -119,7 +119,7 @@ fn macos_packager_hides_silent_launcher_but_not_manager() {
 }
 
 #[test]
-fn github_release_workflow_builds_separate_macos_x64_and_arm64_dmgs() {
+fn github_release_workflow_builds_arm64_dmg_and_windows_installer() {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow = manifest_dir
         .parent()
@@ -129,12 +129,19 @@ fn github_release_workflow_builds_separate_macos_x64_and_arm64_dmgs() {
         .join(".github/workflows/release-assets.yml");
     let workflow = std::fs::read_to_string(&workflow).expect("read release assets workflow");
 
-    assert!(workflow.contains("macos-15-intel"));
-    assert!(workflow.contains("x86_64-apple-darwin"));
     assert!(workflow.contains("macos-14"));
     assert!(workflow.contains("aarch64-apple-darwin"));
-    assert!(workflow.contains("package-dmg.sh \"$VERSION\" \"${{ matrix.arch }}\""));
-    assert!(workflow.contains("target/${{ matrix.target }}/release"));
+    assert!(workflow.contains("x86_64-pc-windows-msvc"));
+    assert!(workflow.contains("package-dmg.sh \"$VERSION\" \"$ARCH\""));
+    assert!(workflow.contains("target/aarch64-apple-darwin/release"));
+    assert!(
+        !workflow.contains("macos-15-intel"),
+        "macOS x64 was removed; only arm64 DMG should be built"
+    );
+    assert!(
+        !workflow.contains("x86_64-apple-darwin"),
+        "macOS x64 was removed; the workflow must not target Intel anymore"
+    );
 }
 
 #[test]

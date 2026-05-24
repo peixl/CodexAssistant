@@ -32,35 +32,27 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   macos:
-    name: Build macOS DMG (${{ matrix.arch }})
+    name: Build macOS DMG (arm64)
     needs: resolve-tag
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15-intel
-            arch: x64
-            target: x86_64-apple-darwin
-          - runner: macos-14
-            arch: arm64
-            target: aarch64-apple-darwin
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
     env:
       VERSION: ${{ needs.resolve-tag.outputs.version }}
       TAG: ${{ needs.resolve-tag.outputs.tag }}
-      BINARY_DIR: ${{ github.workspace }}/target/${{ matrix.target }}/release
+      TARGET: aarch64-apple-darwin
+      ARCH: arm64
+      BINARY_DIR: ${{ github.workspace }}/target/aarch64-apple-darwin/release
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-apple-darwin
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-${{ matrix.target }}
+          shared-key: release-aarch64-apple-darwin
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -77,20 +69,17 @@ jobs:
         working-directory: apps/codex-plus-manager
         run: npm run vite:build
 
-      - name: Build silent launcher
-        run: cargo build --release --target ${{ matrix.target }} -p codex-plus-launcher
-
-      - name: Build manager binary
-        run: cargo build --release --target ${{ matrix.target }} -p codex-assistant
+      - name: Build release binaries
+        run: cargo build --release --target aarch64-apple-darwin -p codex-plus-launcher -p codex-assistant
 
       - name: Package DMG
-        run: bash scripts/installer/macos/package-dmg.sh "$VERSION" "${{ matrix.arch }}"
+        run: bash scripts/installer/macos/package-dmg.sh "$VERSION" "$ARCH"
 
       - name: Upload DMG to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DMG="dist/macos/CodexAssistant-${VERSION}-macos-${{ matrix.arch }}.dmg"
+          DMG="dist/macos/CodexAssistant-${VERSION}-macos-${ARCH}.dmg"
           gh release upload "$TAG" "$DMG" --clobber
 
   windows:
@@ -108,6 +97,18 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+
+      - name: Disable Windows Defender on build dirs
+        shell: pwsh
+        run: |
+          $paths = @(
+            "${env:GITHUB_WORKSPACE}\target",
+            "${env:USERPROFILE}\.cargo",
+            "${env:USERPROFILE}\.rustup"
+          )
+          foreach ($p in $paths) {
+            try { Add-MpPreference -ExclusionPath $p -ErrorAction Stop } catch { Write-Host "skip $p ($($_.Exception.Message))" }
+          }
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -129,11 +130,8 @@ jobs:
         working-directory: apps/codex-plus-manager
         run: npm run vite:build
 
-      - name: Build silent launcher
-        run: cargo build --release --target x86_64-pc-windows-msvc -p codex-plus-launcher
-
-      - name: Build manager binary
-        run: cargo build --release --target x86_64-pc-windows-msvc -p codex-assistant
+      - name: Build release binaries
+        run: cargo build --release --target x86_64-pc-windows-msvc -p codex-plus-launcher -p codex-assistant
 
       - name: Stage installer payload
         shell: pwsh
@@ -181,7 +179,6 @@ jobs:
             "url": "https://github.com/$REPO/releases/tag/$TAG",
             "assets": [
               { "name": "CodexAssistant-${VERSION}-windows-x64-setup.exe", "url": "$BASE/CodexAssistant-${VERSION}-windows-x64-setup.exe" },
-              { "name": "CodexAssistant-${VERSION}-macos-x64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-x64.dmg" },
               { "name": "CodexAssistant-${VERSION}-macos-arm64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-arm64.dmg" }
             ]
           }
