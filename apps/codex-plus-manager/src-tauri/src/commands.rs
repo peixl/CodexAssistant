@@ -106,6 +106,16 @@ pub struct CodexAppPathPayload {
     pub version: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexCredentialsPayload {
+    pub api_key: String,
+    pub base_url: String,
+    pub api_key_source: String,
+    pub base_url_source: String,
+    pub codex_home: String,
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveRelayFileRequest {
@@ -1172,6 +1182,27 @@ pub async fn pick_codex_app_path(app: tauri::AppHandle) -> CommandResult<CodexAp
             },
         ),
     }
+}
+
+#[tauri::command]
+pub fn read_codex_credentials() -> CommandResult<CodexCredentialsPayload> {
+    let home = codex_plus_core::relay_config::default_codex_home_dir();
+    let creds = codex_plus_core::relay_config::codex_credentials_from_home(&home);
+    let message = if creds.api_key.is_empty() && creds.base_url.is_empty() {
+        "未在本地 ~/.codex 中找到已保存的 API Key 或 Base URL。".to_string()
+    } else {
+        "已读取本地 ~/.codex 中的 API Key/Base URL。".to_string()
+    };
+    ok(
+        &message,
+        CodexCredentialsPayload {
+            api_key: creds.api_key,
+            base_url: creds.base_url,
+            api_key_source: creds.api_key_source,
+            base_url_source: creds.base_url_source,
+            codex_home: home.to_string_lossy().to_string(),
+        },
+    )
 }
 
 fn relay_has_complete_files(relay: &codex_plus_core::settings::RelayProfile) -> bool {

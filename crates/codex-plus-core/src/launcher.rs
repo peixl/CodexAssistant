@@ -191,9 +191,38 @@ where
     let hooks = hooks.into_launch_hooks();
     let debug_port = hooks.select_debug_port(options.debug_port);
     let mut helper_port = hooks.select_helper_port(options.helper_port);
-    let settings = hooks.load_settings().await?;
-    let app_dir = hooks.resolve_app_dir(options.app_dir.as_deref(), &settings)?;
     let status_store = options.status_store.clone();
+
+    let settings = match hooks.load_settings().await {
+        Ok(settings) => settings,
+        Err(error) => {
+            return Err(record_early_failure(
+                &status_store,
+                &hooks,
+                debug_port,
+                helper_port,
+                Path::new(""),
+                error,
+                "load_settings",
+            )
+            .await);
+        }
+    };
+    let app_dir = match hooks.resolve_app_dir(options.app_dir.as_deref(), &settings) {
+        Ok(app_dir) => app_dir,
+        Err(error) => {
+            return Err(record_early_failure(
+                &status_store,
+                &hooks,
+                debug_port,
+                helper_port,
+                Path::new(""),
+                error,
+                "resolve_app_dir",
+            )
+            .await);
+        }
+    };
     let mut helper_started = false;
     let mut launched = None;
 
@@ -1433,6 +1462,32 @@ fn launch_status(
         helper_port: Some(helper_port),
         codex_app: Some(app_dir.to_string_lossy().to_string()),
     }
+}
+
+async fn record_early_failure(
+    status_store: &StatusStore,
+    hooks: &Arc<dyn LaunchHooks>,
+    debug_port: u16,
+    helper_port: u16,
+    app_dir: &Path,
+    error: anyhow::Error,
+    stage: &str,
+) -> anyhow::Error {
+    let message = error.to_string();
+    let failure = launch_status("failed", &message, debug_port, helper_port, app_dir);
+    let _ = status_store.save_latest(&failure);
+    let _ = crate::diagnostic_log::append_diagnostic_log(
+        "launcher.early_failure",
+        serde_json::json!({
+            "stage": stage,
+            "message": message,
+            "debug_port": debug_port,
+            "helper_port": helper_port,
+            "app_dir": app_dir.to_string_lossy().to_string(),
+        }),
+    );
+    hooks.write_status("failed").await;
+    error
 }
 
 fn now_ms() -> u64 {

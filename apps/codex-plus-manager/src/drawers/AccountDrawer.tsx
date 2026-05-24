@@ -18,10 +18,24 @@ type SettingsBlob = {
   [key: string]: unknown;
 };
 
+type CodexCredentialsPayload = {
+  apiKey?: string;
+  baseUrl?: string;
+  apiKeySource?: string;
+  baseUrlSource?: string;
+  codexHome?: string;
+};
+
 async function loadRawSettings(): Promise<SettingsBlob> {
   const r = await callSafe<{ settings?: SettingsBlob }>("load_settings");
   if (!r.ok) return {};
   return r.data.settings ?? {};
+}
+
+async function loadCodexCredentials(): Promise<CodexCredentialsPayload> {
+  const r = await callSafe<CodexCredentialsPayload>("read_codex_credentials");
+  if (!r.ok) return {};
+  return r.data;
 }
 
 export function AccountDrawer({
@@ -40,21 +54,40 @@ export function AccountDrawer({
   const [baseUrl, setBaseUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credentialNote, setCredentialNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setKind(current === "none" ? "chatgpt" : current);
     setError(null);
+    setCredentialNote(null);
     void (async () => {
-      const raw = await loadRawSettings();
+      const [raw, codex] = await Promise.all([
+        loadRawSettings(),
+        loadCodexCredentials(),
+      ]);
       const profiles = Array.isArray(raw.relayProfiles) ? raw.relayProfiles : [];
       const activeId = typeof raw.activeRelayId === "string" ? raw.activeRelayId : "";
       const active = profiles.find((p) => p?.id === activeId) ?? profiles[0];
-      const storedKey = (active?.apiKey ?? "").toString();
-      const storedBaseUrl = (active?.baseUrl ?? "").toString();
-      setApiKey(storedKey);
-      setBaseUrl(storedBaseUrl);
-      if (current === "none" && storedKey.trim().length > 0) {
+      const profileKey = (active?.apiKey ?? "").toString();
+      const profileBase = (active?.baseUrl ?? "").toString();
+      const codexKey = (codex.apiKey ?? "").toString();
+      const codexBase = (codex.baseUrl ?? "").toString();
+
+      const resolvedKey = profileKey || codexKey;
+      const resolvedBase = profileBase || codexBase;
+      setApiKey(resolvedKey);
+      setBaseUrl(resolvedBase);
+
+      const usedCodexKey = !profileKey && codexKey.length > 0;
+      const usedCodexBase = !profileBase && codexBase.length > 0;
+      if (usedCodexKey || usedCodexBase) {
+        const parts: string[] = [];
+        if (usedCodexKey) parts.push("API Key");
+        if (usedCodexBase) parts.push("Base URL");
+        setCredentialNote(`已从本地 ~/.codex 自动读取${parts.join(" 与 ")}，可直接保存或手动修改。`);
+      }
+      if (current === "none" && resolvedKey.trim().length > 0) {
         setKind("apiKey");
       }
     })();
@@ -116,6 +149,9 @@ export function AccountDrawer({
                 <button onClick={saveApiKey} disabled={busy} className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-sm disabled:opacity-60">
                   {busy ? "处理中…" : TEXT.account.saveSwitch}
                 </button>
+                {credentialNote && (
+                  <p className="text-xs text-muted-foreground">{credentialNote}</p>
+                )}
               </>
             )}
           </div>

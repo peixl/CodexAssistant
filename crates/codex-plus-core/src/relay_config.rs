@@ -58,6 +58,91 @@ pub fn default_codex_home_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".codex"))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexCredentials {
+    pub api_key: String,
+    pub base_url: String,
+    pub api_key_source: String,
+    pub base_url_source: String,
+}
+
+pub fn default_codex_credentials() -> CodexCredentials {
+    codex_credentials_from_home(&default_codex_home_dir())
+}
+
+pub fn codex_credentials_from_home(home: &Path) -> CodexCredentials {
+    let auth_path = home.join("auth.json");
+    let config_path = home.join("config.toml");
+
+    let (api_key, api_key_source) = read_api_key(&auth_path, &config_path);
+    let (base_url, base_url_source) = read_base_url(&config_path);
+
+    CodexCredentials {
+        api_key,
+        base_url,
+        api_key_source,
+        base_url_source,
+    }
+}
+
+fn read_api_key(auth_path: &Path, config_path: &Path) -> (String, String) {
+    if let Ok(contents) = std::fs::read_to_string(auth_path)
+        && let Ok(value) = serde_json::from_str::<Value>(&contents)
+        && let Some(key) = value
+            .get("OPENAI_API_KEY")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    {
+        return (key.to_string(), auth_path.to_string_lossy().to_string());
+    }
+
+    if let Ok(contents) = std::fs::read_to_string(config_path) {
+        let provider = table_values(&contents, &format!("model_providers.{RELAY_PROVIDER}"));
+        if let Some(token) = provider
+            .as_ref()
+            .and_then(|values| values.get("experimental_bearer_token"))
+            .map(|value| unquote_toml_string(value))
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+        {
+            return (token, config_path.to_string_lossy().to_string());
+        }
+    }
+
+    (String::new(), String::new())
+}
+
+fn read_base_url(config_path: &Path) -> (String, String) {
+    let Ok(contents) = std::fs::read_to_string(config_path) else {
+        return (String::new(), String::new());
+    };
+    let provider = table_values(&contents, &format!("model_providers.{RELAY_PROVIDER}"));
+    if let Some(url) = provider
+        .as_ref()
+        .and_then(|values| values.get("base_url"))
+        .map(|value| unquote_toml_string(value))
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        return (url, config_path.to_string_lossy().to_string());
+    }
+    for legacy in LEGACY_RELAY_PROVIDERS {
+        let provider = table_values(&contents, &format!("model_providers.{legacy}"));
+        if let Some(url) = provider
+            .as_ref()
+            .and_then(|values| values.get("base_url"))
+            .map(|value| unquote_toml_string(value))
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+        {
+            return (url, config_path.to_string_lossy().to_string());
+        }
+    }
+    (String::new(), String::new())
+}
+
 pub fn default_relay_status() -> RelayStatus {
     relay_status_from_home(&default_codex_home_dir())
 }

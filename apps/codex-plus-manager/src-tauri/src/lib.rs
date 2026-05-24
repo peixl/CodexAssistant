@@ -60,7 +60,8 @@ pub fn run() {
             commands::apply_pure_api_injection,
             commands::clear_relay_injection,
             commands::detect_codex_app_path,
-            commands::pick_codex_app_path
+            commands::pick_codex_app_path,
+            commands::read_codex_credentials
         ])
         .run(tauri::generate_context!())
         .expect("failed to run CodexAssistant manager");

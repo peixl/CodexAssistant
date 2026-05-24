@@ -1,7 +1,7 @@
 use codex_plus_core::relay_config::{
     apply_pure_api_config_to_home, apply_relay_config_file_to_home, apply_relay_config_to_home,
     apply_relay_files_to_home, chatgpt_auth_status_from_home, clear_relay_config_to_home,
-    relay_config_status_from_home,
+    codex_credentials_from_home, relay_config_status_from_home,
 };
 use codex_plus_core::settings::RelayProtocol;
 
@@ -447,6 +447,57 @@ fn clear_relay_config_removes_openai_api_key_when_auth_json_only_contains_pure_a
     let auth_object = auth.as_object().unwrap();
     assert!(!auth_object.contains_key("OPENAI_API_KEY"));
     assert!(auth_object.is_empty());
+}
+
+#[test]
+fn codex_credentials_prefers_auth_json_then_config_provider() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("auth.json"),
+        r#"{"OPENAI_API_KEY":"sk-from-auth"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        temp.path().join("config.toml"),
+        r#"[model_providers.CodexAssistant]
+base_url = "https://relay.example.test/v1"
+experimental_bearer_token = "sk-from-config"
+"#,
+    )
+    .unwrap();
+
+    let creds = codex_credentials_from_home(temp.path());
+    assert_eq!(creds.api_key, "sk-from-auth");
+    assert!(creds.api_key_source.contains("auth.json"));
+    assert_eq!(creds.base_url, "https://relay.example.test/v1");
+    assert!(creds.base_url_source.contains("config.toml"));
+}
+
+#[test]
+fn codex_credentials_falls_back_to_bearer_token_when_auth_missing() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("config.toml"),
+        r#"[model_providers.CodexAssistant]
+base_url = "https://relay.example.test/v1"
+experimental_bearer_token = "sk-from-config"
+"#,
+    )
+    .unwrap();
+
+    let creds = codex_credentials_from_home(temp.path());
+    assert_eq!(creds.api_key, "sk-from-config");
+    assert!(creds.api_key_source.contains("config.toml"));
+}
+
+#[test]
+fn codex_credentials_returns_empty_when_files_missing() {
+    let temp = tempfile::tempdir().unwrap();
+    let creds = codex_credentials_from_home(temp.path());
+    assert_eq!(creds.api_key, "");
+    assert_eq!(creds.base_url, "");
+    assert_eq!(creds.api_key_source, "");
+    assert_eq!(creds.base_url_source, "");
 }
 
 fn base64_url_no_pad(value: &str) -> String {
