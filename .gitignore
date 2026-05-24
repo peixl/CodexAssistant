@@ -25,6 +25,22 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
+# ─── Secrets / credentials ────────────────────────────────────
+# Defense in depth: even though we don't commit these, refuse them at the
+# staging layer so a stray file in the working tree never reaches a remote.
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+.npmrc
+.netrc
+credentials.json
+service_account*.json
+*.sqlite
+*.db
+
 # ─── Editor / IDE ─────────────────────────────────────────────
 .idea/
 .vscode/

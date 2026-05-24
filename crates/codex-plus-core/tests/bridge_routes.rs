@@ -177,7 +177,7 @@ async fn runtime_status_devtools_repair_and_ads_routes_are_dispatched() {
             json!({"hostId": "remote-ssh-codex-managed:remote"}),
         )
         .await,
-        json!({"status": "ok", "ssh": {"user": "longnv", "host": "192.168.100.31", "port": null}})
+        json!({"status": "ok", "ssh": {"user": "testuser", "host": "10.0.0.1", "port": null}})
     );
     assert_eq!(
         handle_bridge_request(
@@ -190,8 +190,8 @@ async fn runtime_status_devtools_repair_and_ads_routes_are_dispatched() {
             "status": "ok",
             "request": {
                 "hostId": "remote-ssh-codex-managed:remote",
-                "ssh": {"user": "longnv", "host": "192.168.100.31", "port": null},
-                "path": "/Users/longnv/bin/repo/sealos-skills",
+                "ssh": {"user": "testuser", "host": "10.0.0.1", "port": null},
+                "path": "/Users/testuser/projects/sample",
             }
         })
     );
@@ -857,7 +857,7 @@ impl BridgeRuntimeService for FakeRuntime {
         assert_eq!(payload["hostId"], json!("remote-ssh-codex-managed:remote"));
         Ok(json!({
             "status": "ok",
-            "ssh": {"user": "longnv", "host": "192.168.100.31", "port": null}
+            "ssh": {"user": "testuser", "host": "10.0.0.1", "port": null}
         }))
     }
 
@@ -867,8 +867,8 @@ impl BridgeRuntimeService for FakeRuntime {
             "status": "ok",
             "request": {
                 "hostId": "remote-ssh-codex-managed:remote",
-                "ssh": {"user": "longnv", "host": "192.168.100.31", "port": null},
-                "path": "/Users/longnv/bin/repo/sealos-skills",
+                "ssh": {"user": "testuser", "host": "10.0.0.1", "port": null},
+                "path": "/Users/testuser/projects/sample",
             }
         }))
     }

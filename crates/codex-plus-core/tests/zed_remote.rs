@@ -70,14 +70,14 @@ fn build_zed_remote_url_allows_bracketed_ipv6_host() {
 #[test]
 fn target_from_payload_splits_codex_managed_authority() {
     let target =
-        zed_remote::target_from_payload(&json!({"ssh": {"host": "longnv@192.168.100.31"}}))
+        zed_remote::target_from_payload(&json!({"ssh": {"host": "testuser@10.0.0.1"}}))
             .unwrap();
 
     assert_eq!(
         target,
         SshTarget {
-            user: "longnv".to_string(),
-            host: "192.168.100.31".to_string(),
+            user: "testuser".to_string(),
+            host: "10.0.0.1".to_string(),
             port: None,
         }
     );
@@ -90,7 +90,7 @@ fn resolve_ssh_target_from_global_state_for_codex_managed_connection() {
             "hostId": "remote-ssh-codex-managed:remote",
             "displayName": "remote",
             "source": "codex-managed",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
             "sshPort": null,
         }]
     });
@@ -102,8 +102,8 @@ fn resolve_ssh_target_from_global_state_for_codex_managed_connection() {
     assert_eq!(
         target,
         SshTarget {
-            user: "longnv".to_string(),
-            host: "192.168.100.31".to_string(),
+            user: "testuser".to_string(),
+            host: "10.0.0.1".to_string(),
             port: None,
         }
     );
@@ -115,14 +115,14 @@ fn fallback_open_request_uses_selected_remote_project() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
             "sshPort": null,
         }],
         "remote-projects": [{
             "id": "032e652b-7956-4e6e-83bd-b29f456c6c3d",
             "hostId": "remote-ssh-codex-managed:remote",
-            "remotePath": "/Users/longnv/bin/repo/sealos-skills",
-            "label": "sealos-skills",
+            "remotePath": "/Users/testuser/projects/sample",
+            "label": "sample",
         }],
         "project-order": ["032e652b-7956-4e6e-83bd-b29f456c6c3d"],
     });
@@ -135,8 +135,8 @@ fn fallback_open_request_uses_selected_remote_project() {
         request,
         json!({
             "hostId": "remote-ssh-codex-managed:remote",
-            "ssh": {"user": "longnv", "host": "192.168.100.31", "port": null},
-            "path": "/Users/longnv/bin/repo/sealos-skills",
+            "ssh": {"user": "testuser", "host": "10.0.0.1", "port": null},
+            "path": "/Users/testuser/projects/sample",
         })
     );
 }
@@ -147,11 +147,11 @@ fn fallback_open_request_prefers_project_order_for_selected_host() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [
-            {"id": "old", "hostId": "remote-ssh-codex-managed:remote", "remotePath": "/Users/longnv/bin/repo/old"},
-            {"id": "current", "hostId": "remote-ssh-codex-managed:remote", "remotePath": "/Users/longnv/bin/repo/current"},
+            {"id": "old", "hostId": "remote-ssh-codex-managed:remote", "remotePath": "/Users/testuser/projects/old"},
+            {"id": "current", "hostId": "remote-ssh-codex-managed:remote", "remotePath": "/Users/testuser/projects/current"},
             {"id": "other-host", "hostId": "remote-ssh-codex-managed:other", "remotePath": "/srv/other"}
         ],
         "project-order": ["other-host", "current", "old"],
@@ -162,7 +162,7 @@ fn fallback_open_request_prefers_project_order_for_selected_host() {
             .unwrap();
 
     assert_eq!(request["hostId"], "remote-ssh-codex-managed:remote");
-    assert_eq!(request["path"], "/Users/longnv/bin/repo/current");
+    assert_eq!(request["path"], "/Users/testuser/projects/current");
 }
 
 #[test]
@@ -171,18 +171,18 @@ fn fallback_open_request_prefers_remote_project_id_context() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [
             {
                 "id": "032e652b-7956-4e6e-83bd-b29f456c6c3d",
                 "hostId": "remote-ssh-codex-managed:remote",
-                "remotePath": "/Users/longnv/bin/repo/sealos-skills",
+                "remotePath": "/Users/testuser/projects/sample",
             },
             {
                 "id": "a21be7c9-a917-433a-bfc7-f422a34c2185",
                 "hostId": "remote-ssh-codex-managed:remote",
-                "remotePath": "/Users/longnv/bin/repo/Vocabloom",
+                "remotePath": "/Users/testuser/projects/sample-b",
             },
         ],
         "project-order": ["032e652b-7956-4e6e-83bd-b29f456c6c3d", "a21be7c9-a917-433a-bfc7-f422a34c2185"],
@@ -198,7 +198,7 @@ fn fallback_open_request_prefers_remote_project_id_context() {
     .unwrap();
 
     assert_eq!(request["hostId"], "remote-ssh-codex-managed:remote");
-    assert_eq!(request["path"], "/Users/longnv/bin/repo/Vocabloom");
+    assert_eq!(request["path"], "/Users/testuser/projects/sample-b");
 }
 
 #[test]
@@ -207,12 +207,12 @@ fn fallback_open_request_treats_remote_project_id_as_path() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [{
             "id": "032e652b-7956-4e6e-83bd-b29f456c6c3d",
             "hostId": "remote-ssh-codex-managed:remote",
-            "remotePath": "/Users/longnv/bin/repo/sealos-skills",
+            "remotePath": "/Users/testuser/projects/sample",
         }],
         "project-order": ["032e652b-7956-4e6e-83bd-b29f456c6c3d"],
     });
@@ -222,12 +222,12 @@ fn fallback_open_request_treats_remote_project_id_as_path() {
         "remote-ssh-codex-managed:remote",
         "",
         "",
-        "/Users/longnv/bin/repo/Vocabloom",
+        "/Users/testuser/projects/sample-b",
     )
     .unwrap();
 
     assert_eq!(request["hostId"], "remote-ssh-codex-managed:remote");
-    assert_eq!(request["path"], "/Users/longnv/bin/repo/Vocabloom");
+    assert_eq!(request["path"], "/Users/testuser/projects/sample-b");
 }
 
 #[test]
@@ -236,16 +236,16 @@ fn fallback_open_request_prefers_thread_workspace_hint() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [{
             "id": "main",
             "hostId": "remote-ssh-codex-managed:remote",
-            "remotePath": "/Users/longnv/bin/repo/sealos-skills",
+            "remotePath": "/Users/testuser/projects/sample",
         }],
         "project-order": ["main"],
         "thread-workspace-root-hints": {
-            "019e39c1-worktree": "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix",
+            "019e39c1-worktree": "/Users/testuser/projects/sample/.worktree/zed-fix",
         },
     });
 
@@ -261,7 +261,7 @@ fn fallback_open_request_prefers_thread_workspace_hint() {
     assert_eq!(request["hostId"], "remote-ssh-codex-managed:remote");
     assert_eq!(
         request["path"],
-        "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix"
+        "/Users/testuser/projects/sample/.worktree/zed-fix"
     );
 }
 
@@ -271,16 +271,16 @@ fn fallback_open_request_accepts_local_prefixed_thread_workspace_hint() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [{
             "id": "main",
             "hostId": "remote-ssh-codex-managed:remote",
-            "remotePath": "/Users/longnv/bin/repo/sealos-skills",
+            "remotePath": "/Users/testuser/projects/sample",
         }],
         "project-order": ["main"],
         "thread-workspace-root-hints": {
-            "019e39c1-worktree": "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix",
+            "019e39c1-worktree": "/Users/testuser/projects/sample/.worktree/zed-fix",
         },
     });
 
@@ -296,7 +296,7 @@ fn fallback_open_request_accepts_local_prefixed_thread_workspace_hint() {
     assert_eq!(request["hostId"], "remote-ssh-codex-managed:remote");
     assert_eq!(
         request["path"],
-        "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix"
+        "/Users/testuser/projects/sample/.worktree/zed-fix"
     );
 }
 
@@ -306,15 +306,15 @@ fn fallback_open_request_response_passes_thread_workspace_hint() {
         "selected-remote-host-id": "remote-ssh-codex-managed:remote",
         "codex-managed-remote-connections": [{
             "hostId": "remote-ssh-codex-managed:remote",
-            "hostname": "longnv@192.168.100.31",
+            "hostname": "testuser@10.0.0.1",
         }],
         "remote-projects": [{
             "id": "main",
             "hostId": "remote-ssh-codex-managed:remote",
-            "remotePath": "/Users/longnv/bin/repo/sealos-skills",
+            "remotePath": "/Users/testuser/projects/sample",
         }],
         "thread-workspace-root-hints": {
-            "019e39c1-worktree": "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix",
+            "019e39c1-worktree": "/Users/testuser/projects/sample/.worktree/zed-fix",
         },
     });
 
@@ -329,7 +329,7 @@ fn fallback_open_request_response_passes_thread_workspace_hint() {
 
     assert_eq!(
         request["path"],
-        "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix"
+        "/Users/testuser/projects/sample/.worktree/zed-fix"
     );
 }
 
@@ -347,7 +347,7 @@ fn workspace_root_from_sqlite_reads_thread_cwd() {
         "INSERT INTO threads (id, cwd) VALUES (?1, ?2)",
         (
             "019e39c1-worktree",
-            "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix",
+            "/Users/testuser/projects/sample/.worktree/zed-fix",
         ),
     )
     .unwrap();
@@ -357,7 +357,7 @@ fn workspace_root_from_sqlite_reads_thread_cwd() {
 
     assert_eq!(
         cwd,
-        "/Users/longnv/bin/repo/sealos-skills/.worktree/zed-fix"
+        "/Users/testuser/projects/sample/.worktree/zed-fix"
     );
 }
 
