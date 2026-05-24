@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# pre-push hook: prevent force-push or deletion of the main branch.
+#
+# Branch protection is unavailable on private repos under GitHub Free, so this
+# is a client-side guard against accidents. It is NOT a substitute for
+# server-side enforcement — anyone with push access can disable it locally.
+#
+# Bypass (use carefully): PROTECT_MAIN_BYPASS=1 git push <remote> <ref>
+
+set -euo pipefail
+
+protected_branch="main"
+zero="0000000000000000000000000000000000000000"
+violation=0
+
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    "refs/heads/${protected_branch}")
+      if [ "$local_sha" = "$zero" ]; then
+        echo "pre-push: refusing to delete ${remote_ref}." >&2
+        violation=1
+      elif [ "$remote_sha" != "$zero" ] && \
+           ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+        echo "pre-push: refusing non-fast-forward (force) push to ${remote_ref}." >&2
+        echo "          remote=${remote_sha} local=${local_sha}" >&2
+        violation=1
+      fi
+      ;;
+  esac
+done
+
+if [ "$violation" -ne 0 ]; then
+  if [ "${PROTECT_MAIN_BYPASS:-}" = "1" ]; then
+    echo "pre-push: PROTECT_MAIN_BYPASS=1 — proceeding anyway." >&2
+    exit 0
+  fi
+  echo "pre-push: set PROTECT_MAIN_BYPASS=1 to override (you should rarely need this)." >&2
+  exit 1
+fi
+
+exit 0

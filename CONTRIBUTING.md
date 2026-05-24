@@ -66,7 +66,16 @@ CodexAssistant/
    git checkout -b feat/your-feature-name
    ```
 
-2. **Make your changes**
+2. **Enable the repository git hooks (one-time per clone)**
+   ```bash
+   bash scripts/git-hooks/install.sh
+   ```
+
+   This sets `core.hooksPath` to `scripts/git-hooks`, which installs a
+   `pre-push` hook that refuses force-pushes and deletions of `main`.
+   Set `PROTECT_MAIN_BYPASS=1` if you ever genuinely need to override it.
+
+3. **Make your changes**
    - Follow existing patterns; see [docs/superpowers/specs/](docs/superpowers/specs/) for design notes.
    - Add tests for new behaviour — Rust integration tests live under
      `crates/*/tests/` and `apps/codex-plus-manager/src-tauri/tests/`;
