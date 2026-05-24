@@ -1,19 +1,36 @@
 name: CI
 
+# Budget-aware CI for the free GitHub Actions tier (2000 Linux-min/month on
+# private repos; macOS = 10× Linux, Windows = 2× Linux).
+#
+# - Every push/PR runs Linux-only: fmt, clippy, test, frontend typecheck +
+#   vitest + vite build. ~10 Linux-min/run.
+# - macOS + Windows clippy/test run only on demand: workflow_dispatch, a PR
+#   labelled `ci:full`, or a push to a tag (`v*`). ~150 Linux-min/run.
+# - Installers are built by release-assets.yml on release publication.
+
 on:
   push:
     branches: [main]
+    tags: ['v*']
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [main]
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: 'Run macOS + Windows jobs as well'
+        type: boolean
+        default: true
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -23,16 +40,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  rust:
-    name: Rust ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-          - os: macos-14
-          - os: windows-latest
-    runs-on: ${{ matrix.os }}
+  rust-linux:
+    name: Rust (ubuntu-latest)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -44,10 +54,9 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ci-${{ matrix.os }}
+          shared-key: ci-ubuntu-latest
 
       - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
@@ -67,6 +76,49 @@ jobs:
 
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace --no-fail-fast
+
+  rust-platform:
+    name: Rust ${{ matrix.os }}
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.full_matrix
+      || startsWith(github.ref, 'refs/tags/v')
+      || contains(github.event.pull_request.labels.*.name, 'ci:full')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci-${{ matrix.os }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/codex-plus-manager/package-lock.json
+
+      - name: Build frontend (required by tauri::generate_context!)
+        working-directory: apps/codex-plus-manager
+        run: |
+          npm ci
+          npm run vite:build
 
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings

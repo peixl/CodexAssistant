@@ -114,6 +114,28 @@ CodexAssistant/
 5. Submit a pull request — the PR template asks for platform impact and
    a verification checklist; please fill both out
 
+### CI tiers
+
+CI is tuned to stay within free-tier GitHub Actions minutes. By default,
+PRs and pushes only run Linux jobs. To opt a PR into the full
+macOS + Windows matrix before merging, apply the `ci:full` label, or run
+`gh workflow run ci.yml` against the branch. The full matrix also runs
+automatically on tag pushes (`v*`).
+
+### Cutting a release
+
+1. Bump the workspace version in `Cargo.toml` and run `cargo update -w`.
+2. Commit and push to `main`. Wait for Linux CI to go green.
+3. Tag and push:
+   ```bash
+   git tag v$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)
+   git push origin --tags
+   ```
+   The tag push runs the full macOS + Windows matrix.
+4. Create the GitHub Release (`gh release create vX.Y.Z --generate-notes`).
+   `release-assets.yml` builds the macOS DMG + Windows NSIS installer
+   and attaches them automatically.
+
 ## Reporting Issues
 
 - Use GitHub Issues for bug reports and feature requests; the forms
