@@ -39,6 +39,7 @@ export const LAUNCH_POLLING_CONSTANTS = {
 
 type LaunchTerminal =
   | { kind: "running" }
+  | { kind: "running_degraded"; message: string }
   | { kind: "failed"; message: string }
   | { kind: "timeout" };
 
@@ -63,6 +64,15 @@ export async function waitForLaunchTerminal(
       const fresh = startedAt >= launchRequestedAtMs;
       if (fresh && status?.status === "running") {
         return { kind: "running" };
+      }
+      if (fresh && status?.status === "running_degraded") {
+        return {
+          kind: "running_degraded",
+          message:
+            typeof status.message === "string" && status.message.length > 0
+              ? status.message
+              : "Codex is running, but some enhancements could not be applied.",
+        };
       }
       if (fresh && status?.status === "failed") {
         return {

@@ -449,12 +449,12 @@ async fn inject_with_context(
     runtime: Arc<LauncherRuntimeService>,
 ) -> anyhow::Result<()> {
     let mut last_error = None;
-    for _ in 0..20 {
+    for _ in 0..codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_COUNT {
         match try_inject_with_context(debug_port, helper_port, ctx.clone(), runtime.clone()).await {
             Ok(()) => return Ok(()),
             Err(error) => {
                 last_error = Some(error);
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_INTERVAL).await;
             }
         }
     }

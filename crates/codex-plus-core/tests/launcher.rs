@@ -641,7 +641,7 @@ async fn launch_lifecycle_skips_helper_and_injection_when_enhancements_disabled(
 }
 
 #[tokio::test]
-async fn launch_lifecycle_writes_failure_and_cleans_helper_when_injection_fails() {
+async fn launch_lifecycle_keeps_codex_running_and_marks_degraded_when_injection_fails() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
     std::fs::create_dir_all(&app_dir).unwrap();
@@ -649,7 +649,7 @@ async fn launch_lifecycle_writes_failure_and_cleans_helper_when_injection_fails(
     let events = Arc::new(Mutex::new(Vec::<String>::new()));
     let hooks = FakeHooks::new(events.clone()).with_inject_error("inject failed");
 
-    let error = launch_and_inject_with_hooks(
+    let handle = launch_and_inject_with_hooks(
         LaunchOptions {
             app_dir: Some(app_dir),
             debug_port: 9229,
@@ -659,26 +659,29 @@ async fn launch_lifecycle_writes_failure_and_cleans_helper_when_injection_fails(
         &hooks,
     )
     .await
-    .unwrap_err();
+    .expect("injection failure should not abort launch — Codex must keep running");
 
-    assert!(error.to_string().contains("inject failed"));
-    assert_eq!(
-        *events.lock().unwrap(),
-        vec![
-            "select-debug:9229",
-            "select-helper:57321",
-            "load-settings",
-            "start-helper:57321",
-            "launch:9229",
-            "inject:9229:57321",
-            "shutdown-helper:57321",
-            "terminate-codex",
-            "status:failed",
-        ]
+    drop(handle);
+    let observed = events.lock().unwrap().clone();
+    assert!(
+        !observed.contains(&"terminate-codex".to_string()),
+        "Codex must not be terminated when only CDP injection fails: {observed:?}"
+    );
+    assert!(
+        !observed.contains(&"shutdown-helper:57321".to_string()),
+        "helper must remain available when only CDP injection fails: {observed:?}"
+    );
+    assert!(
+        observed.contains(&"status:running_degraded".to_string()),
+        "expected running_degraded status event: {observed:?}"
     );
     let status = status_store.load_latest().unwrap().unwrap();
-    assert_eq!(status.status, "failed");
-    assert!(status.message.contains("inject failed"));
+    assert_eq!(status.status, "running_degraded");
+    assert!(
+        status.message.contains("inject failed"),
+        "degraded message should include the underlying error: {}",
+        status.message
+    );
 }
 
 #[tokio::test]
@@ -816,7 +819,7 @@ async fn launch_lifecycle_cleans_helper_and_codex_when_status_save_fails() {
 }
 
 #[tokio::test]
-async fn launch_lifecycle_terminates_packaged_process_id_when_injection_fails() {
+async fn launch_lifecycle_keeps_packaged_codex_running_when_injection_fails() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
     std::fs::create_dir_all(&app_dir).unwrap();
@@ -830,25 +833,26 @@ async fn launch_lifecycle_terminates_packaged_process_id_when_injection_fails() 
         })
         .with_inject_error("inject failed");
 
-    let error = launch_and_inject_with_hooks(
+    let handle = launch_and_inject_with_hooks(
         LaunchOptions {
             app_dir: Some(app_dir),
             debug_port: 9229,
             helper_port: 57321,
-            status_store,
+            status_store: status_store.clone(),
         },
         &hooks,
     )
     .await
-    .unwrap_err();
+    .expect("packaged Codex must stay running even if CDP injection fails");
 
-    assert!(error.to_string().contains("inject failed"));
+    drop(handle);
+    let observed = events.lock().unwrap().clone();
     assert!(
-        events
-            .lock()
-            .unwrap()
-            .contains(&"terminate-packaged:4242".to_string())
+        !observed.contains(&"terminate-packaged:4242".to_string()),
+        "packaged Codex process must not be killed when only CDP injection fails: {observed:?}"
     );
+    let status = status_store.load_latest().unwrap().unwrap();
+    assert_eq!(status.status, "running_degraded");
 }
 
 #[tokio::test]
@@ -1004,6 +1008,10 @@ impl LaunchHooks for FakeHooks {
         if self.provider_sync_unsupported {
             anyhow::bail!("provider sync requires launcher hooks");
         }
+        Ok(())
+    }
+
+    async fn verify_loopback_reachable(&self) -> anyhow::Result<()> {
         Ok(())
     }
 

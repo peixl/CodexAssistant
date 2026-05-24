@@ -16,6 +16,15 @@ use tokio::sync::Mutex;
 use crate::settings::{BackendSettings, SettingsStore, normalize_codex_extra_args};
 use crate::status::{LaunchStatus, StatusStore};
 
+/// Number of times to retry CDP bridge injection while waiting for Codex to open its
+/// `--remote-debugging-port` endpoint. Codex Desktop (MSIX) cold-starts can take 30+ seconds
+/// before `/json` is reachable, so the budget needs to accommodate that.
+pub const BRIDGE_INJECTION_RETRY_COUNT: usize = 120;
+
+/// Interval between bridge injection retries.
+pub const BRIDGE_INJECTION_RETRY_INTERVAL: std::time::Duration =
+    std::time::Duration::from_millis(500);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodexLaunch {
     Process {
@@ -125,6 +134,12 @@ pub trait LaunchHooks: Send + Sync {
     fn select_helper_port(&self, requested: u16) -> u16;
     async fn load_settings(&self) -> anyhow::Result<BackendSettings>;
     async fn run_provider_sync(&self) -> anyhow::Result<()>;
+    /// Verify that Windows TCP loopback works on this machine before launching Codex.
+    /// Default impl runs [`preflight_loopback_reachable`]. Test hooks override this
+    /// to avoid depending on the test host's networking.
+    async fn verify_loopback_reachable(&self) -> anyhow::Result<()> {
+        preflight_loopback_reachable().await
+    }
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()>;
     async fn launch_codex(
         &self,
@@ -227,6 +242,10 @@ where
     let mut launched = None;
 
     let result: anyhow::Result<LaunchHandle> = async {
+        if settings.enhancements_enabled {
+            hooks.verify_loopback_reachable().await?;
+        }
+
         if settings.provider_sync_enabled {
             hooks.run_provider_sync().await?;
         }
@@ -245,23 +264,52 @@ where
             .await?;
         launched = Some(launch.clone());
 
+        let mut degraded_reason: Option<String> = None;
         if settings.enhancements_enabled {
-            match hooks.bridge_context(debug_port).await? {
-                Some(ctx) => hooks.inject_bridge(debug_port, helper_port, ctx).await?,
-                None => hooks.inject(debug_port, helper_port).await?,
+            let bridge_context_result = hooks.bridge_context(debug_port).await;
+            let inject_outcome = match bridge_context_result {
+                Ok(Some(ctx)) => hooks.inject_bridge(debug_port, helper_port, ctx).await,
+                Ok(None) => hooks.inject(debug_port, helper_port).await,
+                Err(error) => Err(error),
+            };
+            match inject_outcome {
+                Ok(()) => {
+                    if let Err(error) =
+                        hooks.start_bridge_watchdog(debug_port, helper_port).await
+                    {
+                        degraded_reason = Some(format!(
+                            "Codex launched but bridge watchdog could not start: {error}. Enhancements may stop working if Codex reloads."
+                        ));
+                    }
+                }
+                Err(error) => {
+                    degraded_reason = Some(injection_failure_message(&error));
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "bridge.injection_failed_keeping_codex_running",
+                        serde_json::json!({
+                            "debug_port": debug_port,
+                            "helper_port": helper_port,
+                            "platform": std::env::consts::OS,
+                            "message": error.to_string(),
+                        }),
+                    );
+                }
             }
-            hooks.start_bridge_watchdog(debug_port, helper_port).await?;
         }
 
+        let (status_label, status_message) = match degraded_reason.as_deref() {
+            Some(reason) => ("running_degraded", reason),
+            None => ("running", "CodexAssistant launcher ready"),
+        };
         let status = launch_status(
-            "running",
-            "CodexAssistant launcher ready",
+            status_label,
+            status_message,
             debug_port,
             helper_port,
             &app_dir,
         );
         options.status_store.save_latest(&status)?;
-        hooks.write_status("running").await;
+        hooks.write_status(status_label).await;
 
         Ok(LaunchHandle {
             debug_port,
@@ -1110,12 +1158,12 @@ pub fn codex_process_environment_from(
 
 async fn retry_injection(debug_port: u16, helper_port: u16) -> anyhow::Result<()> {
     let mut last_error = None;
-    for _ in 0..20 {
+    for _ in 0..BRIDGE_INJECTION_RETRY_COUNT {
         match try_inject(debug_port, helper_port).await {
             Ok(()) => return Ok(()),
             Err(error) => {
                 last_error = Some(error);
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(BRIDGE_INJECTION_RETRY_INTERVAL).await;
             }
         }
     }
@@ -1461,6 +1509,69 @@ fn launch_status(
         debug_port: Some(debug_port),
         helper_port: Some(helper_port),
         codex_app: Some(app_dir.to_string_lossy().to_string()),
+    }
+}
+
+fn injection_failure_message(error: &anyhow::Error) -> String {
+    let detail = error.to_string();
+    if cfg!(target_os = "windows") {
+        format!(
+            "Codex launched, but the CodexAssistant enhancement bridge could not attach to the DevTools Protocol port. This usually means a VPN/firewall WFP kill-switch (e.g. WireGuard, Meta Tunnel, Cisco AnyConnect, Zscaler) is blocking Windows TCP loopback. Disable the relevant VPN adapter and relaunch. Diagnostic: {detail}"
+        )
+    } else {
+        format!(
+            "Codex launched, but the CodexAssistant enhancement bridge could not attach. Diagnostic: {detail}"
+        )
+    }
+}
+
+/// Verify TCP loopback works on this machine before we waste time launching Codex
+/// and waiting 60s for `--remote-debugging-port` to be reachable. On Windows, VPN
+/// drivers (WireGuard/Wintun, Cisco AnyConnect, Zscaler) commonly install WFP
+/// kill-switch filters that silently drop 127.0.0.1 SYN packets — `listen()` and
+/// `bind()` still succeed, so the symptom looks like Codex is broken when it isn't.
+pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
+    use std::net::Ipv4Addr;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let listener = tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+        .await
+        .with_context(|| "loopback pre-flight: failed to bind 127.0.0.1:0")?;
+    let port = listener.local_addr()?.port();
+
+    let server = tokio::spawn(async move {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let _ = stream.write_all(b"ok").await;
+            let _ = stream.shutdown().await;
+        }
+    });
+
+    let probe = async {
+        let mut stream = tokio::net::TcpStream::connect((Ipv4Addr::LOCALHOST, port)).await?;
+        let mut buf = [0u8; 2];
+        stream.read_exact(&mut buf).await?;
+        anyhow::Ok(())
+    };
+
+    let outcome = tokio::time::timeout(std::time::Duration::from_millis(2500), probe).await;
+    server.abort();
+
+    match outcome {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(error)) => Err(anyhow::anyhow!(loopback_preflight_message(&error.to_string()))),
+        Err(_) => Err(anyhow::anyhow!(loopback_preflight_message(
+            "TCP connect to 127.0.0.1 timed out after 2500ms"
+        ))),
+    }
+}
+
+fn loopback_preflight_message(detail: &str) -> String {
+    if cfg!(target_os = "windows") {
+        format!(
+            "Windows TCP loopback (127.0.0.1) is unreachable on this machine — the CodexAssistant launcher cannot talk to Codex's DevTools Protocol port. This is almost always caused by a VPN driver installing a Windows Filtering Platform kill-switch that drops localhost SYN packets. Common culprits: WireGuard / Wintun-based tunnels (including \"Meta Tunnel\"), Cisco AnyConnect, Zscaler, Tailscale (in some configs). To fix: run `Get-NetAdapter` in PowerShell, identify the active tunnel/VPN adapter, then `Disable-NetAdapter -Name <Name>` from an elevated prompt (or quit the VPN client). Then relaunch CodexAssistant. Diagnostic: {detail}"
+        )
+    } else {
+        format!("TCP loopback pre-flight failed: {detail}")
     }
 }
 

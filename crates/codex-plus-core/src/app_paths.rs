@@ -31,6 +31,9 @@ pub fn find_latest_codex_app_dir_default() -> Option<PathBuf> {
         if let Some(path) = find_latest_codex_app_dir_from_roots(&windows_app_package_roots()) {
             return Some(path);
         }
+        if let Some(path) = find_codex_via_appx_package() {
+            return Some(path);
+        }
         find_codex_in_windows_user_install_locations()
     }
 
@@ -63,6 +66,48 @@ fn find_codex_in_windows_user_install_locations() -> Option<PathBuf> {
     windows_user_install_search_dirs()
         .into_iter()
         .find_map(|dir| normalize_codex_app_path(&dir))
+}
+
+#[cfg(windows)]
+fn find_codex_via_appx_package() -> Option<PathBuf> {
+    let install_location = query_appx_install_location("OpenAI.Codex")?;
+    let install_dir = PathBuf::from(install_location);
+    if !install_dir.is_dir() {
+        return None;
+    }
+    let app = install_dir.join("app");
+    if app.is_dir() {
+        return Some(app);
+    }
+    Some(install_dir)
+}
+
+#[cfg(windows)]
+fn query_appx_install_location(package_name: &str) -> Option<String> {
+    use std::os::windows::process::CommandExt;
+    let script = format!(
+        "(Get-AppxPackage -Name '{package_name}' | Sort-Object Version -Descending | Select-Object -First 1).InstallLocation"
+    );
+    let output = std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script.as_str(),
+        ])
+        .creation_flags(crate::windows_integration::CREATE_NO_WINDOW)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .trim_end_matches('\r')
+        .to_string();
+    if value.is_empty() { None } else { Some(value) }
 }
 
 #[cfg(windows)]
@@ -226,6 +271,15 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
         }
     }
 
+    let nested_bin = path.join("bin");
+    if nested_bin.is_dir() {
+        let upper = nested_bin.join("Codex.exe");
+        let lower = nested_bin.join("codex.exe");
+        if upper.exists() || lower.exists() {
+            return Some(nested_bin);
+        }
+    }
+
     if path.is_dir() {
         return Some(path.to_path_buf());
     }
@@ -239,10 +293,24 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     }
     let upper = app_dir.join("Codex.exe");
     if upper.exists() {
-        upper
-    } else {
-        app_dir.join("codex.exe")
+        return upper;
     }
+    let lower = app_dir.join("codex.exe");
+    if lower.exists() {
+        return lower;
+    }
+    let bin = app_dir.join("bin");
+    if bin.is_dir() {
+        let bin_upper = bin.join("Codex.exe");
+        if bin_upper.exists() {
+            return bin_upper;
+        }
+        let bin_lower = bin.join("codex.exe");
+        if bin_lower.exists() {
+            return bin_lower;
+        }
+    }
+    app_dir.join("codex.exe")
 }
 
 pub fn codex_app_version(app_dir: &Path) -> Option<String> {
@@ -386,6 +454,30 @@ mod tests {
         fs::write(app.join("codex.exe"), b"stub").unwrap();
         let normalized = normalize_codex_app_path(&dir).unwrap();
         assert_eq!(normalized, app);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn normalize_descends_into_nested_bin_folder_for_cli_layout() {
+        let dir = make_temp_dir("normalize-bin");
+        let bin = dir.join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(bin.join("codex.exe"), b"stub").unwrap();
+        let normalized = normalize_codex_app_path(&dir).unwrap();
+        assert_eq!(normalized, bin);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn build_codex_executable_prefers_bin_subdir_when_present() {
+        let dir = make_temp_dir("exec-bin");
+        let bin = dir.join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let exe_name = if cfg!(windows) { "Codex.exe" } else { "codex.exe" };
+        let target = bin.join(exe_name);
+        fs::write(&target, b"stub").unwrap();
+        let executable = build_codex_executable(&dir);
+        assert_eq!(executable, target);
         fs::remove_dir_all(&dir).ok();
     }
 
