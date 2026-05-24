@@ -55,7 +55,7 @@ jobs:
           shared-key: release-aarch64-apple-darwin
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
@@ -116,7 +116,7 @@ jobs:
           shared-key: release-x86_64-pc-windows-msvc
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
