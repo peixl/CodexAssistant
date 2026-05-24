@@ -87,7 +87,7 @@ jobs:
         run: bash scripts/installer/macos/package-dmg.sh "$VERSION" "$ARCH"
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
           path: dist/macos/CodexAssistant-${{ env.VERSION }}-macos-${{ env.ARCH }}.dmg
@@ -162,7 +162,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE" }
 
       - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: dist/windows/CodexAssistant-${{ env.VERSION }}-windows-x64-setup.exe
