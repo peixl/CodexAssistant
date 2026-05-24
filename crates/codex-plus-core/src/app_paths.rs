@@ -473,7 +473,11 @@ mod tests {
         let dir = make_temp_dir("exec-bin");
         let bin = dir.join("bin");
         fs::create_dir_all(&bin).unwrap();
-        let exe_name = if cfg!(windows) { "Codex.exe" } else { "codex.exe" };
+        let exe_name = if cfg!(windows) {
+            "Codex.exe"
+        } else {
+            "codex.exe"
+        };
         let target = bin.join(exe_name);
         fs::write(&target, b"stub").unwrap();
         let executable = build_codex_executable(&dir);

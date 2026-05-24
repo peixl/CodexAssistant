@@ -454,7 +454,8 @@ async fn inject_with_context(
             Ok(()) => return Ok(()),
             Err(error) => {
                 last_error = Some(error);
-                tokio::time::sleep(codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_INTERVAL).await;
+                tokio::time::sleep(codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_INTERVAL)
+                    .await;
             }
         }
     }
@@ -502,11 +503,11 @@ async fn try_inject_with_context(
 }
 
 fn default_codex_db_path() -> PathBuf {
-    directories::BaseDirs::new()
-        .map(|dirs| dirs.home_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".codex")
-        .join("state_5.sqlite")
+    codex_db_path_from_home(codex_plus_core::relay_config::default_codex_home_dir())
+}
+
+fn codex_db_path_from_home(home: impl AsRef<Path>) -> PathBuf {
+    home.as_ref().join("state_5.sqlite")
 }
 
 fn open_url(url: &str) -> anyhow::Result<()> {
@@ -630,6 +631,16 @@ mod tests {
             path.file_name()
                 .and_then(|name| name.to_str())
                 .is_some_and(|name| name.contains(codex_plus_core::install::MANAGER_BINARY))
+        );
+    }
+
+    #[test]
+    fn default_codex_db_path_uses_resolved_codex_home() {
+        let path = codex_db_path_from_home(Path::new(r"D:\portable\codex-home"));
+
+        assert_eq!(
+            path,
+            PathBuf::from(r"D:\portable\codex-home").join("state_5.sqlite")
         );
     }
 }

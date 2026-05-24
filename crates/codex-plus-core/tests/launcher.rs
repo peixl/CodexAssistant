@@ -11,7 +11,7 @@ use codex_plus_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
     build_codex_arguments, build_codex_command, build_macos_cleanup_command,
     build_macos_open_command, build_packaged_activation, codex_process_environment_from,
-    launch_and_inject_with_hooks, with_temporary_proxy_environment,
+    launch_and_inject_with_hooks, preflight_loopback_reachable, with_temporary_proxy_environment,
 };
 #[cfg(windows)]
 use codex_plus_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
@@ -303,6 +303,11 @@ fn launcher_packaged_activation_temporarily_applies_proxy_environment() {
     temp_env_remove("HTTP_PROXY");
     temp_env_remove("HTTPS_PROXY");
     temp_env_remove("ALL_PROXY");
+    temp_env_remove("http_proxy");
+    temp_env_remove("https_proxy");
+    temp_env_remove("all_proxy");
+    temp_env_remove("NO_PROXY");
+    temp_env_remove("no_proxy");
     temp_env_set("UNRELATED_PROXY_TEST", "keep");
     let mut env = HashMap::new();
     env.insert(
@@ -317,31 +322,71 @@ fn launcher_packaged_activation_temporarily_applies_proxy_environment() {
         "ALL_PROXY".to_string(),
         "http://proxy.example.test:8080".to_string(),
     );
+    let env = codex_process_environment_from(&env, || None);
 
     let seen = with_temporary_proxy_environment(&env, || {
         (
             std::env::var("HTTP_PROXY").ok(),
             std::env::var("HTTPS_PROXY").ok(),
             std::env::var("ALL_PROXY").ok(),
+            std::env::var("http_proxy").ok(),
+            std::env::var("https_proxy").ok(),
+            std::env::var("all_proxy").ok(),
+            std::env::var("NO_PROXY").ok(),
+            std::env::var("no_proxy").ok(),
         )
     });
 
-    assert_eq!(
-        seen,
-        (
-            Some("http://proxy.example.test:8080".to_string()),
-            Some("http://proxy.example.test:8080".to_string()),
-            Some("http://proxy.example.test:8080".to_string()),
-        )
-    );
+    assert_eq!(seen.0.as_deref(), Some("http://proxy.example.test:8080"));
+    assert_eq!(seen.1.as_deref(), Some("http://proxy.example.test:8080"));
+    assert_eq!(seen.2.as_deref(), Some("http://proxy.example.test:8080"));
+    assert_eq!(seen.3.as_deref(), Some("http://proxy.example.test:8080"));
+    assert_eq!(seen.4.as_deref(), Some("http://proxy.example.test:8080"));
+    assert_eq!(seen.5.as_deref(), Some("http://proxy.example.test:8080"));
+    assert!(seen.6.as_deref().unwrap_or_default().contains("127.0.0.1"));
+    assert_eq!(seen.6, seen.7);
     assert!(std::env::var("HTTP_PROXY").is_err());
     assert!(std::env::var("HTTPS_PROXY").is_err());
     assert!(std::env::var("ALL_PROXY").is_err());
+    assert!(std::env::var("http_proxy").is_err());
+    assert!(std::env::var("https_proxy").is_err());
+    assert!(std::env::var("all_proxy").is_err());
+    assert!(std::env::var("NO_PROXY").is_err());
+    assert!(std::env::var("no_proxy").is_err());
     assert_eq!(
         std::env::var("UNRELATED_PROXY_TEST").ok().as_deref(),
         Some("keep")
     );
     temp_env_remove("UNRELATED_PROXY_TEST");
+}
+
+#[test]
+fn proxy_mirrors_lowercase_environment_and_preserves_loopback_no_proxy() {
+    let env = HashMap::from([
+        (
+            "https_proxy".to_string(),
+            "http://lowercase-proxy.example.test:8080".to_string(),
+        ),
+        ("NO_PROXY".to_string(), "example.test".to_string()),
+    ]);
+
+    let process_env = codex_process_environment_from(&env, || {
+        panic!("system proxy detection should not run when lowercase env already has proxy")
+    });
+
+    assert_eq!(
+        process_env.get("HTTPS_PROXY").map(String::as_str),
+        Some("http://lowercase-proxy.example.test:8080")
+    );
+    assert_eq!(
+        process_env.get("https_proxy").map(String::as_str),
+        Some("http://lowercase-proxy.example.test:8080")
+    );
+    let no_proxy = process_env.get("NO_PROXY").cloned().unwrap_or_default();
+    assert!(no_proxy.contains("example.test"));
+    assert!(no_proxy.contains("127.0.0.1"));
+    assert!(no_proxy.contains("localhost"));
+    assert_eq!(process_env.get("NO_PROXY"), process_env.get("no_proxy"));
 }
 
 #[test]
@@ -397,6 +442,10 @@ fn proxy_injects_system_proxy_when_environment_is_empty() {
 
 #[tokio::test]
 async fn default_helper_serves_backend_status_over_http() {
+    if !loopback_available_for_test().await {
+        return;
+    }
+
     let hooks = DefaultLaunchHooks::default();
     let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -434,6 +483,10 @@ async fn default_helper_serves_backend_status_over_http() {
 
 #[tokio::test]
 async fn default_helper_accepts_diagnostic_log_events_over_http() {
+    if !loopback_available_for_test().await {
+        return;
+    }
+
     let temp = tempfile::tempdir().unwrap();
     let log_path = temp.path().join("codex-plus.log");
     codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
@@ -468,6 +521,16 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
     assert!(contents.contains("renderer.backend_check_failed"));
     assert!(contents.contains("fetch failed"));
     codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
+}
+
+async fn loopback_available_for_test() -> bool {
+    match preflight_loopback_reachable().await {
+        Ok(()) => true,
+        Err(error) => {
+            eprintln!("skipping loopback-dependent helper test: {error}");
+            false
+        }
+    }
 }
 
 #[tokio::test]

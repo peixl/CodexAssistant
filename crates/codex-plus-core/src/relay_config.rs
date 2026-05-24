@@ -53,8 +53,20 @@ pub struct RelayProfileTestResult {
 }
 
 pub fn default_codex_home_dir() -> PathBuf {
-    directories::BaseDirs::new()
-        .map(|dirs| dirs.home_dir().join(".codex"))
+    codex_home_dir_from_parts(
+        std::env::var_os("CODEX_HOME"),
+        directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()),
+    )
+}
+
+fn codex_home_dir_from_parts(
+    codex_home: Option<std::ffi::OsString>,
+    home_dir: Option<PathBuf>,
+) -> PathBuf {
+    codex_home
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home_dir.map(|home| home.join(".codex")))
         .unwrap_or_else(|| PathBuf::from(".codex"))
 }
 
@@ -694,4 +706,31 @@ fn root_line_key(line: &str) -> Option<&str> {
 
 fn toml_escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    #[test]
+    fn codex_home_prefers_codex_home_environment() {
+        let configured = OsString::from(r"D:\portable\codex-home");
+        let home = PathBuf::from(r"C:\Users\tester");
+
+        assert_eq!(
+            codex_home_dir_from_parts(Some(configured.clone()), Some(home)),
+            PathBuf::from(configured)
+        );
+    }
+
+    #[test]
+    fn codex_home_falls_back_to_user_dot_codex() {
+        let home = PathBuf::from(r"C:\Users\tester");
+
+        assert_eq!(
+            codex_home_dir_from_parts(None, Some(home.clone())),
+            home.join(".codex")
+        );
+    }
 }

@@ -1004,6 +1004,10 @@ impl LaunchHooks for ContextHooks {
         Ok(())
     }
 
+    async fn verify_loopback_reachable(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     async fn start_helper(&self, _helper_port: u16) -> anyhow::Result<()> {
         Ok(())
     }

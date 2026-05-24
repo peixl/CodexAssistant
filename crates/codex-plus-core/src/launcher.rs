@@ -1143,6 +1143,8 @@ pub fn codex_process_environment_from(
     detect_system_proxy: impl FnOnce() -> Option<String>,
 ) -> HashMap<String, String> {
     let mut env = env.clone();
+    mirror_proxy_environment_keys(&mut env);
+    ensure_loopback_no_proxy(&mut env);
     if crate::proxy::has_proxy_environment(&env) {
         return env;
     }
@@ -1152,8 +1154,54 @@ pub fn codex_process_environment_from(
         env.entry("HTTPS_PROXY".to_string())
             .or_insert_with(|| proxy.clone());
         env.entry("ALL_PROXY".to_string()).or_insert(proxy);
+        mirror_proxy_environment_keys(&mut env);
+        ensure_loopback_no_proxy(&mut env);
     }
     env
+}
+
+fn mirror_proxy_environment_keys(env: &mut HashMap<String, String>) {
+    for (upper, lower) in [
+        ("HTTP_PROXY", "http_proxy"),
+        ("HTTPS_PROXY", "https_proxy"),
+        ("ALL_PROXY", "all_proxy"),
+    ] {
+        match (env.get(upper).cloned(), env.get(lower).cloned()) {
+            (Some(value), None) if !value.trim().is_empty() => {
+                env.insert(lower.to_string(), value);
+            }
+            (None, Some(value)) if !value.trim().is_empty() => {
+                env.insert(upper.to_string(), value);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn ensure_loopback_no_proxy(env: &mut HashMap<String, String>) {
+    const REQUIRED: [&str; 4] = ["127.0.0.1", "localhost", "::1", "0.0.0.0"];
+    let existing_key = ["NO_PROXY", "no_proxy"]
+        .into_iter()
+        .find(|key| env.get(*key).is_some_and(|value| !value.trim().is_empty()));
+    let mut values = existing_key
+        .and_then(|key| env.get(key).cloned())
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    for required in REQUIRED {
+        if !values
+            .iter()
+            .any(|value| value.eq_ignore_ascii_case(required))
+        {
+            values.push(required.to_string());
+        }
+    }
+    let joined = values.join(",");
+    env.insert("NO_PROXY".to_string(), joined.clone());
+    env.insert("no_proxy".to_string(), joined);
 }
 
 async fn retry_injection(debug_port: u16, helper_port: u16) -> anyhow::Result<()> {
@@ -1386,8 +1434,17 @@ async fn activate_packaged_app_with_environment(
 
 fn apply_proxy_environment(
     env: &HashMap<String, String>,
-) -> [(&'static str, Option<std::ffi::OsString>); 3] {
-    let keys = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"];
+) -> [(&'static str, Option<std::ffi::OsString>); 8] {
+    let keys = [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "NO_PROXY",
+        "no_proxy",
+    ];
     let previous = keys.map(|key| (key, std::env::var_os(key)));
     for key in keys {
         if let Some(value) = env.get(key) {
@@ -1397,7 +1454,7 @@ fn apply_proxy_environment(
     previous
 }
 
-fn restore_proxy_environment(previous: [(&'static str, Option<std::ffi::OsString>); 3]) {
+fn restore_proxy_environment(previous: [(&'static str, Option<std::ffi::OsString>); 8]) {
     for (key, value) in previous {
         match value {
             Some(value) => set_env_var(key, value),
@@ -1516,7 +1573,7 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
     let detail = error.to_string();
     if cfg!(target_os = "windows") {
         format!(
-            "Codex launched, but the CodexAssistant enhancement bridge could not attach to the DevTools Protocol port. This usually means a VPN/firewall WFP kill-switch (e.g. WireGuard, Meta Tunnel, Cisco AnyConnect, Zscaler) is blocking Windows TCP loopback. Disable the relevant VPN adapter and relaunch. Diagnostic: {detail}"
+            "Codex launched, but the CodexAssistant enhancement bridge could not attach to the DevTools Protocol port. This often means a VPN or firewall WFP rule is blocking Windows TCP loopback. First try non-destructive checks: pause or quit the VPN client, allow localhost/127.0.0.1 traffic in the VPN or firewall settings, or enable split tunneling/local-network access. CodexAssistant does not change system network settings automatically. Diagnostic: {detail}"
         )
     } else {
         format!(
@@ -1558,7 +1615,9 @@ pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
 
     match outcome {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(error)) => Err(anyhow::anyhow!(loopback_preflight_message(&error.to_string()))),
+        Ok(Err(error)) => Err(anyhow::anyhow!(loopback_preflight_message(
+            &error.to_string()
+        ))),
         Err(_) => Err(anyhow::anyhow!(loopback_preflight_message(
             "TCP connect to 127.0.0.1 timed out after 2500ms"
         ))),
@@ -1568,10 +1627,37 @@ pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
 fn loopback_preflight_message(detail: &str) -> String {
     if cfg!(target_os = "windows") {
         format!(
-            "Windows TCP loopback (127.0.0.1) is unreachable on this machine — the CodexAssistant launcher cannot talk to Codex's DevTools Protocol port. This is almost always caused by a VPN driver installing a Windows Filtering Platform kill-switch that drops localhost SYN packets. Common culprits: WireGuard / Wintun-based tunnels (including \"Meta Tunnel\"), Cisco AnyConnect, Zscaler, Tailscale (in some configs). To fix: run `Get-NetAdapter` in PowerShell, identify the active tunnel/VPN adapter, then `Disable-NetAdapter -Name <Name>` from an elevated prompt (or quit the VPN client). Then relaunch CodexAssistant. Diagnostic: {detail}"
+            "Windows TCP loopback (127.0.0.1) is unreachable on this machine, so the CodexAssistant launcher cannot talk to Codex's DevTools Protocol port. This is commonly caused by VPN or firewall WFP rules dropping localhost traffic. Try non-destructive recovery first: pause or quit the VPN client, allow localhost/127.0.0.1 in the VPN or firewall settings, or enable split tunneling/local-network access. CodexAssistant does not change system network settings automatically. Diagnostic: {detail}"
         )
     } else {
         format!("TCP loopback pre-flight failed: {detail}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_loopback_message_prefers_non_destructive_network_guidance() {
+        let message = loopback_preflight_message("timeout");
+
+        assert!(message.contains("non-destructive"));
+        assert!(message.contains("does not change system network settings automatically"));
+        assert!(!message.contains("Disable-NetAdapter"));
+        assert!(!message.contains("netsh"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_injection_failure_message_avoids_adapter_disable_guidance() {
+        let message = injection_failure_message(&anyhow::anyhow!("timeout"));
+
+        assert!(message.contains("localhost/127.0.0.1"));
+        assert!(message.contains("does not change system network settings automatically"));
+        assert!(!message.contains("Disable-NetAdapter"));
+        assert!(!message.contains("netsh"));
     }
 }
 
