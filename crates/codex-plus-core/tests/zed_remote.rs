@@ -70,8 +70,7 @@ fn build_zed_remote_url_allows_bracketed_ipv6_host() {
 #[test]
 fn target_from_payload_splits_codex_managed_authority() {
     let target =
-        zed_remote::target_from_payload(&json!({"ssh": {"host": "testuser@10.0.0.1"}}))
-            .unwrap();
+        zed_remote::target_from_payload(&json!({"ssh": {"host": "testuser@10.0.0.1"}})).unwrap();
 
     assert_eq!(
         target,
@@ -355,10 +354,7 @@ fn workspace_root_from_sqlite_reads_thread_cwd() {
 
     let cwd = zed_remote::workspace_root_from_sqlite("local:019e39c1-worktree", Some(&db_path));
 
-    assert_eq!(
-        cwd,
-        "/Users/testuser/projects/sample/.worktree/zed-fix"
-    );
+    assert_eq!(cwd, "/Users/testuser/projects/sample/.worktree/zed-fix");
 }
 
 #[test]
