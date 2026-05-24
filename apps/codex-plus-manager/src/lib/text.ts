@@ -9,6 +9,7 @@ export const TEXT = {
     preparing: "准备增强…",
     errorPrefix: "再试一次",
     errorAction: "查看原因",
+    launchTimedOut: "Codex 启动超时，请稍后重试。",
   },
   capabilities: {
     plugins: "插件解锁",

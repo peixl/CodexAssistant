@@ -26,6 +26,7 @@ pub fn run() {
             commands::load_overview,
             commands::launch_codex_plus,
             commands::restart_codex_plus,
+            commands::read_launch_status,
             commands::load_settings,
             commands::save_settings,
             commands::load_ccs_providers,

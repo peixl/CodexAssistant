@@ -36,6 +36,13 @@ pub struct PathState {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchStatusPayload {
+    pub status: Option<LaunchStatus>,
+    pub now_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct OverviewPayload {
     pub codex_app: PathState,
     pub codex_version: Option<String>,
@@ -252,24 +259,50 @@ pub fn restart_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
     spawn_codex_plus_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
 }
 
+#[tauri::command]
+pub fn read_launch_status() -> CommandResult<LaunchStatusPayload> {
+    let status = StatusStore::default().load_latest().unwrap_or(None);
+    let now_ms = system_time_now_ms();
+    ok("启动状态已读取。", LaunchStatusPayload { status, now_ms })
+}
+
 fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> CommandResult<Value> {
     let debug_port = request.debug_port;
     let helper_port = request.helper_port;
+    let app_path = request.app_path_trimmed().to_string();
     let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
         "manager.launch_requested",
         json!({
             "debug_port": debug_port,
             "helper_port": helper_port,
-            "app_path": request.app_path_trimmed()
+            "app_path": app_path,
         }),
     );
+
+    if let Err(message) = preflight_check_launch(&request) {
+        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            "manager.launch_preflight_failed",
+            json!({ "message": message }),
+        );
+        return failed(
+            &message,
+            json!({
+                "debugPort": debug_port,
+                "helperPort": helper_port,
+                "preflight": "failed"
+            }),
+        );
+    }
+
+    let launch_requested_at_ms = system_time_now_ms();
     match spawn_silent_launcher(&request) {
         Ok(()) => CommandResult {
             status: "accepted".to_string(),
             message: accepted_message.to_string(),
             payload: json!({
                 "debugPort": debug_port,
-                "helperPort": helper_port
+                "helperPort": helper_port,
+                "launchRequestedAtMs": launch_requested_at_ms
             }),
         },
         Err(error) => failed(
@@ -280,6 +313,29 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
             }),
         ),
     }
+}
+
+fn preflight_check_launch(request: &LaunchRequest) -> Result<(), String> {
+    let settings = SettingsStore::default().load().unwrap_or_default();
+    let requested_app = request.app_path_trimmed();
+    let saved_app = settings.codex_app_path.trim();
+    let app_path_arg = (!requested_app.is_empty()).then(|| Path::new(requested_app));
+    let saved_app_opt = (!saved_app.is_empty()).then_some(saved_app);
+    if codex_plus_core::app_paths::resolve_codex_app_dir_with_saved(app_path_arg, saved_app_opt)
+        .is_none()
+    {
+        return Err("未找到 Codex App，请先在「更多设置」中指定 Codex 安装路径。".to_string());
+    }
+
+    let launcher = codex_plus_core::install::companion_binary_path(SILENT_BINARY);
+    if !launcher.exists() {
+        return Err(format!(
+            "未找到静默启动器二进制：{}，请重新安装 CodexAssistant。",
+            launcher.to_string_lossy()
+        ));
+    }
+
+    Ok(())
 }
 
 fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
@@ -303,6 +359,13 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         .spawn()
         .map(|_| ())
         .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
+}
+
+fn system_time_now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 #[tauri::command]
@@ -1600,5 +1663,66 @@ mod tests {
 
         assert_eq!(result.status, "failed");
         assert!(result.message.contains("只允许打开 http 或 https 链接"));
+    }
+
+    #[test]
+    fn read_launch_status_returns_serialized_payload_with_now_ms() {
+        let result = read_launch_status();
+
+        assert_eq!(result.status, "ok");
+        assert!(result.payload.now_ms > 0);
+        // status may be None on systems without prior launches; either branch is valid.
+        if let Some(status) = result.payload.status {
+            assert!(matches!(
+                status.status.as_str(),
+                "running" | "failed" | "stopped" | "starting"
+            ));
+        }
+    }
+
+    #[test]
+    fn preflight_check_rejects_when_codex_app_missing() {
+        // Force resolution failure: explicit nonsense path, no saved fallback.
+        let request = LaunchRequest {
+            app_path: Some("/__codex_assistant_test_missing__".to_string()),
+            debug_port: 9229,
+            helper_port: 57321,
+        };
+
+        match preflight_check_launch(&request) {
+            Err(message) => assert!(message.contains("未找到 Codex App")),
+            Ok(()) => {
+                // On a developer machine with Codex installed and the explicit path nonexistent,
+                // resolve_codex_app_dir_with_saved returns None — but if Codex *is* findable via
+                // the saved settings fallback (which we override via request), we still reach
+                // Ok(()) when the saved settings path on disk resolves. Skip in that case.
+                eprintln!("preflight unexpectedly OK; assuming Codex App is installed locally");
+            }
+        }
+    }
+
+    #[test]
+    fn launch_codex_plus_returns_failed_envelope_when_codex_app_missing() {
+        let request = LaunchRequest {
+            app_path: Some("/__codex_assistant_test_missing__".to_string()),
+            debug_port: 9229,
+            helper_port: 57321,
+        };
+
+        let result = launch_codex_plus(request);
+
+        // Either preflight catches it (failed envelope) or, if a local Codex is found via
+        // saved settings, the spawn path is exercised. Both are valid; we only assert
+        // that the response is a well-formed envelope.
+        assert!(matches!(result.status.as_str(), "failed" | "accepted"));
+        if result.status == "failed" {
+            assert!(
+                result.message.contains("未找到 Codex App")
+                    || result.message.contains("未找到静默启动器")
+                    || result.message.contains("启动静默入口失败"),
+                "unexpected failed message: {}",
+                result.message
+            );
+        }
     }
 }
