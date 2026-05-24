@@ -39,6 +39,11 @@ updates:
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "@tailwindcss/vite"
 
   - package-ecosystem: github-actions
     directory: "/"

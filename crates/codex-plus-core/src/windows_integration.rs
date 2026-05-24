@@ -166,7 +166,7 @@ pub fn set_current_user_string_value(subkey: &str, name: &str, value: &str) -> a
             RegSetValueExW(
                 key,
                 PCWSTR(wide_null(name).as_ptr()),
-                0,
+                None,
                 REG_SZ,
                 Some(bytes),
             )
@@ -185,7 +185,7 @@ pub fn delete_current_user_value(subkey: &str, name: &str) -> anyhow::Result<()>
         RegOpenKeyExW(
             HKEY_CURRENT_USER,
             PCWSTR(subkey.as_ptr()),
-            0,
+            None,
             KEY_SET_VALUE,
             &mut key,
         )
