@@ -83,7 +83,7 @@ CodexAssistant/
    - Cross-platform code paths must be gated with
      `#[cfg(target_os = "windows" | "macos")]`.
 
-3. **Run the full local check before pushing**
+4. **Run the full local check before pushing**
    ```bash
    cargo fmt --all
    cargo clippy --workspace --all-targets -- -D warnings

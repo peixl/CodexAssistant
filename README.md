@@ -45,7 +45,6 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
 | 平台 | 资产 |
 | :--- | :--- |
 | Windows x64 | `CodexAssistant-<version>-windows-x64-setup.exe` |
-| macOS Intel | `CodexAssistant-<version>-macos-x64.dmg` |
 | macOS Apple Silicon | `CodexAssistant-<version>-macos-arm64.dmg` |
 
 安装完成后会出现两个入口：
@@ -194,10 +193,10 @@ CodexAssistant/
 | :--- | :---: | :---: | :---: | :---: |
 | Windows x64 | ✅ | ✅ | NSIS `.exe` | ✅ |
 | macOS arm64 (Apple Silicon) | ✅ | ✅ | `.dmg` | ✅ |
-| macOS x64 (Intel) | ✅ | ✅ | `.dmg` | ✅ |
+| macOS x64 (Intel) | ✅ | ✅ | 源码构建 | ✅ |
 | Linux | — | — | — | ✅ (lint & test) |
 
-Linux 不在分发目标内，但作为开发环境与 CI lint 平台一直保持构建通过。
+> Apple Silicon 是当前的官方分发架构。Intel Mac 可以从源码构建（`cargo build --release` 加 `--target x86_64-apple-darwin`），CI 也持续在 macOS 跑 clippy/test。Linux 不在分发目标内，但作为开发环境与 CI lint 平台一直保持构建通过。
 
 ## ❓ 常见问题
 
@@ -226,7 +225,14 @@ xattr -dr com.apple.quarantine "/Applications/CodexAssistant 管理工具.app"
 
 ### Intel Mac 能用吗？
 
-可以。Release 同时提供 `macos-x64.dmg` 与 `macos-arm64.dmg`，请按 CPU 选择。
+可以，但目前 Release 只签发 Apple Silicon (`macos-arm64.dmg`) 的成品。Intel Mac 用户需要从源码构建：
+
+```bash
+rustup target add x86_64-apple-darwin
+npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-plus-manager run vite:build
+cargo build --release --target x86_64-apple-darwin -p codex-plus-launcher -p codex-assistant
+```
 
 ### 我能在 Linux 上跑吗？
 
