@@ -405,42 +405,63 @@ fn macos_candidates_include_applications_zed_app() {
     );
 }
 
-#[cfg(target_os = "windows")]
 #[test]
 fn windows_candidates_include_localappdata_programs_zed() {
-    use std::path::PathBuf;
-    // SAFETY: Test runs single-threaded with a unique env var name; no other
-    // code in the suite reads LOCALAPPDATA at the same time. set_var on Windows
-    // is sound when no other thread is concurrently reading the same key.
-    unsafe {
-        std::env::set_var("LOCALAPPDATA", r"C:\Users\test\AppData\Local");
-    }
-    let candidates = zed_remote::candidate_zed_app_paths();
-    let expected = PathBuf::from(r"C:\Users\test\AppData\Local\Programs\Zed").join("Zed.exe");
+    use std::path::{Path, PathBuf};
+    let local = PathBuf::from(r"C:\Users\test\AppData\Local");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(
+        &mut candidates,
+        Some(local.as_path()),
+        None,
+        None,
+        None,
+    );
+    let expected_upper = local.join("Programs").join("Zed").join("Zed.exe");
+    let expected_lower = local.join("Programs").join("Zed").join("zed.exe");
+    let expected_loose = local.join("Zed").join("Zed.exe");
+    let contains = |target: &Path| candidates.iter().any(|c| c == target);
     assert!(
-        candidates.contains(&expected),
-        "Windows candidates missing {expected:?}: {candidates:?}",
+        contains(&expected_upper) && contains(&expected_lower) && contains(&expected_loose),
+        "Windows LOCALAPPDATA discovery missing expected entries: {candidates:?}",
     );
 }
 
-#[cfg(target_os = "windows")]
 #[test]
-fn windows_candidates_include_program_files_zed() {
+fn windows_candidates_include_program_files_variants() {
+    use std::path::{Path, PathBuf};
+    let pf = PathBuf::from(r"C:\Program Files");
+    let pf86 = PathBuf::from(r"C:\Program Files (x86)");
+    let pfw6 = PathBuf::from(r"C:\Program Files");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(
+        &mut candidates,
+        None,
+        Some(pf.as_path()),
+        Some(pf86.as_path()),
+        Some(pfw6.as_path()),
+    );
+    let contains = |target: &Path| candidates.iter().any(|c| c == target);
+    assert!(contains(&pf.join("Zed").join("Zed.exe")));
+    assert!(contains(&pf.join("Zed Preview").join("Zed.exe")));
+    assert!(contains(&pf86.join("Zed Nightly").join("zed.exe")));
+    assert!(contains(&pfw6.join("Zed").join("Zed.exe")));
+}
+
+#[test]
+fn windows_candidates_empty_when_no_env_provided() {
     use std::path::PathBuf;
-    unsafe {
-        std::env::set_var("ProgramFiles", r"C:\Program Files");
-    }
-    let candidates = zed_remote::candidate_zed_app_paths();
-    let expected = PathBuf::from(r"C:\Program Files\Zed").join("Zed.exe");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(&mut candidates, None, None, None, None);
     assert!(
-        candidates.contains(&expected),
-        "Windows candidates missing {expected:?}: {candidates:?}",
+        candidates.is_empty(),
+        "expected empty list when no env paths are provided, got: {candidates:?}",
     );
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[test]
-fn non_mac_non_windows_candidates_are_empty() {
+fn non_mac_non_windows_live_candidates_are_empty() {
     // Linux relies on the `zed` CLI on PATH; no app-bundle discovery applies.
     let candidates = zed_remote::candidate_zed_app_paths();
     assert!(

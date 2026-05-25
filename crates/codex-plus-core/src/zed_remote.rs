@@ -42,13 +42,30 @@ pub fn candidate_zed_app_paths() -> Vec<PathBuf> {
     }
 
     if cfg!(target_os = "windows") {
-        push_windows_zed_candidates(&mut paths);
+        push_windows_zed_candidates_from(
+            &mut paths,
+            env::var_os("LOCALAPPDATA").map(PathBuf::from).as_deref(),
+            env::var_os("ProgramFiles").map(PathBuf::from).as_deref(),
+            env::var_os("ProgramFiles(x86)")
+                .map(PathBuf::from)
+                .as_deref(),
+            env::var_os("ProgramW6432").map(PathBuf::from).as_deref(),
+        );
     }
 
     paths
 }
 
-fn push_windows_zed_candidates(paths: &mut Vec<PathBuf>) {
+/// Pure, dependency-free helper so tests can drive Windows discovery without
+/// mutating process-wide env vars (which would race under cargo's default
+/// parallel test runner).
+pub fn push_windows_zed_candidates_from(
+    paths: &mut Vec<PathBuf>,
+    local_app_data: Option<&Path>,
+    program_files: Option<&Path>,
+    program_files_x86: Option<&Path>,
+    program_w6432: Option<&Path>,
+) {
     let names = ["Zed.exe", "zed.exe"];
     let mut add_dir = |dir: PathBuf| {
         for name in names {
@@ -56,27 +73,23 @@ fn push_windows_zed_candidates(paths: &mut Vec<PathBuf>) {
         }
     };
 
-    if let Some(local) = env::var_os("LOCALAPPDATA") {
-        let local = PathBuf::from(local);
+    if let Some(local) = local_app_data {
         add_dir(local.join("Programs").join("Zed"));
         add_dir(local.join("Programs").join("Zed Preview"));
         add_dir(local.join("Programs").join("Zed Nightly"));
         add_dir(local.join("Zed"));
     }
-    if let Some(program_files) = env::var_os("ProgramFiles") {
-        let base = PathBuf::from(program_files);
+    if let Some(base) = program_files {
         add_dir(base.join("Zed"));
         add_dir(base.join("Zed Preview"));
         add_dir(base.join("Zed Nightly"));
     }
-    if let Some(program_files_x86) = env::var_os("ProgramFiles(x86)") {
-        let base = PathBuf::from(program_files_x86);
+    if let Some(base) = program_files_x86 {
         add_dir(base.join("Zed"));
         add_dir(base.join("Zed Preview"));
         add_dir(base.join("Zed Nightly"));
     }
-    if let Some(program_w6432) = env::var_os("ProgramW6432") {
-        let base = PathBuf::from(program_w6432);
+    if let Some(base) = program_w6432 {
         add_dir(base.join("Zed"));
     }
 }
