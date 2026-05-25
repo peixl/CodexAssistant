@@ -390,3 +390,82 @@ fn open_zed_remote_returns_failed_response_for_validation_error() {
         json!({"status": "failed", "message": "Cannot determine remote SSH host for this file"})
     );
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_candidates_include_applications_zed_app() {
+    let candidates = zed_remote::candidate_zed_app_paths();
+    let labels: Vec<String> = candidates
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        labels.iter().any(|p| p == "/Applications/Zed.app"),
+        "macOS candidates missing /Applications/Zed.app: {labels:?}",
+    );
+}
+
+#[test]
+fn windows_candidates_include_localappdata_programs_zed() {
+    use std::path::{Path, PathBuf};
+    let local = PathBuf::from(r"C:\Users\test\AppData\Local");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(
+        &mut candidates,
+        Some(local.as_path()),
+        None,
+        None,
+        None,
+    );
+    let expected_upper = local.join("Programs").join("Zed").join("Zed.exe");
+    let expected_lower = local.join("Programs").join("Zed").join("zed.exe");
+    let expected_loose = local.join("Zed").join("Zed.exe");
+    let contains = |target: &Path| candidates.iter().any(|c| c == target);
+    assert!(
+        contains(&expected_upper) && contains(&expected_lower) && contains(&expected_loose),
+        "Windows LOCALAPPDATA discovery missing expected entries: {candidates:?}",
+    );
+}
+
+#[test]
+fn windows_candidates_include_program_files_variants() {
+    use std::path::{Path, PathBuf};
+    let pf = PathBuf::from(r"C:\Program Files");
+    let pf86 = PathBuf::from(r"C:\Program Files (x86)");
+    let pfw6 = PathBuf::from(r"C:\Program Files");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(
+        &mut candidates,
+        None,
+        Some(pf.as_path()),
+        Some(pf86.as_path()),
+        Some(pfw6.as_path()),
+    );
+    let contains = |target: &Path| candidates.iter().any(|c| c == target);
+    assert!(contains(&pf.join("Zed").join("Zed.exe")));
+    assert!(contains(&pf.join("Zed Preview").join("Zed.exe")));
+    assert!(contains(&pf86.join("Zed Nightly").join("zed.exe")));
+    assert!(contains(&pfw6.join("Zed").join("Zed.exe")));
+}
+
+#[test]
+fn windows_candidates_empty_when_no_env_provided() {
+    use std::path::PathBuf;
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    zed_remote::push_windows_zed_candidates_from(&mut candidates, None, None, None, None);
+    assert!(
+        candidates.is_empty(),
+        "expected empty list when no env paths are provided, got: {candidates:?}",
+    );
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[test]
+fn non_mac_non_windows_live_candidates_are_empty() {
+    // Linux relies on the `zed` CLI on PATH; no app-bundle discovery applies.
+    let candidates = zed_remote::candidate_zed_app_paths();
+    assert!(
+        candidates.is_empty(),
+        "expected empty candidate list on this platform, got: {candidates:?}",
+    );
+}
