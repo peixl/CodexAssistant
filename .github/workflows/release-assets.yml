@@ -42,7 +42,7 @@ jobs:
       ARCH: arm64
       BINARY_DIR: ${{ github.workspace }}/target/aarch64-apple-darwin/release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +55,7 @@ jobs:
           shared-key: release-aarch64-apple-darwin
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
@@ -91,7 +91,7 @@ jobs:
       TAG: ${{ needs.resolve-tag.outputs.tag }}
       TARGET: x86_64-pc-windows-msvc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -116,7 +116,7 @@ jobs:
           shared-key: release-x86_64-pc-windows-msvc
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: npm
@@ -163,7 +163,7 @@ jobs:
     needs: [resolve-tag, macos, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Generate latest.json
         env:
