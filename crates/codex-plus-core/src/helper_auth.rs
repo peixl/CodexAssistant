@@ -18,7 +18,7 @@ pub fn ensure_helper_token() -> &'static str {
 
 fn generate_token() -> String {
     let mut bytes = [0_u8; TOKEN_BYTES];
-    getrandom::getrandom(&mut bytes).expect("OS RNG must succeed");
+    getrandom::fill(&mut bytes).expect("OS RNG must succeed");
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 
