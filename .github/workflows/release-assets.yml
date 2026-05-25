@@ -58,8 +58,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: apps/codex-plus-manager/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
@@ -119,8 +117,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: apps/codex-plus-manager/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
@@ -161,9 +157,29 @@ jobs:
   latest-json:
     name: Publish latest.json
     needs: [resolve-tag, macos, windows]
+    if: ${{ always() && needs.resolve-tag.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Verify build artifacts are attached to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
+          VERSION: ${{ needs.resolve-tag.outputs.version }}
+        run: |
+          assets=$(gh release view "$TAG" --json assets -q '[.assets[].name]')
+          echo "Release assets: $assets"
+          dmg="CodexAssistant-${VERSION}-macos-arm64.dmg"
+          exe="CodexAssistant-${VERSION}-windows-x64-setup.exe"
+          if ! echo "$assets" | grep -q "$dmg"; then
+            echo "::error::macOS DMG ($dmg) missing from release — refusing to publish manifest"
+            exit 1
+          fi
+          if ! echo "$assets" | grep -q "$exe"; then
+            echo "::error::Windows installer ($exe) missing from release — refusing to publish manifest"
+            exit 1
+          fi
 
       - name: Generate latest.json
         env:
