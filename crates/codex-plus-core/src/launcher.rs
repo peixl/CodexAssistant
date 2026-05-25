@@ -1636,6 +1636,7 @@ fn loopback_preflight_message(detail: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(windows)]
     use super::*;
 
     #[cfg(windows)]

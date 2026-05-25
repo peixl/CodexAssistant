@@ -291,26 +291,32 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    let upper = app_dir.join("Codex.exe");
-    if upper.exists() {
-        return upper;
-    }
-    let lower = app_dir.join("codex.exe");
-    if lower.exists() {
-        return lower;
+    if let Some(exe) = find_codex_exe_in(app_dir) {
+        return exe;
     }
     let bin = app_dir.join("bin");
-    if bin.is_dir() {
-        let bin_upper = bin.join("Codex.exe");
-        if bin_upper.exists() {
-            return bin_upper;
-        }
-        let bin_lower = bin.join("codex.exe");
-        if bin_lower.exists() {
-            return bin_lower;
-        }
+    if bin.is_dir()
+        && let Some(exe) = find_codex_exe_in(&bin)
+    {
+        return exe;
     }
     app_dir.join("codex.exe")
+}
+
+fn find_codex_exe_in(dir: &Path) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    let mut fallback: Option<PathBuf> = None;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.eq_ignore_ascii_case("codex.exe") {
+            if name_str == "Codex.exe" {
+                return Some(entry.path());
+            }
+            fallback.get_or_insert_with(|| entry.path());
+        }
+    }
+    fallback
 }
 
 pub fn codex_app_version(app_dir: &Path) -> Option<String> {
