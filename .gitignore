@@ -47,12 +47,33 @@ service_account*.json
 *.swp
 *.swo
 *~
+*.bak
+*.tmp
+*.orig
+*.iml
 
 # ─── OS metadata ──────────────────────────────────────────────
 .DS_Store
+._*
 Thumbs.db
+ehthumbs.db
 desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+
+# ─── Frontend tooling caches ──────────────────────────────────
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# ─── Test coverage ────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Tauri per-app target (defensive; workspace target is root) ─
+apps/codex-plus-manager/src-tauri/target/
 
 # ─── Local tooling state ──────────────────────────────────────
-.claude/settings.local.json
+.claude/
 .omx/
