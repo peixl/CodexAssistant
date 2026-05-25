@@ -567,8 +567,9 @@ fn default_user_scripts_config_dir() -> PathBuf {
         if let Some(roaming) = std::env::var_os("APPDATA") {
             return PathBuf::from(roaming).join("CodexAssistant");
         }
-        if let Some(home) = directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()) {
-            return home.join("AppData").join("Roaming").join("CodexAssistant");
+        if let Some(config) = directories::BaseDirs::new().map(|dirs| dirs.config_dir().to_path_buf())
+        {
+            return config.join("CodexAssistant");
         }
     }
     std::env::var_os("XDG_CONFIG_HOME")
