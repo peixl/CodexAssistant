@@ -27,6 +27,7 @@ export function CodexPathPanel() {
 
   const refresh = useCallback(async () => {
     setBusy(true);
+    setMessage(null);
     const settings = await loadSettingsBlob();
     setRawSettings(settings);
     const saved = (settings.codexAppPath ?? "").toString().trim();
@@ -39,9 +40,22 @@ export function CodexPathPanel() {
       if (!saved && detected.data.path) {
         setInputPath(detected.data.path);
       }
+      if (detected.data.path) {
+        setMessage({
+          kind: "info",
+          text: TEXT.codexPath.detectedToast(detected.data.version),
+        });
+      }
     } else {
       setDetectedPath(null);
       setDetectedVersion(null);
+      const backendMessage = detected.error.message?.trim();
+      setMessage({
+        kind: "error",
+        text: backendMessage && backendMessage.length > 0
+          ? backendMessage
+          : TEXT.codexPath.notFoundFallback,
+      });
     }
     setBusy(false);
   }, []);

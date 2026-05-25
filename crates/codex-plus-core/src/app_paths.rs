@@ -88,7 +88,7 @@ fn query_appx_install_location(package_name: &str) -> Option<String> {
     let script = format!(
         "(Get-AppxPackage -Name '{package_name}' | Sort-Object Version -Descending | Select-Object -First 1).InstallLocation"
     );
-    let output = std::process::Command::new("powershell")
+    let output = match std::process::Command::new("powershell")
         .args([
             "-NoProfile",
             "-NonInteractive",
@@ -99,15 +99,44 @@ fn query_appx_install_location(package_name: &str) -> Option<String> {
         ])
         .creation_flags(crate::windows_integration::CREATE_NO_WINDOW)
         .output()
-        .ok()?;
+    {
+        Ok(output) => output,
+        Err(error) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "app_paths.appx_query_spawn_failed",
+                serde_json::json!({
+                    "package": package_name,
+                    "error": error.to_string(),
+                    "kind": format!("{:?}", error.kind()),
+                }),
+            );
+            return None;
+        }
+    };
     if !output.status.success() {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "app_paths.appx_query_nonzero_exit",
+            serde_json::json!({
+                "package": package_name,
+                "exit_code": output.status.code(),
+                "stderr": String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            }),
+        );
         return None;
     }
     let value = String::from_utf8_lossy(&output.stdout)
         .trim()
         .trim_end_matches('\r')
         .to_string();
-    if value.is_empty() { None } else { Some(value) }
+    if value.is_empty() {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "app_paths.appx_query_empty_result",
+            serde_json::json!({ "package": package_name }),
+        );
+        None
+    } else {
+        Some(value)
+    }
 }
 
 #[cfg(windows)]
