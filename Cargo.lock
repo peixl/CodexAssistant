@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-core"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-data"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-launcher"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1950,9 +1950,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.29"
+version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+checksum = "616ec5685824bcc94416c6d4a7a446eea774a31efd7062c8480ba6fd06d7a6e5"
 
 [[package]]
 name = "lru-slab"
