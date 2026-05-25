@@ -23,7 +23,7 @@
 
 CodexAssistant is an **external enhancement tool** for the [Codex App](https://chatgpt.com/codex). It never modifies the Codex installation (`app.asar`, binaries, …); instead, it attaches over the Chromium DevTools Protocol (CDP) and injects scripts into the Codex renderer on demand to unlock plugin entries, enable session deletion and Markdown export, route requests through custom relays, run user scripts, and more.
 
-The system is built from three pieces — a **Rust silent launcher**, a **Tauri (Rust + React) manager**, and the **renderer injection script** — and ships for Windows and macOS (Intel + Apple Silicon).
+The system is built from three pieces — a **Rust silent launcher**, a **Tauri (Rust + React) manager**, and the **renderer injection script** — and ships for Windows and macOS (Apple Silicon).
 
 ## ✨ Features
 
@@ -36,7 +36,7 @@ The system is built from three pieces — a **Rust silent launcher**, a **Tauri 
 - 🔄 **Provider Sync** — Rewrites provider metadata in the local SQLite DB when switching between relays / official accounts, keeping old sessions visible.
 - 🌐 **Zed Remote integration** — Detects remote SSH context and opens the corresponding file in Zed Remote Development directly from Codex.
 - 🔁 **Automatic updates** — Both the manager and the silent launcher check GitHub Releases and prompt when a newer version is available.
-- 📦 **First-class installers** — Windows NSIS installer and macOS dual-architecture DMGs (x64 / arm64), all built by GitHub Actions.
+- 📦 **First-class installers** — Windows NSIS installer and macOS DMG for Apple Silicon, all built by GitHub Actions.
 
 ## 📥 Install
 
@@ -45,7 +45,6 @@ Grab the right installer from [Releases](https://github.com/peixl/CodexAssistant
 | Platform | Asset |
 | :--- | :--- |
 | Windows x64 | `CodexAssistant-<version>-windows-x64-setup.exe` |
-| macOS Intel | `CodexAssistant-<version>-macos-x64.dmg` |
 | macOS Apple Silicon | `CodexAssistant-<version>-macos-arm64.dmg` |
 
 You'll end up with two entry points:
@@ -194,10 +193,10 @@ CodexAssistant/
 | :--- | :---: | :---: | :---: | :---: |
 | Windows x64 | ✅ | ✅ | NSIS `.exe` | ✅ |
 | macOS arm64 (Apple Silicon) | ✅ | ✅ | `.dmg` | ✅ |
-| macOS x64 (Intel) | ✅ | ✅ | `.dmg` | ✅ |
+| macOS x64 (Intel) | ✅ | ✅ | source build | ✅ |
 | Linux | — | — | — | ✅ (lint & test) |
 
-Linux is not a distribution target, but the workspace stays buildable and CI runs lint + tests there as the canonical dev / CI environment.
+> Apple Silicon is the official binary target. Intel Macs can build from source (`cargo build --release --target x86_64-apple-darwin`); CI keeps running clippy/test on macOS. Linux is not a distribution target, but the workspace stays buildable and CI runs lint + tests there as the canonical dev / CI environment.
 
 ## ❓ FAQ
 
@@ -226,7 +225,14 @@ xattr -dr com.apple.quarantine "/Applications/CodexAssistant 管理工具.app"
 
 ### Does Intel Mac work?
 
-Yes. Each release ships both `macos-x64.dmg` and `macos-arm64.dmg`; pick the one that matches your CPU.
+Yes, but currently only Apple Silicon (`macos-arm64.dmg`) is published as a binary release. Intel Mac users need to build from source:
+
+```bash
+rustup target add x86_64-apple-darwin
+npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-plus-manager run vite:build
+cargo build --release --target x86_64-apple-darwin -p codex-plus-launcher -p codex-assistant
+```
 
 ### Can I run it on Linux?
 
