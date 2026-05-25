@@ -390,15 +390,15 @@ fn proxy_mirrors_lowercase_environment_and_preserves_loopback_no_proxy() {
 }
 
 #[test]
-fn ports_windows_falls_back_to_ephemeral_when_requested_is_busy() {
-    let selected = select_platform_loopback_port_with(9229, true, |_| false, || 43001);
+fn ports_falls_back_to_ephemeral_when_requested_is_busy() {
+    let selected = select_platform_loopback_port_with(9229, |_| false, || 43001);
 
     assert_eq!(selected, 43001);
 }
 
 #[test]
-fn ports_non_windows_keeps_requested_even_when_busy() {
-    let selected = select_platform_loopback_port_with(9229, false, |_| false, || 43001);
+fn ports_keeps_requested_when_bind_succeeds() {
+    let selected = select_platform_loopback_port_with(9229, |_| true, || 43001);
 
     assert_eq!(selected, 9229);
 }

@@ -51,6 +51,12 @@ export const TEXT = {
     version: "版本",
     saved: "Codex 路径已保存。",
     picked: "已填入所选路径，记得点击“保存”。",
+    detectedToast: (version: string | null) =>
+      version
+        ? `已自动检测到 Codex（${version}）。`
+        : "已自动检测到 Codex 安装位置。",
+    notFoundFallback:
+      "未在常见安装目录找到 Codex。请确认 Codex 已安装，或点击“浏览”手动选择安装目录。",
   },
   update: {
     available: (v: string) => `发现新版本 ${v}`,

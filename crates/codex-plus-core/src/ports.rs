@@ -6,7 +6,6 @@ pub const MANAGER_GUARD_PORT: u16 = 57319;
 pub fn select_platform_loopback_port(requested: u16) -> u16 {
     select_platform_loopback_port_with(
         requested,
-        cfg!(windows),
         can_bind_loopback_port,
         find_available_loopback_port,
     )
@@ -14,11 +13,10 @@ pub fn select_platform_loopback_port(requested: u16) -> u16 {
 
 pub fn select_platform_loopback_port_with(
     requested: u16,
-    is_windows: bool,
     can_bind: impl Fn(u16) -> bool,
     find_available: impl Fn() -> u16,
 ) -> u16 {
-    if !is_windows || can_bind(requested) {
+    if can_bind(requested) {
         requested
     } else {
         find_available()
