@@ -11,8 +11,9 @@ members = [
 version = "1.1.2"
 edition = "2024"
 license = "MIT"
-authors = ["peixl"]
+authors = ["peixl <pxlosx@gmail.com>", "IFQ.AI"]
 repository = "https://github.com/peixl/CodexAssistant"
+homepage = "https://github.com/peixl/CodexAssistant"
 
 [workspace.dependencies]
 anyhow = "1"

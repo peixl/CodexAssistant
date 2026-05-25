@@ -1,3 +1,13 @@
+//! CodexAssistant core crate.
+//!
+//! Author       : peixl
+//! Organization : ifq.ai
+//! Copyright    : (c) 2025-2026 peixl / IFQ.AI
+//! License      : MIT (see /LICENSE)
+//! Project      : https://github.com/peixl/CodexAssistant
+//!
+//! Re-distribution must keep the LICENSE and NOTICE files unchanged.
+
 pub mod ads;
 pub mod app_paths;
 pub mod assets;

@@ -1,0 +1,36 @@
+CodexAssistant
+==============
+
+Copyright (c) 2025-2026 peixl / IFQ.AI
+Project home : https://github.com/peixl/CodexAssistant
+Organization : ifq.ai
+Author       : peixl <pxlosx@gmail.com>
+
+Licensed under the MIT License (see LICENSE).
+
+This NOTICE file is provided in addition to the MIT License to make the
+authorship of CodexAssistant explicit. The MIT License requires that the
+copyright notice and permission notice be retained in all copies or
+substantial portions of the Software; this file documents that notice.
+
+If you fork, repackage, or redistribute this project (including translated,
+re-branded, or "AI rewritten" versions), you MUST keep:
+
+  1. The LICENSE file unchanged.
+  2. This NOTICE file unchanged, or include the line:
+       "Based on CodexAssistant by peixl / IFQ.AI -
+        https://github.com/peixl/CodexAssistant"
+     in your own NOTICE / README / About dialog.
+  3. The icon's embedded copyright metadata
+     (see docs/images/codex-plus-plus.svg).
+
+These requirements are stated explicitly so that downstream redistribution
+remains compatible with the MIT License and so that the original authorship
+is preserved across the open-source ecosystem.
+
+Trademarks
+----------
+"CodexAssistant", "Codex++", "ifq.ai" and the cloud icon used in this
+repository are identifiers of this project. They are NOT affiliated with
+OpenAI or the Codex App; "Codex" is referenced only as the target product
+this tool integrates with.

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-plus-plus.png" alt="CodexAssistant" width="128">
+<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
 
 # CodexAssistant
 

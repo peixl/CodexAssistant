@@ -1,3 +1,16 @@
+/*!
+ * CodexAssistant · renderer-inject.js
+ * ----------------------------------------------------------------
+ *  Author       : peixl <pxlosx@gmail.com>
+ *  Organization : ifq.ai
+ *  Copyright    : (c) 2025-2026 peixl / IFQ.AI
+ *  License      : MIT (see /LICENSE and /NOTICE in the repository)
+ *  Project      : https://github.com/peixl/CodexAssistant
+ *
+ *  This file is injected into the Codex renderer via CDP.
+ *  Re-distribution must keep this header and the NOTICE file unchanged.
+ * ----------------------------------------------------------------
+ */
 (() => {
   const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";
   const helperToken = window.__CODEX_PLUS_HELPER_TOKEN__ || "";

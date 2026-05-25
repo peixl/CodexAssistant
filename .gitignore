@@ -1,17 +1,36 @@
 # ─── Build outputs ────────────────────────────────────────────
 # Cargo
 /target/
+**/target/
 **/*.rs.bk
+**/*.pdb
+*.profraw
 
 # Node / Vite
 node_modules/
 apps/codex-plus-manager/dist/
+
+# Root workspace lockfile — root package.json only forwards scripts to
+# apps/*; npm regenerates this whenever a root-level script runs.
+# Per-app lockfiles under apps/*/package-lock.json are still committed.
+/package-lock.json
 
 # Tauri (generated at build time)
 apps/codex-plus-manager/src-tauri/gen/
 
 # Installer packaging output (scripts/installer/macos/package-dmg.sh writes here)
 /dist/
+
+# Installer bundle artifacts (in case they're produced outside /dist/)
+*.msi
+*.msix
+*.appx
+*.dmg
+*.pkg
+*.AppImage
+*.deb
+*.rpm
+*.snap
 
 # ─── Logs ─────────────────────────────────────────────────────
 *.log
@@ -77,3 +96,16 @@ apps/codex-plus-manager/src-tauri/target/
 # ─── Local tooling state ──────────────────────────────────────
 .claude/
 .omx/
+
+# ─── Cargo per-machine config & home ──────────────────────────
+# .cargo/config.toml is commonly used as a per-machine workaround (e.g.
+# crates.io git-protocol fallback for restricted networks). .cargo-home/ is
+# a project-scoped CARGO_HOME used when developers redirect cargo's cache
+# into the repo. Neither is portable across environments.
+.cargo/
+.cargo-home/
+
+# ─── Misc local junk ──────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock

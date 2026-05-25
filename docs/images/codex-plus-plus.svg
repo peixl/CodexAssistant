@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:cc="http://creativecommons.org/ns#"
+     viewBox="0 0 256 256" width="256" height="256"
+     role="img" aria-labelledby="ca-title ca-desc">
+  <title id="ca-title">CodexAssistant — hand-drawn icon by peixl / ifq.ai</title>
+  <desc id="ca-desc">Hand-drawn cloud icon for the CodexAssistant project. Author: peixl. Organization: ifq.ai. © 2026 peixl / IFQ.AI. Source: https://github.com/peixl/CodexAssistant</desc>
+  <metadata>
+    <rdf:RDF>
+      <cc:Work>
+        <dc:title>CodexAssistant hand-drawn icon</dc:title>
+        <dc:creator><cc:Agent><dc:title>peixl</dc:title></cc:Agent></dc:creator>
+        <dc:publisher><cc:Agent><dc:title>ifq.ai</dc:title></cc:Agent></dc:publisher>
+        <dc:rights>© 2026 peixl / IFQ.AI · MIT License</dc:rights>
+        <dc:identifier>https://github.com/peixl/CodexAssistant</dc:identifier>
+        <dc:date>2026-05-25</dc:date>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <!-- ============================================================
+       CodexAssistant · hand-drawn icon
+       Author : peixl    ·    Org : ifq.ai
+       © 2026 peixl / IFQ.AI · MIT License
+       Project : https://github.com/peixl/CodexAssistant
+       Removing this signature does NOT remove the copyright.
+       ============================================================ -->
+
+  <defs>
+    <linearGradient id="caCloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#8fb3ff"/>
+      <stop offset="0.45" stop-color="#5b6dfb"/>
+      <stop offset="1"    stop-color="#2f2bc6"/>
+    </linearGradient>
+    <radialGradient id="caHighlight" cx="0.38" cy="0.32" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="caInner" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1"    stop-color="#1a1066" stop-opacity="0.35"/>
+    </radialGradient>
+
+    <!-- pencil jitter: gentle so text remains readable -->
+    <filter id="caSketch" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/>
+    </filter>
+    <filter id="caSketchSoft" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="13" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="0.9"/>
+    </filter>
+    <filter id="caShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.2" in="SourceGraphic"/>
+    </filter>
+
+    <!-- the cloud path, reused for fill / stroke / highlight / clip -->
+    <path id="caCloudPath" d="
+      M 58 156
+      C 32 152, 24 122, 48 106
+      C 38 82, 70 64, 92 78
+      C 98 50, 144 46, 158 72
+      C 182 60, 218 78, 212 108
+      C 238 116, 232 156, 204 158
+      C 200 184, 156 190, 140 170
+      C 122 188, 86 182, 76 164
+      C 66 172, 56 166, 58 156 Z"/>
+    <clipPath id="caClip"><use href="#caCloudPath"/></clipPath>
+  </defs>
+
+  <!-- ground reflection -->
+  <ellipse cx="128" cy="234" rx="76" ry="7" fill="#000" opacity="0.18" filter="url(#caShadow)"/>
+
+  <!-- cloud body -->
+  <g filter="url(#caSketch)">
+    <use href="#caCloudPath" fill="url(#caCloud)"/>
+    <use href="#caCloudPath" fill="url(#caHighlight)"/>
+    <use href="#caCloudPath" fill="url(#caInner)"/>
+  </g>
+
+  <!-- starry dust inside the cloud -->
+  <g clip-path="url(#caClip)" fill="#ffffff">
+    <circle cx="78"  cy="92"  r="1.4" opacity="0.85"/>
+    <circle cx="120" cy="76"  r="1.0" opacity="0.7"/>
+    <circle cx="174" cy="88"  r="1.3" opacity="0.85"/>
+    <circle cx="200" cy="130" r="1.1" opacity="0.6"/>
+    <circle cx="84"  cy="148" r="0.9" opacity="0.55"/>
+    <circle cx="210" cy="152" r="1.0" opacity="0.7"/>
+    <circle cx="98"  cy="174" r="0.9" opacity="0.5"/>
+    <circle cx="170" cy="172" r="1.1" opacity="0.7"/>
+  </g>
+
+  <!-- pencil double-outline on the cloud (hand-drawn feel) -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#caSketch)">
+    <use href="#caCloudPath" stroke="#e7ecff" stroke-width="2.6" opacity="0.85"/>
+    <use href="#caCloudPath" stroke="#ffffff" stroke-width="1.0" opacity="0.7"
+         transform="translate(-1.2 -1.2)"/>
+  </g>
+
+  <!-- four-point sparkles -->
+  <g stroke="#ffffff" stroke-linecap="round" filter="url(#caSketchSoft)">
+    <g transform="translate(72 74) rotate(12)">
+      <line x1="-9" y1="0" x2="9" y2="0" stroke-width="2.2"/>
+      <line x1="0" y1="-9" x2="0" y2="9" stroke-width="2.2"/>
+    </g>
+    <g transform="translate(192 76) rotate(-14)">
+      <line x1="-6" y1="0" x2="6" y2="0" stroke-width="1.8"/>
+      <line x1="0" y1="-6" x2="0" y2="6" stroke-width="1.8"/>
+    </g>
+    <g transform="translate(204 152) rotate(22)">
+      <line x1="-7" y1="0" x2="7" y2="0" stroke-width="2.0"/>
+      <line x1="0" y1="-7" x2="0" y2="7" stroke-width="2.0"/>
+    </g>
+    <g transform="translate(60 138) rotate(-8)" opacity="0.85">
+      <line x1="-5" y1="0" x2="5" y2="0" stroke-width="1.6"/>
+      <line x1="0" y1="-5" x2="0" y2="5" stroke-width="1.6"/>
+    </g>
+  </g>
+
+  <!-- hand-drawn angle brackets framing the wordmark -->
+  <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+     filter="url(#caSketch)">
+    <path d="M 50 144 L 36 112 L 50 80"/>
+    <path d="M 206 80 L 220 112 L 206 144"/>
+    <path d="M 50 144 L 36 112 L 50 80" stroke="#cfd6ff" stroke-width="1.1" opacity="0.9"/>
+    <path d="M 206 80 L 220 112 L 206 144" stroke="#cfd6ff" stroke-width="1.1" opacity="0.9"/>
+  </g>
+
+  <!-- "Codex" / "Assistant" hand-drawn wordmark (stacked, slightly tilted) -->
+  <g filter="url(#caSketchSoft)">
+    <g transform="rotate(-2 128 100)">
+      <text x="128" y="108" text-anchor="middle"
+            font-family="'Patrick Hand','Comic Sans MS','Chalkboard SE','Marker Felt','Segoe Script','Bradley Hand',cursive"
+            font-size="30" font-weight="800" fill="#ffffff"
+            stroke="#ffffff" stroke-width="0.4"
+            paint-order="stroke">Codex</text>
+    </g>
+    <g transform="rotate(1.5 128 138)">
+      <text x="128" y="146" text-anchor="middle"
+            font-family="'Patrick Hand','Comic Sans MS','Chalkboard SE','Marker Felt','Segoe Script','Bradley Hand',cursive"
+            font-size="26" font-weight="700" fill="#ffffff"
+            stroke="#ffffff" stroke-width="0.3"
+            paint-order="stroke">Assistant</text>
+    </g>
+  </g>
+
+  <!-- author signature embedded into the cloud bottom -->
+  <g filter="url(#caSketchSoft)" opacity="0.92">
+    <text x="128" y="200" text-anchor="middle"
+          font-family="'Patrick Hand','Comic Sans MS','Bradley Hand',cursive"
+          font-size="11.5" font-weight="600" fill="#eef1ff" letter-spacing="0.6">
+      by peixl · ifq.ai
+    </text>
+  </g>
+
+  <!-- invisible-but-grep-able copyright string, kept as text node so it survives SVG minifiers -->
+  <text x="0" y="0" font-size="0.01" fill="#000" opacity="0">
+    Copyright (c) 2026 peixl / IFQ.AI — CodexAssistant — https://github.com/peixl/CodexAssistant
+  </text>
+</svg>
