@@ -28,17 +28,57 @@ pub struct SshTarget {
 }
 
 pub fn candidate_zed_app_paths() -> Vec<PathBuf> {
-    let mut paths = vec![
-        PathBuf::from("/Applications/Zed.app"),
-        PathBuf::from("/Applications/Zed Preview.app"),
-        PathBuf::from("/Applications/Zed Nightly.app"),
-    ];
-    if let Some(home) = home_dir() {
-        paths.push(home.join("Applications/Zed.app"));
-        paths.push(home.join("Applications/Zed Preview.app"));
-        paths.push(home.join("Applications/Zed Nightly.app"));
+    let mut paths: Vec<PathBuf> = Vec::new();
+
+    if cfg!(target_os = "macos") {
+        paths.push(PathBuf::from("/Applications/Zed.app"));
+        paths.push(PathBuf::from("/Applications/Zed Preview.app"));
+        paths.push(PathBuf::from("/Applications/Zed Nightly.app"));
+        if let Some(home) = home_dir() {
+            paths.push(home.join("Applications/Zed.app"));
+            paths.push(home.join("Applications/Zed Preview.app"));
+            paths.push(home.join("Applications/Zed Nightly.app"));
+        }
     }
+
+    if cfg!(target_os = "windows") {
+        push_windows_zed_candidates(&mut paths);
+    }
+
     paths
+}
+
+fn push_windows_zed_candidates(paths: &mut Vec<PathBuf>) {
+    let names = ["Zed.exe", "zed.exe"];
+    let mut add_dir = |dir: PathBuf| {
+        for name in names {
+            paths.push(dir.join(name));
+        }
+    };
+
+    if let Some(local) = env::var_os("LOCALAPPDATA") {
+        let local = PathBuf::from(local);
+        add_dir(local.join("Programs").join("Zed"));
+        add_dir(local.join("Programs").join("Zed Preview"));
+        add_dir(local.join("Programs").join("Zed Nightly"));
+        add_dir(local.join("Zed"));
+    }
+    if let Some(program_files) = env::var_os("ProgramFiles") {
+        let base = PathBuf::from(program_files);
+        add_dir(base.join("Zed"));
+        add_dir(base.join("Zed Preview"));
+        add_dir(base.join("Zed Nightly"));
+    }
+    if let Some(program_files_x86) = env::var_os("ProgramFiles(x86)") {
+        let base = PathBuf::from(program_files_x86);
+        add_dir(base.join("Zed"));
+        add_dir(base.join("Zed Preview"));
+        add_dir(base.join("Zed Nightly"));
+    }
+    if let Some(program_w6432) = env::var_os("ProgramW6432") {
+        let base = PathBuf::from(program_w6432);
+        add_dir(base.join("Zed"));
+    }
 }
 
 pub fn find_zed_app_path() -> Option<PathBuf> {
@@ -281,11 +321,20 @@ pub fn launch_zed_url(url: &str) -> Result<(), ZedRemoteError> {
     let app_path = find_zed_app_path();
     let cli_path = find_zed_cli_path();
     if cfg!(target_os = "macos")
-        && let Some(app_path) = app_path
+        && let Some(app_path) = app_path.clone()
     {
         Command::new("open")
             .arg("-a")
             .arg(app_path)
+            .arg(url)
+            .spawn()
+            .map_err(ZedRemoteError::Launch)?;
+        return Ok(());
+    }
+    if cfg!(target_os = "windows")
+        && let Some(app_path) = app_path
+    {
+        Command::new(app_path)
             .arg(url)
             .spawn()
             .map_err(ZedRemoteError::Launch)?;

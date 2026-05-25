@@ -390,3 +390,61 @@ fn open_zed_remote_returns_failed_response_for_validation_error() {
         json!({"status": "failed", "message": "Cannot determine remote SSH host for this file"})
     );
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_candidates_include_applications_zed_app() {
+    let candidates = zed_remote::candidate_zed_app_paths();
+    let labels: Vec<String> = candidates
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        labels.iter().any(|p| p == "/Applications/Zed.app"),
+        "macOS candidates missing /Applications/Zed.app: {labels:?}",
+    );
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn windows_candidates_include_localappdata_programs_zed() {
+    use std::path::PathBuf;
+    // SAFETY: Test runs single-threaded with a unique env var name; no other
+    // code in the suite reads LOCALAPPDATA at the same time. set_var on Windows
+    // is sound when no other thread is concurrently reading the same key.
+    unsafe {
+        std::env::set_var("LOCALAPPDATA", r"C:\Users\test\AppData\Local");
+    }
+    let candidates = zed_remote::candidate_zed_app_paths();
+    let expected = PathBuf::from(r"C:\Users\test\AppData\Local\Programs\Zed").join("Zed.exe");
+    assert!(
+        candidates.contains(&expected),
+        "Windows candidates missing {expected:?}: {candidates:?}",
+    );
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn windows_candidates_include_program_files_zed() {
+    use std::path::PathBuf;
+    unsafe {
+        std::env::set_var("ProgramFiles", r"C:\Program Files");
+    }
+    let candidates = zed_remote::candidate_zed_app_paths();
+    let expected = PathBuf::from(r"C:\Program Files\Zed").join("Zed.exe");
+    assert!(
+        candidates.contains(&expected),
+        "Windows candidates missing {expected:?}: {candidates:?}",
+    );
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[test]
+fn non_mac_non_windows_candidates_are_empty() {
+    // Linux relies on the `zed` CLI on PATH; no app-bundle discovery applies.
+    let candidates = zed_remote::candidate_zed_app_paths();
+    assert!(
+        candidates.is_empty(),
+        "expected empty candidate list on this platform, got: {candidates:?}",
+    );
+}
