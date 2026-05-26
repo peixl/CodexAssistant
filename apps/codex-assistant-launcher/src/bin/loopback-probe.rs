@@ -1,4 +1,4 @@
-use codex_plus_core::launcher::preflight_loopback_reachable;
+use codex_assistant_core::launcher::preflight_loopback_reachable;
 
 #[tokio::main]
 async fn main() {

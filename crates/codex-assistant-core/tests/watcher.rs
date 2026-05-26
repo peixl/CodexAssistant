@@ -1,4 +1,4 @@
-use codex_plus_core::watcher::{
+use codex_assistant_core::watcher::{
     build_spawn_launcher_command, build_watcher_install_plan, cdp_listening, codex_process_ids,
     disable_watcher_at, enable_watcher_at, filter_killable_launcher_processes,
     watcher_disabled_flag,

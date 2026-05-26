@@ -1,17 +1,17 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use codex_plus_core::launcher::{
+use codex_assistant_core::launcher::{
     CodexLaunch, LaunchHooks, LaunchOptions, ProcessWaitStrategy, launch_and_inject_with_hooks,
 };
-use codex_plus_core::models::{DeleteResult, DeleteStatus, ExportResult, ExportStatus, SessionRef};
-use codex_plus_core::routes::{
+use codex_assistant_core::models::{DeleteResult, DeleteStatus, ExportResult, ExportStatus, SessionRef};
+use codex_assistant_core::routes::{
     BridgeContext, BridgeDataService, BridgeRuntimeService, BridgeSettingsService,
     CoreRuntimeService, handle_bridge_request,
 };
-use codex_plus_core::settings::BackendSettings;
-use codex_plus_core::status::StatusStore;
-use codex_plus_core::user_scripts::UserScriptManager;
+use codex_assistant_core::settings::BackendSettings;
+use codex_assistant_core::status::StatusStore;
+use codex_assistant_core::user_scripts::UserScriptManager;
 use serde_json::{Value, json};
 
 #[tokio::test]
@@ -156,11 +156,11 @@ async fn runtime_status_devtools_repair_and_ads_routes_are_dispatched() {
     );
     assert_eq!(
         handle_bridge_request(ctx.clone(), "/backend/status", json!({})).await,
-        json!({"status": "ok", "message": "后端已连接", "version": codex_plus_core::version::VERSION})
+        json!({"status": "ok", "message": "后端已连接", "version": codex_assistant_core::version::VERSION})
     );
     assert_eq!(
         handle_bridge_request(ctx.clone(), "/backend/repair", json!({})).await,
-        json!({"status": "ok", "message": "后端已修复", "version": codex_plus_core::version::VERSION})
+        json!({"status": "ok", "message": "后端已修复", "version": codex_assistant_core::version::VERSION})
     );
     assert_eq!(
         handle_bridge_request(ctx.clone(), "/ads", json!({})).await,
@@ -364,7 +364,7 @@ async fn user_script_manager_deletes_market_script_metadata_and_rejects_builtin_
         user_dir.clone(),
         temp.path().join("user_scripts.json"),
     );
-    let script = codex_plus_core::script_market::MarketScript {
+    let script = codex_assistant_core::script_market::MarketScript {
         id: "demo".to_string(),
         name: "Demo".to_string(),
         description: String::new(),
@@ -376,7 +376,7 @@ async fn user_script_manager_deletes_market_script_metadata_and_rejects_builtin_
         sha256: "5cc41099e023f38d76f44f1a0a4cfa1c11b931b59b25cc423e092117a27a132c".to_string(),
     };
 
-    codex_plus_core::script_market::install_market_script_content(
+    codex_assistant_core::script_market::install_market_script_content(
         &manager,
         &script,
         b"window.demo = true;",
@@ -439,11 +439,11 @@ async fn core_runtime_reload_evaluates_enabled_user_bundle_and_status_is_ok() {
 
     assert_eq!(
         status,
-        json!({"status": "ok", "message": "后端已连接", "version": codex_plus_core::version::VERSION})
+        json!({"status": "ok", "message": "后端已连接", "version": codex_assistant_core::version::VERSION})
     );
     assert_eq!(
         repaired,
-        json!({"status": "ok", "message": "后端已连接", "version": codex_plus_core::version::VERSION})
+        json!({"status": "ok", "message": "后端已连接", "version": codex_assistant_core::version::VERSION})
     );
     assert_eq!(reloaded["scripts"][0]["key"], "builtin:demo.js");
     let evaluated = evaluated.lock().unwrap();
@@ -492,7 +492,7 @@ async fn core_runtime_manager_route_attempts_to_open_manager_binary() {
 async fn bridge_backend_status_writes_diagnostic_log() {
     let temp = tempfile::tempdir().unwrap();
     let log_path = temp.path().join("codex-assistant.log");
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let ctx = BridgeContext::core(Arc::new(CoreRuntimeService::new(
         9229,
         StatusStore::default(),
@@ -505,7 +505,7 @@ async fn bridge_backend_status_writes_diagnostic_log() {
     assert!(contents.contains("bridge.request"));
     assert!(contents.contains("bridge.backend_status_ok"));
     assert!(contents.contains("/backend/status"));
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
 }
 
 #[test]
@@ -559,7 +559,7 @@ fn script_market_manifest_filters_invalid_entries() {
         ]
     });
 
-    let manifest = codex_plus_core::script_market::parse_market_manifest(raw).unwrap();
+    let manifest = codex_assistant_core::script_market::parse_market_manifest(raw).unwrap();
 
     assert_eq!(manifest.version, 1);
     assert_eq!(manifest.updated_at.as_deref(), Some("2026-05-21T00:00:00Z"));
@@ -581,7 +581,7 @@ fn user_script_inventory_includes_market_metadata() {
     );
 
     manager
-        .record_market_install(&codex_plus_core::script_market::MarketScript {
+        .record_market_install(&codex_assistant_core::script_market::MarketScript {
             id: "demo".to_string(),
             name: "Demo".to_string(),
             description: "Useful demo".to_string(),
@@ -618,7 +618,7 @@ fn install_market_script_writes_file_and_records_metadata() {
         temp.path().join("user"),
         temp.path().join("user_scripts.json"),
     );
-    let script = codex_plus_core::script_market::MarketScript {
+    let script = codex_assistant_core::script_market::MarketScript {
         id: "demo".to_string(),
         name: "Demo".to_string(),
         description: String::new(),
@@ -630,7 +630,7 @@ fn install_market_script_writes_file_and_records_metadata() {
         sha256: "5cc41099e023f38d76f44f1a0a4cfa1c11b931b59b25cc423e092117a27a132c".to_string(),
     };
 
-    codex_plus_core::script_market::install_market_script_content(
+    codex_assistant_core::script_market::install_market_script_content(
         &manager,
         &script,
         b"window.demo = true;",
@@ -656,7 +656,7 @@ fn install_market_script_rejects_checksum_mismatch_without_replacing_existing_fi
         user_dir.clone(),
         temp.path().join("user_scripts.json"),
     );
-    let script = codex_plus_core::script_market::MarketScript {
+    let script = codex_assistant_core::script_market::MarketScript {
         id: "demo".to_string(),
         name: "Demo".to_string(),
         description: String::new(),
@@ -669,7 +669,7 @@ fn install_market_script_rejects_checksum_mismatch_without_replacing_existing_fi
     };
 
     let error =
-        codex_plus_core::script_market::install_market_script_content(&manager, &script, b"new")
+        codex_assistant_core::script_market::install_market_script_content(&manager, &script, b"new")
             .unwrap_err()
             .to_string();
 
@@ -818,13 +818,13 @@ impl BridgeRuntimeService for FakeRuntime {
 
     async fn backend_status(&self) -> anyhow::Result<Value> {
         Ok(
-            json!({"status": "ok", "message": "后端已连接", "version": codex_plus_core::version::VERSION}),
+            json!({"status": "ok", "message": "后端已连接", "version": codex_assistant_core::version::VERSION}),
         )
     }
 
     async fn repair_backend(&self) -> anyhow::Result<Value> {
         Ok(
-            json!({"status": "ok", "message": "后端已修复", "version": codex_plus_core::version::VERSION}),
+            json!({"status": "ok", "message": "后端已修复", "version": codex_assistant_core::version::VERSION}),
         )
     }
 

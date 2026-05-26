@@ -126,7 +126,7 @@ export function useLauncherMachine(deps: LauncherDeps): {
     dispatch({ type: "launch_click" });
     const spinnerStartedAt = defaultNow();
 
-    let r = await callSafe<Record<string, unknown>>("launch_codex_plus", {
+    let r = await callSafe<Record<string, unknown>>("launch_codex_assistant", {
       request: deps.launchArgs,
     });
     // Only fall back to repair_backend on transport errors (Tauri invoke threw or
@@ -135,7 +135,7 @@ export function useLauncherMachine(deps: LauncherDeps): {
     if (!r.ok && r.error.code !== "backend_failed") {
       const repair = await callSafe("repair_backend");
       if (repair.ok) {
-        r = await callSafe<Record<string, unknown>>("launch_codex_plus", {
+        r = await callSafe<Record<string, unknown>>("launch_codex_assistant", {
           request: deps.launchArgs,
         });
       }

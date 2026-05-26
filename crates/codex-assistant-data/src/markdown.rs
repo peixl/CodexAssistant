@@ -1,4 +1,4 @@
-use codex_plus_core::models::{ExportResult, ExportStatus, SessionRef};
+use codex_assistant_core::models::{ExportResult, ExportStatus, SessionRef};
 use rusqlite::Connection;
 use serde_json::Value;
 use std::fs;

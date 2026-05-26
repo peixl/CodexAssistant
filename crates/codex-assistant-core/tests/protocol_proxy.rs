@@ -1,4 +1,4 @@
-use codex_plus_core::protocol_proxy::{
+use codex_assistant_core::protocol_proxy::{
     ChatSseToResponsesConverter, chat_completion_to_response, chat_completions_url,
     chat_sse_to_responses_sse, is_models_proxy_path, models_url, responses_to_chat_completions,
 };

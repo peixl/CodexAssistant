@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "codex_plus_manager_lib"
+name = "codex_assistant_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]

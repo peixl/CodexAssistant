@@ -1,9 +1,9 @@
-use codex_plus_core::relay_config::{
+use codex_assistant_core::relay_config::{
     apply_pure_api_config_to_home, apply_relay_config_file_to_home, apply_relay_config_to_home,
     apply_relay_files_to_home, chatgpt_auth_status_from_home, clear_relay_config_to_home,
     codex_credentials_from_home, relay_config_status_from_home,
 };
-use codex_plus_core::settings::RelayProtocol;
+use codex_assistant_core::settings::RelayProtocol;
 
 #[test]
 fn detects_chatgpt_login_from_auth_json_and_config_provider() {
@@ -150,7 +150,7 @@ model = "gpt-5-mini"
 fn apply_chat_protocol_relay_points_codex_to_local_responses_proxy() {
     let temp = tempfile::tempdir().unwrap();
 
-    let result = codex_plus_core::relay_config::apply_relay_config_to_home_with_protocol(
+    let result = codex_assistant_core::relay_config::apply_relay_config_to_home_with_protocol(
         temp.path(),
         "https://chat-only.example.test/v1",
         "sk-test-redacted",

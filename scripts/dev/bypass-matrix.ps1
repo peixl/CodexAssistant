@@ -48,7 +48,7 @@ Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remov
 Get-NetFirewallRule -DisplayName "$ruleName-out" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
 
 # 3) Copy probe to LOCALAPPDATA (a typical install location), probe it
-$localPath = "$env:LOCALAPPDATA\CodexPlus\loopback-probe-std.exe"
+$localPath = "$env:LOCALAPPDATA\CodexAssistant\loopback-probe-std.exe"
 New-Item -ItemType Directory -Force -Path (Split-Path $localPath) | Out-Null
 Copy-Item $probe $localPath -Force
 Run-Probe "3. from LOCALAPPDATA" $localPath

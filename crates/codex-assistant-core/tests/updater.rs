@@ -1,4 +1,4 @@
-use codex_plus_core::update::{
+use codex_assistant_core::update::{
     Release, download_asset_to, is_newer_version, parse_version_tag, release_from_github_payload,
     release_from_latest_json_payload, safe_asset_name, select_update_asset,
 };

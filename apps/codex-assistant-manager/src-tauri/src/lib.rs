@@ -24,8 +24,8 @@ pub fn run() {
             commands::backend_version,
             commands::startup_options,
             commands::load_overview,
-            commands::launch_codex_plus,
-            commands::restart_codex_plus,
+            commands::launch_codex_assistant,
+            commands::restart_codex_assistant,
             commands::read_launch_status,
             commands::load_settings,
             commands::save_settings,
@@ -68,24 +68,24 @@ pub fn run() {
 }
 
 fn acquire_single_instance_guard() -> Option<std::net::TcpListener> {
-    match codex_plus_core::ports::acquire_loopback_port_guard(
-        codex_plus_core::ports::MANAGER_GUARD_PORT,
+    match codex_assistant_core::ports::acquire_loopback_port_guard(
+        codex_assistant_core::ports::MANAGER_GUARD_PORT,
     ) {
         Ok(listener) => Some(listener),
         Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {
-            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
                 "manager.already_running",
                 serde_json::json!({
-                    "guard_port": codex_plus_core::ports::MANAGER_GUARD_PORT
+                    "guard_port": codex_assistant_core::ports::MANAGER_GUARD_PORT
                 }),
             );
             None
         }
         Err(error) => {
-            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
                 "manager.guard_failed",
                 serde_json::json!({
-                    "guard_port": codex_plus_core::ports::MANAGER_GUARD_PORT,
+                    "guard_port": codex_assistant_core::ports::MANAGER_GUARD_PORT,
                     "error": error.to_string()
                 }),
             );

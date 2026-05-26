@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use codex_plus_core::helper_auth::ensure_helper_token;
-use codex_plus_core::launcher::test_support::{
+use codex_assistant_core::helper_auth::ensure_helper_token;
+use codex_assistant_core::launcher::test_support::{
     HelperHandle, shutdown_helper_listener, spawn_helper_listener,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

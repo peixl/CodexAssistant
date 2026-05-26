@@ -1,6 +1,6 @@
-use codex_plus_core::assets;
-use codex_plus_core::bridge::{self, BRIDGE_BINDING_NAME};
-use codex_plus_core::cdp::{CdpTarget, pick_page_target};
+use codex_assistant_core::assets;
+use codex_assistant_core::bridge::{self, BRIDGE_BINDING_NAME};
+use codex_assistant_core::cdp::{CdpTarget, pick_page_target};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::future::Future;
@@ -44,7 +44,7 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
     assert!(script.contains("\"test-helper-token\""));
     assert!(script.contains("window.__CODEX_PLUS_SPONSOR_IMAGES__"));
     assert!(script.contains("window.__CODEX_PLUS_VERSION__"));
-    assert!(script.contains(codex_plus_core::version::VERSION));
+    assert!(script.contains(codex_assistant_core::version::VERSION));
     assert!(script.contains("https://discord.gg/y96kX7A76v"));
     assert!(script.contains("data-codex-assistant-discord"));
 }
@@ -54,7 +54,7 @@ fn injection_script_marks_diagnostic_build_and_reports_script_loaded() {
     let script = assets::injection_script(57321, "test-helper-token");
 
     assert!(script.contains("window.__CODEX_PLUS_BUILD__"));
-    assert!(script.contains(codex_plus_core::assets::DIAGNOSTIC_BUILD_ID));
+    assert!(script.contains(codex_assistant_core::assets::DIAGNOSTIC_BUILD_ID));
     assert!(script.contains("script_loaded"));
     assert!(script.contains("data-codex-assistant-build"));
 }
@@ -418,7 +418,7 @@ fn pick_page_target_rejects_non_pages_and_pages_without_websocket() {
 async fn install_bridge_routes_binding_while_waiting_for_command_response() {
     let temp = tempfile::tempdir().unwrap();
     let log_path = temp.path().join("codex-assistant.log");
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let (url, request_rx) = spawn_cdp_server(|mut socket| async move {
         for expected_id in 1..=4 {
             let command = recv_json(&mut socket).await;
@@ -487,7 +487,7 @@ async fn install_bridge_routes_binding_while_waiting_for_command_response() {
     let contents = std::fs::read_to_string(&log_path).unwrap();
     assert!(contents.contains("bridge.resolve_start"));
     assert!(contents.contains("bridge.resolve_ok"));
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
 }
 
 #[tokio::test]
