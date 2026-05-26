@@ -45,6 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
+        working-directory: ${{ github.workspace }}
         shell: bash
         run: |
           git init .
@@ -136,6 +137,7 @@ jobs:
         working-directory: apps/codex-assistant-manager
     steps:
       - name: Checkout repository
+        working-directory: ${{ github.workspace }}
         shell: bash
         run: |
           git init .
