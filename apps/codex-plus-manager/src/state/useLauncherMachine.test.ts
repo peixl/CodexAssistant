@@ -171,6 +171,7 @@ describe("LAUNCH_POLLING_CONSTANTS", () => {
     expect(LAUNCH_POLLING_CONSTANTS.pollTimeoutMs).toBeGreaterThan(
       LAUNCH_POLLING_CONSTANTS.pollIntervalMs,
     );
+    expect(LAUNCH_POLLING_CONSTANTS.pollTimeoutMs).toBeGreaterThanOrEqual(60_000);
     expect(LAUNCH_POLLING_CONSTANTS.minSpinnerMs).toBeGreaterThan(0);
   });
 });

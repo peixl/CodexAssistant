@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone)]
 struct LauncherHooks {
@@ -35,10 +36,10 @@ impl Default for LauncherHooks {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let Some(_guard) = acquire_single_instance_guard()? else {
+    let options = parse_launch_options(std::env::args().skip(1));
+    let Some(_guard) = acquire_single_instance_guard(&options)? else {
         return Ok(());
     };
-    let options = parse_launch_options(std::env::args().skip(1));
     tokio::spawn(async {
         let check = tokio::time::timeout(
             std::time::Duration::from_secs(45),
@@ -58,12 +59,15 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn acquire_single_instance_guard() -> anyhow::Result<Option<std::net::TcpListener>> {
+fn acquire_single_instance_guard(
+    options: &LaunchOptions,
+) -> anyhow::Result<Option<std::net::TcpListener>> {
     match codex_plus_core::ports::acquire_loopback_port_guard(
         codex_plus_core::ports::LAUNCHER_GUARD_PORT,
     ) {
         Ok(listener) => Ok(Some(listener)),
         Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {
+            record_already_running_status(options);
             let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
                 "launcher.already_running",
                 json!({
@@ -81,6 +85,28 @@ fn acquire_single_instance_guard() -> anyhow::Result<Option<std::net::TcpListene
             })
             .map(Some),
     }
+}
+
+fn record_already_running_status(options: &LaunchOptions) {
+    let status = codex_plus_core::status::LaunchStatus {
+        status: "running".to_string(),
+        message: "CodexAssistant launcher is already running.".to_string(),
+        started_at_ms: now_ms(),
+        debug_port: Some(options.debug_port),
+        helper_port: Some(options.helper_port),
+        codex_app: options
+            .app_dir
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string()),
+    };
+    let _ = options.status_store.save_latest(&status);
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
 }
 
 async fn notify_manager_when_update_available() -> anyhow::Result<bool> {
@@ -620,9 +646,10 @@ mod tests {
     fn launcher_uses_single_instance_guard_before_launching() {
         let source = include_str!("main.rs");
 
-        assert!(source.contains("acquire_single_instance_guard()?"));
+        assert!(source.contains("acquire_single_instance_guard(&options)?"));
         assert!(source.contains("LAUNCHER_GUARD_PORT"));
         assert!(source.contains("launcher.already_running"));
+        assert!(source.contains("record_already_running_status(options)"));
     }
 
     #[test]

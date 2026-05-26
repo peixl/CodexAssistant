@@ -93,6 +93,33 @@ body {
   background: hsl(var(--background));
 }
 
+.launcher-button {
+  overflow: hidden;
+}
+
+.launcher-button-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.launcher-button-label svg {
+  flex: 0 0 auto;
+}
+
+.launcher-message {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-height: 1.35;
+}
+
 .shell {
   display: grid;
   grid-template-columns: 208px minmax(0, 1fr);

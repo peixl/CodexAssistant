@@ -53,6 +53,12 @@ describe("launcherReducer", () => {
     });
   });
 
+  it("allows launch_click from an error so retry actually starts a new launch", () => {
+    expect(
+      launcherReducer({ kind: "error", message: "previous" }, { type: "launch_click" }),
+    ).toEqual({ kind: "launching" });
+  });
+
   it("launching -> ready on launch_done", () => {
     expect(launcherReducer({ kind: "launching" }, { type: "launch_done" })).toEqual({
       kind: "ready",

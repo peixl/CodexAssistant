@@ -43,7 +43,7 @@ export function launcherReducer(state: LauncherState, event: LauncherEvent): Lau
     case "prepare_failed":
       return { kind: "error", message: event.message };
     case "launch_click":
-      return state.kind === "ready" ? { kind: "launching" } : state;
+      return state.kind === "ready" || state.kind === "error" ? { kind: "launching" } : state;
     case "launch_done":
       return state.kind === "launching" ? { kind: "ready" } : state;
     case "launch_failed":

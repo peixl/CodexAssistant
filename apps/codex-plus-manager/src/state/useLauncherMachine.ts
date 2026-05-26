@@ -28,7 +28,7 @@ export type LaunchStatusEnvelope = {
 };
 
 const LAUNCH_POLL_INTERVAL_MS = 400;
-const LAUNCH_POLL_TIMEOUT_MS = 12_000;
+const LAUNCH_POLL_TIMEOUT_MS = 75_000;
 const LAUNCH_MIN_SPINNER_MS = 250;
 
 export const LAUNCH_POLLING_CONSTANTS = {
@@ -165,19 +165,23 @@ export function useLauncherMachine(deps: LauncherDeps): {
       await defaultSleep(LAUNCH_MIN_SPINNER_MS - elapsed);
     }
 
-    if (terminal.kind === "failed") {
+    if (terminal.kind === "failed" || terminal.kind === "running_degraded") {
       dispatch({ type: "launch_failed", message: terminal.message });
+      await deps.onAfterLaunch();
       return;
     }
-    // running or timeout — assume optimistic success
+    if (terminal.kind === "timeout") {
+      dispatch({ type: "launch_failed", message: TEXT.launcher.launchTimedOut });
+      await deps.onAfterLaunch();
+      return;
+    }
     dispatch({ type: "launch_done" });
     await deps.onAfterLaunch();
   }, [deps.launchArgs, deps.onAfterLaunch]);
 
   const retry = useCallback(async () => {
-    dispatch({ type: "retry" });
-    await deps.onAfterLaunch();
-  }, [deps.onAfterLaunch]);
+    await launch();
+  }, [launch]);
 
   return { state, launch, retry };
 }
