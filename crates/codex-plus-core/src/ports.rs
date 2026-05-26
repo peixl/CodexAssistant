@@ -27,11 +27,16 @@ pub fn can_bind_loopback_port(port: u16) -> bool {
     if port == 0 {
         return true;
     }
-    TcpListener::bind(("127.0.0.1", port)).is_ok()
+    TcpListener::bind(("127.0.0.1", port))
+        .or_else(|_| TcpListener::bind(("::1", port)))
+        .or_else(|_| TcpListener::bind(("0.0.0.0", port)))
+        .is_ok()
 }
 
 pub fn find_available_loopback_port() -> u16 {
     TcpListener::bind(("127.0.0.1", 0))
+        .or_else(|_| TcpListener::bind(("::1", 0)))
+        .or_else(|_| TcpListener::bind(("0.0.0.0", 0)))
         .and_then(|listener| listener.local_addr())
         .map(|address| address.port())
         .unwrap_or(0)
@@ -51,4 +56,6 @@ pub fn can_connect_loopback_port(port: u16) -> bool {
 
 pub fn acquire_loopback_port_guard(port: u16) -> std::io::Result<TcpListener> {
     TcpListener::bind(("127.0.0.1", port))
+        .or_else(|_| TcpListener::bind(("::1", port)))
+        .or_else(|_| TcpListener::bind(("0.0.0.0", port)))
 }
