@@ -139,6 +139,26 @@ experimental_bearer_token = "sk-..."
 - Node.js 20+ 与 npm
 - macOS 与 Windows 上的官方 SDK；Linux 上需要 Tauri 系统依赖 (`libwebkit2gtk-4.1-dev` 等)
 
+### 中国大陆网络环境构建
+
+如果在中国大陆访问 GitHub 或 npm 下载较慢，可以通过镜像源加速构建环境。
+
+**配置 npm 镜像：**
+```bash
+npm config set registry https://registry.npmmirror.com
+```
+
+**配置 Cargo 镜像：**
+编辑 `~/.cargo/config.toml` 文件：
+```toml
+[source.crates-io]
+replace-with = "tuna"
+[source.tuna]
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
+```
+
+配置完成后，按如下顺序列进行依赖拉取与打包：
+
 ### 构建
 
 ```bash
@@ -148,7 +168,7 @@ npm --prefix apps/codex-plus-manager ci
 # 2. 构建前端 — tauri::generate_context! 在编译时读取 dist/
 npm --prefix apps/codex-plus-manager run vite:build
 
-# 3. 构建所有 Rust 产物 (静默启动器 + 管理工具)
+# 3. 编译两个核心二进制 (静默启动器与 Tauri 管理工具)
 cargo build --release
 ```
 

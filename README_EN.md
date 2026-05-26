@@ -139,6 +139,24 @@ Click **Clear API mode** to remove the relay provider and revert to the official
 - Node.js 20+ and npm
 - macOS and Windows ship the required system SDKs; on Linux install Tauri's deps (`libwebkit2gtk-4.1-dev`, …)
 
+### Remote Mirrors (China Mainland)
+
+If accessing GitHub or npm in mainland China is slow, you can speed up the build environment via mirrors:
+
+**npm Mirror:**
+```bash
+npm config set registry https://registry.npmmirror.com
+```
+
+**Cargo Mirror (TUNA):**
+Edit or create `~/.cargo/config.toml` (Windows: `C:\Users\<user>\.cargo\config.toml`):
+```toml
+[source.crates-io]
+replace-with = "tuna"
+[source.tuna]
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
+```
+
 ### Build
 
 ```bash
