@@ -23,20 +23,20 @@ pub fn select_platform_loopback_port_with(
     }
 }
 
+/// Check whether the given port can be bound on 127.0.0.1.
+///
+/// Bridge, CDP, and the local helper endpoint all hardcode 127.0.0.1, so a
+/// successful bind on ::1 or 0.0.0.0 alone would be misleading — port selection
+/// must mirror what the runtime actually uses.
 pub fn can_bind_loopback_port(port: u16) -> bool {
     if port == 0 {
         return true;
     }
-    TcpListener::bind(("127.0.0.1", port))
-        .or_else(|_| TcpListener::bind(("::1", port)))
-        .or_else(|_| TcpListener::bind(("0.0.0.0", port)))
-        .is_ok()
+    TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
 pub fn find_available_loopback_port() -> u16 {
     TcpListener::bind(("127.0.0.1", 0))
-        .or_else(|_| TcpListener::bind(("::1", 0)))
-        .or_else(|_| TcpListener::bind(("0.0.0.0", 0)))
         .and_then(|listener| listener.local_addr())
         .map(|address| address.port())
         .unwrap_or(0)
@@ -54,8 +54,11 @@ pub fn can_connect_loopback_port(port: u16) -> bool {
         .is_some()
 }
 
+/// Acquire the loopback guard port used as a single-instance mutex.
+///
+/// Must bind on 127.0.0.1 only — falling back to ::1 or 0.0.0.0 would let a
+/// second instance start while a first one is already holding 127.0.0.1, which
+/// breaks the launcher and manager guard contract.
 pub fn acquire_loopback_port_guard(port: u16) -> std::io::Result<TcpListener> {
     TcpListener::bind(("127.0.0.1", port))
-        .or_else(|_| TcpListener::bind(("::1", port)))
-        .or_else(|_| TcpListener::bind(("0.0.0.0", port)))
 }

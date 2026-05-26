@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -12,12 +12,15 @@ async fn main() -> anyhow::Result<()> {
         IpAddr::from_str("127.0.0.2").unwrap(),
         IpAddr::from_str("127.127.127.127").unwrap(),
     ];
-    
+
     for addr in addrs {
         println!("Trying {}", addr);
         let listener = match tokio::net::TcpListener::bind((addr, 0)).await {
             Ok(l) => l,
-            Err(e) => { println!("Bind failed for {}: {}", addr, e); continue; }
+            Err(e) => {
+                println!("Bind failed for {}: {}", addr, e);
+                continue;
+            }
         };
         let port = listener.local_addr()?.port();
         println!("Listening on {}", port);
@@ -43,15 +46,15 @@ async fn main() -> anyhow::Result<()> {
         match outcome {
             Ok(Ok(())) => {
                 println!("Success with {}", addr);
-            },
+            }
             Ok(Err(error)) => {
                 println!("Error with {}: {}", addr, error);
-            },
+            }
             Err(_) => {
                 println!("Timeout with {}", addr);
             }
         }
     }
-    
+
     Ok(())
 }

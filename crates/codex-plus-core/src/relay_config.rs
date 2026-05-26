@@ -110,8 +110,8 @@ fn read_api_key(auth_path: &Path, config_path: &Path) -> (String, String) {
         return (key.to_string(), auth_path.to_string_lossy().to_string());
     }
 
-    if let Ok(contents) = std::fs::read_to_string(config_path) {
-        if let Some(token) = active_model_provider_value(&contents, "experimental_bearer_token")
+    if let Ok(contents) = std::fs::read_to_string(config_path)
+        && let Some(token) = active_model_provider_value(&contents, "experimental_bearer_token")
             .or_else(|| provider_value(&contents, RELAY_PROVIDER, "experimental_bearer_token"))
             .or_else(|| {
                 LEGACY_RELAY_PROVIDERS.iter().find_map(|provider| {
@@ -121,9 +121,8 @@ fn read_api_key(auth_path: &Path, config_path: &Path) -> (String, String) {
             .or_else(|| root_key_string(&contents, "OPENAI_API_KEY"))
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
-        {
-            return (token, config_path.to_string_lossy().to_string());
-        }
+    {
+        return (token, config_path.to_string_lossy().to_string());
     }
 
     (String::new(), String::new())

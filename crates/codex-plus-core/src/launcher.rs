@@ -1588,7 +1588,7 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
 /// kill-switch filters that silently drop 127.0.0.1 SYN packets — `listen()` and
 /// `bind()` still succeed, so the symptom looks like Codex is broken when it isn't.
 pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
-    use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let addrs = vec![
@@ -1630,11 +1630,14 @@ pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
             any_success = true;
             break;
         } else {
-             if let Ok(Err(error)) = outcome {
-                  last_error = Some(error);
-             } else {
-                  last_error = Some(anyhow::anyhow!("TCP connect to {} timed out after 2500ms", addr));
-             }
+            if let Ok(Err(error)) = outcome {
+                last_error = Some(error);
+            } else {
+                last_error = Some(anyhow::anyhow!(
+                    "TCP connect to {} timed out after 2500ms",
+                    addr
+                ));
+            }
         }
     }
 
@@ -1642,7 +1645,9 @@ pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
         Ok(())
     } else {
         Err(anyhow::anyhow!(loopback_preflight_message(
-            &last_error.unwrap_or_else(|| anyhow::anyhow!("all loopback interfaces failed")).to_string()
+            &last_error
+                .unwrap_or_else(|| anyhow::anyhow!("all loopback interfaces failed"))
+                .to_string()
         )))
     }
 }
