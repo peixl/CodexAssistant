@@ -24,7 +24,7 @@
 跑 macOS 本地全套：fmt / clippy -D warnings / test / npm check / vitest / vite build。修任何 develop 上潜伏的非配额性回归。
 
 ### Phase 2 — Windows 路径与兼容性
-- `crates/codex-plus-core/src/app_paths.rs:58` 把唯一一处 `C:\Program Files\WindowsApps` 字面量改为仅在 env vars 缺失时回退。
+- `crates/codex-assistant-core/src/app_paths.rs:58` 把唯一一处 `C:\Program Files\WindowsApps` 字面量改为仅在 env vars 缺失时回退。
 - 审计每个 `#[cfg(windows)]` 块对 env var 缺失的容错。
 - 审计 `windows_integration.rs`、`launcher.rs`、`install/windows.rs`、`scripts/installer/` NSIS 是否有硬编码用户路径。
 - 修复发现的问题；新增/扩展测试覆盖路径解析的"环境变量缺失"边界。

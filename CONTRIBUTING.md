@@ -24,14 +24,14 @@ Thank you for your interest in contributing to CodexAssistant!
 
 3. **Install frontend dependencies**
    ```bash
-   npm --prefix apps/codex-plus-manager ci
+   npm --prefix apps/codex-assistant-manager ci
    ```
 
 4. **Build the project**
    ```bash
    # Build the frontend once so `tauri::generate_context!` can resolve
-   # apps/codex-plus-manager/dist/ at compile time.
-   npm --prefix apps/codex-plus-manager run vite:build
+   # apps/codex-assistant-manager/dist/ at compile time.
+   npm --prefix apps/codex-assistant-manager run vite:build
 
    # Build all Rust crates and binaries in release mode.
    cargo build --release
@@ -39,7 +39,7 @@ Thank you for your interest in contributing to CodexAssistant!
 
 5. **Run the manager in dev mode**
    ```bash
-   npm --prefix apps/codex-plus-manager run dev
+   npm --prefix apps/codex-assistant-manager run dev
    ```
 
 ## Project Structure
@@ -47,13 +47,13 @@ Thank you for your interest in contributing to CodexAssistant!
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/    # Silent launcher binary (codex-plus-plus)
-│   └── codex-plus-manager/     # Tauri manager (React + Rust)
+│   ├── codex-assistant-launcher/    # Silent launcher binary (codex-assistant)
+│   └── codex-assistant-manager/     # Tauri manager (React + Rust)
 │       ├── src/                # React + TypeScript UI
 │       └── src-tauri/          # Tauri shell + commands
 ├── crates/
-│   ├── codex-plus-core/        # Core launcher, CDP injection, settings, relay
-│   └── codex-plus-data/        # SQLite adapter, provider sync, markdown export
+│   ├── codex-assistant-core/        # Core launcher, CDP injection, settings, relay
+│   └── codex-assistant-data/        # SQLite adapter, provider sync, markdown export
 ├── assets/inject/              # JS injected into the Codex renderer via CDP
 ├── scripts/installer/          # macOS DMG + Windows NSIS installers
 └── .github/workflows/          # CI + release pipelines
@@ -78,8 +78,8 @@ CodexAssistant/
 3. **Make your changes**
    - Follow existing patterns; see [docs/superpowers/specs/](docs/superpowers/specs/) for design notes.
    - Add tests for new behaviour — Rust integration tests live under
-     `crates/*/tests/` and `apps/codex-plus-manager/src-tauri/tests/`;
-     frontend tests use vitest under `apps/codex-plus-manager/src/**/*.test.ts`.
+     `crates/*/tests/` and `apps/codex-assistant-manager/src-tauri/tests/`;
+     frontend tests use vitest under `apps/codex-assistant-manager/src/**/*.test.ts`.
    - Cross-platform code paths must be gated with
      `#[cfg(target_os = "windows" | "macos")]`.
 
@@ -88,8 +88,8 @@ CodexAssistant/
    cargo fmt --all
    cargo clippy --workspace --all-targets -- -D warnings
    cargo test --workspace
-   npm --prefix apps/codex-plus-manager run check
-   npm --prefix apps/codex-plus-manager run test
+   npm --prefix apps/codex-assistant-manager run check
+   npm --prefix apps/codex-assistant-manager run test
    ```
 
    These are the same gates CI enforces — see

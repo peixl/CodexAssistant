@@ -28,7 +28,7 @@ updates:
           - "patch"
 
   - package-ecosystem: npm
-    directory: "/apps/codex-plus-manager"
+    directory: "/apps/codex-assistant-manager"
     schedule:
       interval: monthly
       day: monday

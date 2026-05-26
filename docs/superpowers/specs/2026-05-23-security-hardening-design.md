@@ -56,16 +56,16 @@
 
 ### 代码组件
 
-- 新建 `crates/codex-plus-core/src/helper_auth.rs`：
+- 新建 `crates/codex-assistant-core/src/helper_auth.rs`：
   - `pub fn ensure_helper_token() -> &'static str`：首次调用生成；用 `getrandom`（新增依赖） 读取 32 字节随机数，`base64::engine::general_purpose::URL_SAFE_NO_PAD` 编码。
   - `pub fn verify_token(provided: &str) -> bool`：长度先比，再用常量时间比较（手写 XOR 累加，避免引新依赖；`subtle` 不引入）。
-- `crates/codex-plus-core/src/launcher.rs::handle_helper_connection`：
+- `crates/codex-assistant-core/src/launcher.rs::handle_helper_connection`：
   - 在 `read_http_request` 后解析头部，提取 `X-Codex-Helper-Token`。
   - 当 `method != "OPTIONS"`：未通过 → 直接写 401 + 关闭连接 + 写 `security.helper_token_invalid` 诊断日志（不要把 token 本身写日志，只记 `provided_len`）。
-- `crates/codex-plus-core/src/assets.rs::injection_script`：签名改为 `injection_script(helper_port: u16, helper_token: &str) -> String`，注入 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`。
+- `crates/codex-assistant-core/src/assets.rs::injection_script`：签名改为 `injection_script(helper_port: u16, helper_token: &str) -> String`，注入 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`。
 - 调用链跟随：
-  - `crates/codex-plus-core/src/launcher.rs::inject_with_context`、`inject`
-  - `apps/codex-plus-launcher/src/main.rs::try_inject_with_context`、`inject_with_context`
+  - `crates/codex-assistant-core/src/launcher.rs::inject_with_context`、`inject`
+  - `apps/codex-assistant-launcher/src/main.rs::try_inject_with_context`、`inject_with_context`
   - 凡是构造 `injection_script(helper_port)` 的地方都改为传 token；token 取自 `helper_auth::ensure_helper_token()`。
 - `assets/inject/renderer-inject.js`：
   - 顶部新增 `const helperToken = window.__CODEX_ASSISTANT_HELPER_TOKEN__ || "";`
@@ -106,13 +106,13 @@
   "body": "release notes…",
   "assets": [
     {
-      "name": "codex-plus_1.4.0_x64-setup.exe",
-      "url": "https://github.com/peixl/CodexAssistant/releases/download/v1.4.0/codex-plus_1.4.0_x64-setup.exe",
+      "name": "codex-assistant_1.4.0_x64-setup.exe",
+      "url": "https://github.com/peixl/CodexAssistant/releases/download/v1.4.0/codex-assistant_1.4.0_x64-setup.exe",
       "sha256": "ab12…64hex"
     },
     {
-      "name": "codex-plus_1.4.0_aarch64.dmg",
-      "url": "https://github.com/peixl/CodexAssistant/releases/download/v1.4.0/codex-plus_1.4.0_aarch64.dmg",
+      "name": "codex-assistant_1.4.0_aarch64.dmg",
+      "url": "https://github.com/peixl/CodexAssistant/releases/download/v1.4.0/codex-assistant_1.4.0_aarch64.dmg",
       "sha256": "cd34…64hex"
     }
   ]
@@ -125,7 +125,7 @@
 
 ### 代码组件
 
-- `crates/codex-plus-core/src/update.rs`：
+- `crates/codex-assistant-core/src/update.rs`：
   - `ReleaseAsset` 增 `pub sha256: Option<String>`。
   - `Release` 增 `pub asset_sha256: Option<String>`。
   - `select_update_asset` 把 `sha256` 一并带出来。
@@ -167,7 +167,7 @@
 
 ### 代码组件
 
-- `crates/codex-plus-core/src/script_market.rs`：
+- `crates/codex-assistant-core/src/script_market.rs`：
   - `MarketScript.sha256` 类型从 `String`（带 `#[serde(default)]`）改为 `String`，但 `parse_market_script` 改用 `required_string("sha256")`；不存在则 `None` → 该条目被过滤掉。
   - `parse_market_manifest` 中：丢弃前后对比数量差，差值 > 0 时写 `security.script_market_dropped_no_sha256` 诊断日志，附 `dropped_ids` 列表，方便上游运维定位漏填条目。
   - `verify_sha256`：删除 `expected.is_empty() → Ok` 早返回；空 → `anyhow::bail!("script {id} missing sha256")`。理论上经过解析过滤之后 sha256 不会为空，这是双层防御。
@@ -189,14 +189,14 @@
 ## 模块边界 / 接口
 
 ```
-codex-plus-core
+codex-assistant-core
 ├── helper_auth.rs        // 新模块：进程内 token；ensure_helper_token / verify_token
 ├── launcher.rs           // 路由前增加 token 检查；inject 链路传 token
 ├── assets.rs             // injection_script(helper_port, helper_token)
 ├── update.rs             // ReleaseAsset.sha256；verify_asset_sha256；perform_update 强制校验
 └── script_market.rs      // sha256 必填；verify_sha256 不再容忍空值
 
-apps/codex-plus-launcher
+apps/codex-assistant-launcher
 └── main.rs               // 调用链跟随 injection_script 新签名
 
 assets/inject

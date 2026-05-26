@@ -33,7 +33,7 @@
 
 ## 7. 反馈包导出
 - 「更多设置」→「反馈包导出」→ 导出。
-- 桌面出现 `codex-plus-diagnostics-*.zip`。
+- 桌面出现 `codex-assistant-diagnostics-*.zip`。
 
 ## 8. 重置
 - 「更多设置」→「关于 / 重置」→ 重置所有设置。

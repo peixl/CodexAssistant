@@ -31,7 +31,7 @@ There is no separate user-facing CLI. Launch behavior belongs to the silent laun
 
 The Rust project will be organized as a workspace:
 
-- `codex-plus-core`
+- `codex-assistant-core`
   - Codex app path resolution.
   - Loopback port selection.
   - Codex process launch and lifecycle handling.
@@ -39,21 +39,21 @@ The Rust project will be organized as a workspace:
   - Bridge request routing for injected UI calls.
   - Settings, logs, assets, status, and diagnostics primitives.
 
-- `codex-plus-data`
+- `codex-assistant-data`
   - SQLite schema detection.
   - Local delete and undo backup.
   - Workspace move operations.
   - Markdown export.
   - Provider sync across rollout files, SQLite rows, and global state metadata.
 
-- `codex-plus-launcher`
+- `codex-assistant-launcher`
   - No-window silent launcher binary.
   - Supports internal launch configuration such as app path, database path, backup path, debug port, and helper port.
   - Used by the `CodexAssistant` desktop entry point.
 
-- `codex-plus-tauri`
+- `codex-assistant-tauri`
   - Visible management console.
-  - Tauri commands call `codex-plus-core`; no duplicated business logic.
+  - Tauri commands call `codex-assistant-core`; no duplicated business logic.
   - Provides install, uninstall, update, settings, logs, diagnostics, shortcut repair, and optional manual launch controls.
 
 - `renderer-inject.js`
@@ -110,7 +110,7 @@ Bridge request flow:
 1. Injected UI calls the bridge from `renderer-inject.js`.
 2. CDP delivers a `Runtime.bindingCalled` event to Rust.
 3. Rust routes the request by path.
-4. `codex-plus-core` and `codex-plus-data` execute the operation.
+4. `codex-assistant-core` and `codex-assistant-data` execute the operation.
 5. Rust resolves or rejects the browser-side promise.
 6. The injected UI shows a toast, updates settings, refreshes status, or updates the current UI state.
 
@@ -157,8 +157,8 @@ Windows install creates two desktop shortcuts:
 
 Windows packaging uses separate entry binaries so window behavior is predictable:
 
-- `codex-plus-plus.exe`: no-window silent launcher for the `CodexAssistant` shortcut.
-- `codex-plus-plus-manager.exe`: Tauri management console for `CodexAssistant 管理工具`.
+- `codex-assistant.exe`: no-window silent launcher for the `CodexAssistant` shortcut.
+- `codex-assistant-manager.exe`: Tauri management console for `CodexAssistant 管理工具`.
 
 Windows uninstall removes both shortcuts and the uninstall registry entry. Optional data removal deletes CodexAssistant-owned data such as logs, settings, and backups.
 

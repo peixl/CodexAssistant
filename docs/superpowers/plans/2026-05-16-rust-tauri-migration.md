@@ -17,10 +17,10 @@ The design covers several subsystems: Rust workspace setup, data operations, CDP
 ## File Structure
 
 - Create `Cargo.toml`: workspace root with members under `crates/` and `apps/`.
-- Create `crates/codex-plus-core/`: shared launch, CDP, bridge, settings, logs, diagnostics, path resolution, install/update primitives.
-- Create `crates/codex-plus-data/`: SQLite, backup, markdown export, provider sync, and filesystem data operations.
-- Create `apps/codex-plus-launcher/`: no-window silent launcher binary used by the `CodexAssistant` shortcut.
-- Create `apps/codex-plus-manager/`: Tauri management console used by `CodexAssistant 管理工具`.
+- Create `crates/codex-assistant-core/`: shared launch, CDP, bridge, settings, logs, diagnostics, path resolution, install/update primitives.
+- Create `crates/codex-assistant-data/`: SQLite, backup, markdown export, provider sync, and filesystem data operations.
+- Create `apps/codex-assistant-launcher/`: no-window silent launcher binary used by the `CodexAssistant` shortcut.
+- Create `apps/codex-assistant-manager/`: Tauri management console used by `CodexAssistant 管理工具`.
 - Move or copy runtime assets into `assets/`: icons, sponsor images, and `renderer-inject.js` source used by Rust packaging.
 - Create `tests/fixtures/`: shared SQLite, rollout, and settings fixtures for Rust integration tests.
 - Modify `README.md` and `README_EN.md`: replace Python usage with Rust/Tauri installation and two-entry behavior.
@@ -34,19 +34,19 @@ The design covers several subsystems: Rust workspace setup, data operations, CDP
 **Files:**
 - Create: `Cargo.toml`
 - Create: `.cargo/config.toml`
-- Create: `crates/codex-plus-core/Cargo.toml`
-- Create: `crates/codex-plus-core/src/lib.rs`
-- Create: `crates/codex-plus-core/src/version.rs`
-- Create: `crates/codex-plus-data/Cargo.toml`
-- Create: `crates/codex-plus-data/src/lib.rs`
-- Create: `apps/codex-plus-launcher/Cargo.toml`
-- Create: `apps/codex-plus-launcher/src/main.rs`
-- Create: `apps/codex-plus-manager/package.json`
-- Create: `apps/codex-plus-manager/src-tauri/Cargo.toml`
-- Create: `apps/codex-plus-manager/src-tauri/src/lib.rs`
-- Create: `apps/codex-plus-manager/src-tauri/src/main.rs`
-- Create: `apps/codex-plus-manager/src/main.tsx`
-- Create: `apps/codex-plus-manager/index.html`
+- Create: `crates/codex-assistant-core/Cargo.toml`
+- Create: `crates/codex-assistant-core/src/lib.rs`
+- Create: `crates/codex-assistant-core/src/version.rs`
+- Create: `crates/codex-assistant-data/Cargo.toml`
+- Create: `crates/codex-assistant-data/src/lib.rs`
+- Create: `apps/codex-assistant-launcher/Cargo.toml`
+- Create: `apps/codex-assistant-launcher/src/main.rs`
+- Create: `apps/codex-assistant-manager/package.json`
+- Create: `apps/codex-assistant-manager/src-tauri/Cargo.toml`
+- Create: `apps/codex-assistant-manager/src-tauri/src/lib.rs`
+- Create: `apps/codex-assistant-manager/src-tauri/src/main.rs`
+- Create: `apps/codex-assistant-manager/src/main.tsx`
+- Create: `apps/codex-assistant-manager/index.html`
 
 - [ ] **Step 1: Write the workspace manifests**
 
@@ -56,10 +56,10 @@ Create root `Cargo.toml`:
 [workspace]
 resolver = "2"
 members = [
-  "crates/codex-plus-core",
-  "crates/codex-plus-data",
-  "apps/codex-plus-launcher",
-  "apps/codex-plus-manager/src-tauri",
+  "crates/codex-assistant-core",
+  "crates/codex-assistant-data",
+  "apps/codex-assistant-launcher",
+  "apps/codex-assistant-manager/src-tauri",
 ]
 
 [workspace.package]
@@ -95,11 +95,11 @@ xcheck = "check --workspace --all-targets"
 
 - [ ] **Step 2: Add core crate**
 
-Create `crates/codex-plus-core/Cargo.toml`:
+Create `crates/codex-assistant-core/Cargo.toml`:
 
 ```toml
 [package]
-name = "codex-plus-core"
+name = "codex-assistant-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -114,13 +114,13 @@ thiserror.workspace = true
 tokio.workspace = true
 ```
 
-Create `crates/codex-plus-core/src/lib.rs`:
+Create `crates/codex-assistant-core/src/lib.rs`:
 
 ```rust
 pub mod version;
 ```
 
-Create `crates/codex-plus-core/src/version.rs`:
+Create `crates/codex-assistant-core/src/version.rs`:
 
 ```rust
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -138,11 +138,11 @@ mod tests {
 
 - [ ] **Step 3: Add data crate**
 
-Create `crates/codex-plus-data/Cargo.toml`:
+Create `crates/codex-assistant-data/Cargo.toml`:
 
 ```toml
 [package]
-name = "codex-plus-data"
+name = "codex-assistant-data"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -157,7 +157,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 ```
 
-Create `crates/codex-plus-data/src/lib.rs`:
+Create `crates/codex-assistant-data/src/lib.rs`:
 
 ```rust
 pub fn crate_ready() -> bool {
@@ -175,27 +175,27 @@ mod tests {
 
 - [ ] **Step 4: Add silent launcher binary skeleton**
 
-Create `apps/codex-plus-launcher/Cargo.toml`:
+Create `apps/codex-assistant-launcher/Cargo.toml`:
 
 ```toml
 [package]
-name = "codex-plus-launcher"
+name = "codex-assistant-launcher"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "codex-plus-plus"
+name = "codex-assistant"
 path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-codex-plus-core = { path = "../../crates/codex-plus-core" }
+codex-assistant-core = { path = "../../crates/codex-assistant-core" }
 tokio.workspace = true
 ```
 
-Create `apps/codex-plus-launcher/src/main.rs`:
+Create `apps/codex-assistant-launcher/src/main.rs`:
 
 ```rust
 use anyhow::Result;
@@ -209,11 +209,11 @@ async fn main() -> Result<()> {
 
 - [ ] **Step 5: Add Tauri manager skeleton**
 
-Create `apps/codex-plus-manager/package.json`:
+Create `apps/codex-assistant-manager/package.json`:
 
 ```json
 {
-  "name": "codex-plus-manager",
+  "name": "codex-assistant-manager",
   "version": "1.0.8",
   "private": true,
   "type": "module",
@@ -232,7 +232,7 @@ Create `apps/codex-plus-manager/package.json`:
 }
 ```
 
-Create `apps/codex-plus-manager/index.html`:
+Create `apps/codex-assistant-manager/index.html`:
 
 ```html
 <!doctype html>
@@ -249,7 +249,7 @@ Create `apps/codex-plus-manager/index.html`:
 </html>
 ```
 
-Create `apps/codex-plus-manager/src/main.tsx`:
+Create `apps/codex-assistant-manager/src/main.tsx`:
 
 ```tsx
 const app = document.getElementById("app");
@@ -264,11 +264,11 @@ if (app) {
 }
 ```
 
-Create `apps/codex-plus-manager/src-tauri/Cargo.toml`:
+Create `apps/codex-assistant-manager/src-tauri/Cargo.toml`:
 
 ```toml
 [package]
-name = "codex-plus-manager"
+name = "codex-assistant-manager"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -279,17 +279,17 @@ name = "codex_assistant_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "codex-plus-plus-manager"
+name = "codex-assistant-manager"
 path = "src/main.rs"
 
 [dependencies]
-codex-plus-core = { path = "../../../crates/codex-plus-core" }
+codex-assistant-core = { path = "../../../crates/codex-assistant-core" }
 serde.workspace = true
 serde_json.workspace = true
 tauri = { version = "2", features = [] }
 ```
 
-Create `apps/codex-plus-manager/src-tauri/src/lib.rs`:
+Create `apps/codex-assistant-manager/src-tauri/src/lib.rs`:
 
 ```rust
 #[tauri::command]
@@ -305,7 +305,7 @@ pub fn run() {
 }
 ```
 
-Create `apps/codex-plus-manager/src-tauri/src/main.rs`:
+Create `apps/codex-assistant-manager/src-tauri/src/main.rs`:
 
 ```rust
 fn main() {
@@ -335,11 +335,11 @@ git commit -m "feat: add Rust Tauri workspace skeleton"
 ### Task 2: Shared Models, Settings, And Status Files
 
 **Files:**
-- Create: `crates/codex-plus-core/src/models.rs`
-- Create: `crates/codex-plus-core/src/paths.rs`
-- Create: `crates/codex-plus-core/src/settings.rs`
-- Create: `crates/codex-plus-core/src/status.rs`
-- Modify: `crates/codex-plus-core/src/lib.rs`
+- Create: `crates/codex-assistant-core/src/models.rs`
+- Create: `crates/codex-assistant-core/src/paths.rs`
+- Create: `crates/codex-assistant-core/src/settings.rs`
+- Create: `crates/codex-assistant-core/src/status.rs`
+- Modify: `crates/codex-assistant-core/src/lib.rs`
 
 - [ ] **Step 1: Write model and settings tests**
 
@@ -439,8 +439,8 @@ Implement `StatusStore::save_latest` and `StatusStore::load_latest` at `~/.codex
 - [ ] **Step 4: Run tests and commit**
 
 ```bash
-cargo test -p codex-plus-core settings status models
-git add crates/codex-plus-core
+cargo test -p codex-assistant-core settings status models
+git add crates/codex-assistant-core
 git commit -m "feat: add Rust settings and status models"
 ```
 
@@ -449,13 +449,13 @@ git commit -m "feat: add Rust settings and status models"
 ### Task 3: Data Layer Parity
 
 **Files:**
-- Create: `crates/codex-plus-data/src/backup.rs`
-- Create: `crates/codex-plus-data/src/storage.rs`
-- Create: `crates/codex-plus-data/src/markdown.rs`
-- Create: `crates/codex-plus-data/src/provider_sync.rs`
-- Modify: `crates/codex-plus-data/src/lib.rs`
-- Create: `crates/codex-plus-data/tests/storage_adapter.rs`
-- Create: `crates/codex-plus-data/tests/provider_sync.rs`
+- Create: `crates/codex-assistant-data/src/backup.rs`
+- Create: `crates/codex-assistant-data/src/storage.rs`
+- Create: `crates/codex-assistant-data/src/markdown.rs`
+- Create: `crates/codex-assistant-data/src/provider_sync.rs`
+- Modify: `crates/codex-assistant-data/src/lib.rs`
+- Create: `crates/codex-assistant-data/tests/storage_adapter.rs`
+- Create: `crates/codex-assistant-data/tests/provider_sync.rs`
 
 - [ ] **Step 1: Port fixture behavior from Python tests**
 
@@ -521,8 +521,8 @@ Provider sync must lock with `~/.codex/tmp/provider-sync.lock`, backup writable 
 - [ ] **Step 5: Run data tests and commit**
 
 ```bash
-cargo test -p codex-plus-data --all-targets
-git add crates/codex-plus-data
+cargo test -p codex-assistant-data --all-targets
+git add crates/codex-assistant-data
 git commit -m "feat: port data operations to Rust"
 ```
 
@@ -531,13 +531,13 @@ git commit -m "feat: port data operations to Rust"
 ### Task 4: CDP Bridge And Injection Runtime
 
 **Files:**
-- Create: `crates/codex-plus-core/src/cdp.rs`
-- Create: `crates/codex-plus-core/src/bridge.rs`
-- Create: `crates/codex-plus-core/src/assets.rs`
-- Modify: `crates/codex-plus-core/src/lib.rs`
-- Create: `crates/codex-plus-core/tests/cdp_bridge.rs`
+- Create: `crates/codex-assistant-core/src/cdp.rs`
+- Create: `crates/codex-assistant-core/src/bridge.rs`
+- Create: `crates/codex-assistant-core/src/assets.rs`
+- Modify: `crates/codex-assistant-core/src/lib.rs`
+- Create: `crates/codex-assistant-core/tests/cdp_bridge.rs`
 - Copy asset: `assets/inject/renderer-inject.js`
-- Copy assets: `assets/images/codex-plus-plus.ico`, `assets/images/codex-plus-plus.png`, sponsor images
+- Copy assets: `assets/images/codex-assistant.ico`, `assets/images/codex-assistant.png`, sponsor images
 
 - [ ] **Step 1: Write bridge script tests**
 
@@ -587,8 +587,8 @@ Use `include_str!` and `include_bytes!` for injected JS and sponsor images. The 
 - [ ] **Step 5: Run tests and commit**
 
 ```bash
-cargo test -p codex-plus-core cdp bridge assets
-git add crates/codex-plus-core assets
+cargo test -p codex-assistant-core cdp bridge assets
+git add crates/codex-assistant-core assets
 git commit -m "feat: port CDP bridge injection to Rust"
 ```
 
@@ -597,12 +597,12 @@ git commit -m "feat: port CDP bridge injection to Rust"
 ### Task 5: Silent Launcher Runtime
 
 **Files:**
-- Create: `crates/codex-plus-core/src/app_paths.rs`
-- Create: `crates/codex-plus-core/src/ports.rs`
-- Create: `crates/codex-plus-core/src/proxy.rs`
-- Create: `crates/codex-plus-core/src/launcher.rs`
-- Modify: `apps/codex-plus-launcher/src/main.rs`
-- Create: `crates/codex-plus-core/tests/launcher.rs`
+- Create: `crates/codex-assistant-core/src/app_paths.rs`
+- Create: `crates/codex-assistant-core/src/ports.rs`
+- Create: `crates/codex-assistant-core/src/proxy.rs`
+- Create: `crates/codex-assistant-core/src/launcher.rs`
+- Modify: `apps/codex-assistant-launcher/src/main.rs`
+- Create: `crates/codex-assistant-core/tests/launcher.rs`
 
 - [ ] **Step 1: Port path and port tests**
 
@@ -657,14 +657,14 @@ It must:
 
 - [ ] **Step 5: Implement no-window launcher binary**
 
-`apps/codex-plus-launcher/src/main.rs` should call `launch_and_inject`. On Windows release builds, configure the binary as no-console if packaging requires it.
+`apps/codex-assistant-launcher/src/main.rs` should call `launch_and_inject`. On Windows release builds, configure the binary as no-console if packaging requires it.
 
 - [ ] **Step 6: Run launcher tests and commit**
 
 ```bash
-cargo test -p codex-plus-core launcher ports app_paths proxy
-cargo build -p codex-plus-launcher
-git add crates/codex-plus-core apps/codex-plus-launcher
+cargo test -p codex-assistant-core launcher ports app_paths proxy
+cargo build -p codex-assistant-launcher
+git add crates/codex-assistant-core apps/codex-assistant-launcher
 git commit -m "feat: add Rust silent launcher runtime"
 ```
 
@@ -673,10 +673,10 @@ git commit -m "feat: add Rust silent launcher runtime"
 ### Task 6: Bridge Route Parity
 
 **Files:**
-- Create: `crates/codex-plus-core/src/routes.rs`
-- Modify: `crates/codex-plus-core/src/bridge.rs`
-- Modify: `crates/codex-plus-core/Cargo.toml`
-- Create: `crates/codex-plus-core/tests/bridge_routes.rs`
+- Create: `crates/codex-assistant-core/src/routes.rs`
+- Modify: `crates/codex-assistant-core/src/bridge.rs`
+- Modify: `crates/codex-assistant-core/Cargo.toml`
+- Create: `crates/codex-assistant-core/tests/bridge_routes.rs`
 
 - [ ] **Step 1: Write route tests**
 
@@ -723,8 +723,8 @@ Connect delete/export/move/sort/provider/settings/status routes to Rust implemen
 - [ ] **Step 4: Run route tests and commit**
 
 ```bash
-cargo test -p codex-plus-core bridge_routes
-git add crates/codex-plus-core
+cargo test -p codex-assistant-core bridge_routes
+git add crates/codex-assistant-core
 git commit -m "feat: port bridge route handling to Rust"
 ```
 
@@ -733,12 +733,12 @@ git commit -m "feat: port bridge route handling to Rust"
 ### Task 7: Tauri Management Console
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/App.ts`
-- Create: `apps/codex-plus-manager/src/styles.css`
-- Modify: `apps/codex-plus-manager/src/main.tsx`
-- Modify: `apps/codex-plus-manager/src-tauri/src/lib.rs`
-- Create: `apps/codex-plus-manager/src-tauri/src/commands.rs`
-- Create: `apps/codex-plus-manager/src-tauri/src/install.rs`
+- Create: `apps/codex-assistant-manager/src/App.ts`
+- Create: `apps/codex-assistant-manager/src/styles.css`
+- Modify: `apps/codex-assistant-manager/src/main.tsx`
+- Modify: `apps/codex-assistant-manager/src-tauri/src/lib.rs`
+- Create: `apps/codex-assistant-manager/src-tauri/src/commands.rs`
+- Create: `apps/codex-assistant-manager/src-tauri/src/install.rs`
 
 - [ ] **Step 1: Implement Tauri commands**
 
@@ -804,7 +804,7 @@ Implement:
 - [ ] **Step 5: Build and smoke test**
 
 ```bash
-cd apps/codex-plus-manager
+cd apps/codex-assistant-manager
 npm install
 npm run check
 npm run build
@@ -815,7 +815,7 @@ Expected: TypeScript check passes and Tauri build succeeds.
 - [ ] **Step 6: Commit management console**
 
 ```bash
-git add apps/codex-plus-manager crates/codex-plus-core
+git add apps/codex-assistant-manager crates/codex-assistant-core
 git commit -m "feat: add Tauri management console"
 ```
 
@@ -824,14 +824,14 @@ git commit -m "feat: add Tauri management console"
 ### Task 8: Install, Uninstall, Update, And Watcher In Rust
 
 **Files:**
-- Create: `crates/codex-plus-core/src/install/windows.rs`
-- Create: `crates/codex-plus-core/src/install/macos.rs`
-- Create: `crates/codex-plus-core/src/install/mod.rs`
-- Create: `crates/codex-plus-core/src/update.rs`
-- Create: `crates/codex-plus-core/src/watcher.rs`
-- Modify: `crates/codex-plus-core/src/lib.rs`
-- Create: `crates/codex-plus-core/tests/installers.rs`
-- Create: `crates/codex-plus-core/tests/updater.rs`
+- Create: `crates/codex-assistant-core/src/install/windows.rs`
+- Create: `crates/codex-assistant-core/src/install/macos.rs`
+- Create: `crates/codex-assistant-core/src/install/mod.rs`
+- Create: `crates/codex-assistant-core/src/update.rs`
+- Create: `crates/codex-assistant-core/src/watcher.rs`
+- Modify: `crates/codex-assistant-core/src/lib.rs`
+- Create: `crates/codex-assistant-core/tests/installers.rs`
+- Create: `crates/codex-assistant-core/tests/updater.rs`
 
 - [ ] **Step 1: Port installer script tests**
 
@@ -862,7 +862,7 @@ CodexAssistant 管理工具.app
 
 - [ ] **Step 2: Implement Windows install/uninstall**
 
-Generate two shortcuts and one uninstall registry entry. The silent shortcut points to `codex-plus-plus.exe`; the management shortcut points to `codex-plus-plus-manager.exe`.
+Generate two shortcuts and one uninstall registry entry. The silent shortcut points to `codex-assistant.exe`; the management shortcut points to `codex-assistant-manager.exe`.
 
 - [ ] **Step 3: Implement macOS install/uninstall**
 
@@ -886,8 +886,8 @@ Port existing watcher behavior so management UI can install/remove/enable/disabl
 - [ ] **Step 6: Run tests and commit**
 
 ```bash
-cargo test -p codex-plus-core installers updater watcher
-git add crates/codex-plus-core
+cargo test -p codex-assistant-core installers updater watcher
+git add crates/codex-assistant-core
 git commit -m "feat: port install update and watcher management to Rust"
 ```
 
@@ -928,8 +928,8 @@ Make `setup.bat` open or install the Rust/Tauri management tool. It should not c
 Document release artifacts:
 
 ```text
-codex-plus-plus.exe
-codex-plus-plus-manager.exe
+codex-assistant.exe
+codex-assistant-manager.exe
 CodexAssistant.app
 CodexAssistant 管理工具.app
 ```
@@ -956,7 +956,7 @@ git commit -m "docs: document Rust Tauri entry points"
 
 ```bash
 cargo test --workspace --all-targets
-cd apps/codex-plus-manager
+cd apps/codex-assistant-manager
 npm run check
 npm run build
 ```
@@ -999,4 +999,4 @@ git commit -m "chore: remove Python backend after Rust migration"
 
 - Spec coverage: the plan covers Rust core, data operations, CDP bridge, silent launcher, Tauri management tool, two desktop entry points, install/uninstall/update, watcher, docs, verification, and Python removal.
 - Placeholder scan: no `TODO` or `TBD` placeholders are left. Tasks that are intentionally broad identify exact files, reference tests, expected APIs, and verification commands.
-- Type consistency: the plan consistently uses `codex-plus-launcher` for the no-window launcher and does not introduce a separate user-facing CLI.
+- Type consistency: the plan consistently uses `codex-assistant-launcher` for the no-window launcher and does not introduce a separate user-facing CLI.

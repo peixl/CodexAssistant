@@ -16,21 +16,21 @@
 
 ```
 CodexAssistant (桌面应用)
-  ├── codex-plus-plus (静默启动器 - Rust Binary)
+  ├── codex-assistant (静默启动器 - Rust Binary)
   │   └── 启动 Codex + CDP 注入 (无 UI)
   │
   ├── CodexAssistant Manager (Tauri GUI)
   │   ├── React 19 + TypeScript 前端
   │   └── Tauri 命令调用 Rust 后端
   │
-  ├── codex-plus-core (Rust Crate)
+  ├── codex-assistant-core (Rust Crate)
   │   ├── CDP 客户端
   │   ├── 中转 (Relay) 配置管理
   │   ├── Provider 切换
   │   ├── 用户脚本管理
   │   └── HTTP Bridge (127.0.0.1:57321)
   │
-  ├── codex-plus-data (Rust Crate)
+  ├── codex-assistant-data (Rust Crate)
   │   ├── SQLite 数据库操作
   │   ├── Markdown 导出
   │   ├── Provider Sync
@@ -67,12 +67,12 @@ CodexAssistant/
 │
 ├── 📂 apps/
 │   │
-│   ├── codex-plus-launcher/                  # 静默启动器 (codex-plus-plus)
+│   ├── codex-assistant-launcher/                  # 静默启动器 (codex-assistant)
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       └── main.rs (22KB)                # 启动逻辑、CDP 连接、脚本注入
 │   │
-│   └── codex-plus-manager/                   # Tauri 管理工具 (GUI)
+│   └── codex-assistant-manager/                   # Tauri 管理工具 (GUI)
 │       ├── package.json                      # Node.js 配置
 │       ├── tsconfig.json                     # strict: true
 │       ├── vite.config.ts                    # 前端构建
@@ -122,7 +122,7 @@ CodexAssistant/
 │               └── install.rs
 │
 ├── 📂 crates/
-│   ├── codex-plus-core/                      # 核心库 (11.4K 行 Rust)
+│   ├── codex-assistant-core/                      # 核心库 (11.4K 行 Rust)
 │   │   ├── src/
 │   │   │   ├── launcher.rs                   # 启动逻辑
 │   │   │   ├── cdp.rs                        # CDP 客户端
@@ -139,7 +139,7 @@ CodexAssistant/
 │   │   │   └── install/ (平台特定代码)
 │   │   └── tests/
 │   │
-│   └── codex-plus-data/                      # 数据库库 (1.85K 行 Rust)
+│   └── codex-assistant-data/                      # 数据库库 (1.85K 行 Rust)
 │       └── src/
 │           ├── SQLite 操作
 │           ├── Markdown 导出
@@ -168,31 +168,31 @@ CodexAssistant/
 
 ## 🔑 核心功能模块
 
-### 1. 静默启动器 (codex-plus-plus)
-- **文件**: `apps/codex-plus-launcher/src/main.rs`
+### 1. 静默启动器 (codex-assistant)
+- **文件**: `apps/codex-assistant-launcher/src/main.rs`
 - **大小**: 22KB
 - **功能**: 启动 Codex → 连接 CDP → 注入脚本
 
 ### 2. HTTP Helper Bridge
-- **文件**: `crates/codex-plus-core/src/bridge.rs`
+- **文件**: `crates/codex-assistant-core/src/bridge.rs`
 - **地址**: `127.0.0.1:57321`
 - **功能**: 注入脚本与后端通信的 HTTP 接口
 
 ### 3. 中转系统 (Relay)
-- **文件**: `crates/codex-plus-core/src/relay_config.rs`
+- **文件**: `crates/codex-assistant-core/src/relay_config.rs`
 - **功能**: 管理 `~/.codex/config.toml` 中的 Provider 配置
 
 ### 4. 用户脚本管理
-- **文件**: `crates/codex-plus-core/src/user_scripts.rs`
+- **文件**: `crates/codex-assistant-core/src/user_scripts.rs`
 - **功能**: 脚本 CRUD、启动后注入
 
 ### 5. 数据库操作
-- **文件**: `crates/codex-plus-data/src/`
+- **文件**: `crates/codex-assistant-data/src/`
 - **目标**: `~/.codex/state_5.sqlite`
 - **功能**: Markdown 导出、Provider Sync、备份恢复
 
 ### 6. Tauri 管理工具 GUI
-- **入口**: `apps/codex-plus-manager/src/App.tsx`
+- **入口**: `apps/codex-assistant-manager/src/App.tsx`
 - **框架**: React 19 + TypeScript
 - **功能**: 标签页布局，包含 8 个管理面板
 
@@ -202,8 +202,8 @@ CodexAssistant/
 
 | 组件 | 代码行数 | 语言 |
 |------|----------|------|
-| codex-plus-core | 11,426 | Rust |
-| codex-plus-data | 1,850 | Rust |
+| codex-assistant-core | 11,426 | Rust |
+| codex-assistant-data | 1,850 | Rust |
 | Tauri 命令集 | 64KB | Rust |
 | 启动器 | 22KB | Rust |
 | React UI | ~1,500+ | TypeScript |
@@ -234,10 +234,10 @@ CodexAssistant/
 
 ```bash
 # 安装依赖
-npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-assistant-manager ci
 
 # 构建前端
-npm --prefix apps/codex-plus-manager run vite:build
+npm --prefix apps/codex-assistant-manager run vite:build
 
 # 开发模式
 npm run dev
@@ -246,8 +246,8 @@ npm run dev
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npm --prefix apps/codex-plus-manager run check
-npm --prefix apps/codex-plus-manager run test
+npm --prefix apps/codex-assistant-manager run check
+npm --prefix apps/codex-assistant-manager run test
 ```
 
 ---

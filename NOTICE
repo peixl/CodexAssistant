@@ -22,7 +22,7 @@ re-branded, or "AI rewritten" versions), you MUST keep:
         https://github.com/peixl/CodexAssistant"
      in your own NOTICE / README / About dialog.
   3. The icon's embedded copyright metadata
-     (see docs/images/codex-plus-plus.svg).
+     (see docs/images/codex-assistant.svg).
 
 These requirements are stated explicitly so that downstream redistribution
 remains compatible with the MIT License and so that the original authorship

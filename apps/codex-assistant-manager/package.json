@@ -1,0 +1,37 @@
+{
+  "name": "codex-assistant",
+  "version": "1.1.5",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cargo build -p codex-assistant-launcher && tauri dev",
+    "build": "cargo build -p codex-assistant-launcher --release && tauri build",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "vite:dev": "vite --host 127.0.0.1 --port 1420",
+    "vite:build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.2",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.6.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "tailwindcss": "^4.0.0",
+    "vitest": "^4.1.7"
+  }
+}

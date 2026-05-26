@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 把 `apps/codex-plus-manager/src/App.tsx`（2952 行）重写为以"巨型启动按钮 + 默认增强"为核心的极简前端，保留 5 个面向小白的功能并把进阶能力折叠到抽屉。
+**Goal:** 把 `apps/codex-assistant-manager/src/App.tsx`（2952 行）重写为以"巨型启动按钮 + 默认增强"为核心的极简前端，保留 5 个面向小白的功能并把进阶能力折叠到抽屉。
 
 **Architecture:** 渲染层全新；后端 Tauri 命令面 0 改动。状态机用纯函数 reducer + 薄 hook 编排副作用，便于 vitest 单测。新文件全部 ≤ 250 行，按 `state/`、`screens/`、`drawers/`、`panels/`、`components/`、`lib/` 分层。
 
@@ -14,14 +14,14 @@
 
 ## Prelude: 工作目录、约束、术语
 
-**工作目录**：每个 `npm run xxx` 都必须从 `apps/codex-plus-manager/` 下运行。
+**工作目录**：每个 `npm run xxx` 都必须从 `apps/codex-assistant-manager/` 下运行。
 **命令前缀**：本计划里写的 `npm run X`，在仓库根目录执行时等价于
 ```bash
-(cd apps/codex-plus-manager && npm run X)
+(cd apps/codex-assistant-manager && npm run X)
 ```
 
 **保留的安全约束（来自前一个 PR）**：
-- 不动 `crates/codex-plus-core/src/launcher.rs`、`update.rs`、`script_market.rs` 的安全逻辑。
+- 不动 `crates/codex-assistant-core/src/launcher.rs`、`update.rs`、`script_market.rs` 的安全逻辑。
 - `helperFetch` 头 `X-Codex-Helper-Token` 由后端注入 ChatGPT 页面，前端不直接调；本计划不涉及。
 - 自动更新链路（sha256 校验）已在 PR 中实现，本计划仅做渲染层透传。
 
@@ -37,7 +37,7 @@
 - `uninstall_entrypoints({ options: InstallOptions })`
 - `perform_update({ release })`
 
-完整签名在 `apps/codex-plus-manager/src-tauri/src/commands.rs`，调用样本在 `apps/codex-plus-manager/src/App.tsx`（保留到 Task 11 才删）。
+完整签名在 `apps/codex-assistant-manager/src-tauri/src/commands.rs`，调用样本在 `apps/codex-assistant-manager/src/App.tsx`（保留到 Task 11 才删）。
 
 **5 态状态机术语**（贯穿全计划，禁止改名）：
 ```
@@ -68,7 +68,7 @@ type LauncherEvent =
 新增（按计划任务顺序）：
 
 ```
-apps/codex-plus-manager/
+apps/codex-assistant-manager/
   vitest.config.ts                                      ← Task 1
   src/
     lib/
@@ -103,27 +103,27 @@ docs/superpowers/specs/
   2026-05-23-beginner-ux-redesign-manual-smoke.md       ← Task 12
 ```
 
-替换：`apps/codex-plus-manager/src/App.tsx`（Task 11）。
+替换：`apps/codex-assistant-manager/src/App.tsx`（Task 11）。
 
 ---
 
 ## Task 1: 安装 vitest 并加最小配置
 
 **Files:**
-- Modify: `apps/codex-plus-manager/package.json`
-- Create: `apps/codex-plus-manager/vitest.config.ts`
+- Modify: `apps/codex-assistant-manager/package.json`
+- Create: `apps/codex-assistant-manager/vitest.config.ts`
 
-- [ ] **Step 1: 在 `apps/codex-plus-manager/` 下安装 vitest（不需要 jsdom，因为我们只测纯函数）**
+- [ ] **Step 1: 在 `apps/codex-assistant-manager/` 下安装 vitest（不需要 jsdom，因为我们只测纯函数）**
 
 Run:
 ```bash
-cd apps/codex-plus-manager && npm install --save-dev vitest@^3.0.0
+cd apps/codex-assistant-manager && npm install --save-dev vitest@^3.0.0
 ```
 Expected: 完成、`package.json` 更新、`package-lock.json` 出现。
 
 - [ ] **Step 2: 在 `package.json` 的 `scripts` 段追加 `test` 脚本**
 
-Edit `apps/codex-plus-manager/package.json`，在 `"vite:build": "vite build"` 一行后追加：
+Edit `apps/codex-assistant-manager/package.json`，在 `"vite:build": "vite build"` 一行后追加：
 ```json
 ,
     "test": "vitest run",
@@ -132,7 +132,7 @@ Edit `apps/codex-plus-manager/package.json`，在 `"vite:build": "vite build"` �
 
 - [ ] **Step 3: 写 `vitest.config.ts`（与 `vite.config.ts` 并列）**
 
-Create `apps/codex-plus-manager/vitest.config.ts`：
+Create `apps/codex-assistant-manager/vitest.config.ts`：
 ```ts
 import { defineConfig } from "vitest/config";
 import path from "node:path";
@@ -154,14 +154,14 @@ export default defineConfig({
 
 Run:
 ```bash
-cd apps/codex-plus-manager && npm run test
+cd apps/codex-assistant-manager && npm run test
 ```
 Expected: `No test files found` 或 `0 passed`，**退出码 0**。如果非 0，按报错修正 include 路径。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/codex-plus-manager/package.json apps/codex-plus-manager/package-lock.json apps/codex-plus-manager/vitest.config.ts
+git add apps/codex-assistant-manager/package.json apps/codex-assistant-manager/package-lock.json apps/codex-assistant-manager/vitest.config.ts
 git commit -m "chore(manager): add vitest for pure-function unit tests"
 ```
 
@@ -170,14 +170,14 @@ git commit -m "chore(manager): add vitest for pure-function unit tests"
 ## Task 2: 文案常量 + invoke 错误规整 + 单测
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/lib/text.ts`
-- Create: `apps/codex-plus-manager/src/lib/invoke.ts`
-- Create: `apps/codex-plus-manager/src/lib/invoke.test.ts`
+- Create: `apps/codex-assistant-manager/src/lib/text.ts`
+- Create: `apps/codex-assistant-manager/src/lib/invoke.ts`
+- Create: `apps/codex-assistant-manager/src/lib/invoke.test.ts`
 
 - [ ] **Step 1: 写文案常量 `text.ts`**
 
 ```ts
-// apps/codex-plus-manager/src/lib/text.ts
+// apps/codex-assistant-manager/src/lib/text.ts
 export const TEXT = {
   appName: "Codex Assistant",
   launcher: {
@@ -232,7 +232,7 @@ export const TEXT = {
 - [ ] **Step 2: 写 invoke 封装 `invoke.ts`**
 
 ```ts
-// apps/codex-plus-manager/src/lib/invoke.ts
+// apps/codex-assistant-manager/src/lib/invoke.ts
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { TEXT } from "./text";
 
@@ -273,7 +273,7 @@ export async function callSafe<T>(
 - [ ] **Step 3: 写失败测试 `invoke.test.ts`**
 
 ```ts
-// apps/codex-plus-manager/src/lib/invoke.test.ts
+// apps/codex-assistant-manager/src/lib/invoke.test.ts
 import { describe, expect, it } from "vitest";
 import { normalizeInvokeError } from "./invoke";
 
@@ -305,21 +305,21 @@ describe("normalizeInvokeError", () => {
 - [ ] **Step 4: 跑测试确认通过**
 
 ```bash
-cd apps/codex-plus-manager && npm run test
+cd apps/codex-assistant-manager && npm run test
 ```
 Expected: `4 passed`，退出码 0。
 
 - [ ] **Step 5: 跑 tsc 确认类型检查通过**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/lib/
+git add apps/codex-assistant-manager/src/lib/
 git commit -m "feat(manager): add text constants and invoke wrapper with normalized errors"
 ```
 
@@ -328,13 +328,13 @@ git commit -m "feat(manager): add text constants and invoke wrapper with normali
 ## Task 3: launcherMachine 纯状态机 + 5 态单测
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/state/launcherMachine.ts`
-- Create: `apps/codex-plus-manager/src/state/launcherMachine.test.ts`
+- Create: `apps/codex-assistant-manager/src/state/launcherMachine.ts`
+- Create: `apps/codex-assistant-manager/src/state/launcherMachine.test.ts`
 
 - [ ] **Step 1: 写状态机 `launcherMachine.ts`**
 
 ```ts
-// apps/codex-plus-manager/src/state/launcherMachine.ts
+// apps/codex-assistant-manager/src/state/launcherMachine.ts
 export type ProbeResult = {
   watcherInstalled: boolean;
   watcherEnabled: boolean;
@@ -394,7 +394,7 @@ export function launcherReducer(state: LauncherState, event: LauncherEvent): Lau
 - [ ] **Step 2: 写覆盖 5 态切换的失败测试**
 
 ```ts
-// apps/codex-plus-manager/src/state/launcherMachine.test.ts
+// apps/codex-assistant-manager/src/state/launcherMachine.test.ts
 import { describe, expect, it } from "vitest";
 import {
   deriveStateFromProbe,
@@ -483,21 +483,21 @@ describe("launcherReducer", () => {
 - [ ] **Step 3: 跑测试**
 
 ```bash
-cd apps/codex-plus-manager && npm run test
+cd apps/codex-assistant-manager && npm run test
 ```
 Expected: `13 passed`（4 + 9），退出码 0。
 
 - [ ] **Step 4: 跑 tsc**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/state/launcherMachine.ts apps/codex-plus-manager/src/state/launcherMachine.test.ts
+git add apps/codex-assistant-manager/src/state/launcherMachine.ts apps/codex-assistant-manager/src/state/launcherMachine.test.ts
 git commit -m "feat(manager): add launcher state machine with 5-state reducer"
 ```
 
@@ -506,14 +506,14 @@ git commit -m "feat(manager): add launcher state machine with 5-state reducer"
 ## Task 4: useBackend / useLauncherMachine / useUpdateProbe hooks
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/state/useBackend.ts`
-- Create: `apps/codex-plus-manager/src/state/useLauncherMachine.ts`
-- Create: `apps/codex-plus-manager/src/state/useUpdateProbe.ts`
+- Create: `apps/codex-assistant-manager/src/state/useBackend.ts`
+- Create: `apps/codex-assistant-manager/src/state/useLauncherMachine.ts`
+- Create: `apps/codex-assistant-manager/src/state/useUpdateProbe.ts`
 
 - [ ] **Step 1: 写 useBackend hook**
 
 ```ts
-// apps/codex-plus-manager/src/state/useBackend.ts
+// apps/codex-assistant-manager/src/state/useBackend.ts
 import { useCallback, useEffect, useState } from "react";
 import { callSafe, type NormalizedError } from "@/lib/invoke";
 import type { ProbeResult } from "./launcherMachine";
@@ -601,7 +601,7 @@ export function useBackend() {
 - [ ] **Step 2: 写 useLauncherMachine hook**
 
 ```ts
-// apps/codex-plus-manager/src/state/useLauncherMachine.ts
+// apps/codex-assistant-manager/src/state/useLauncherMachine.ts
 import { useCallback, useEffect, useReducer } from "react";
 import { callSafe } from "@/lib/invoke";
 import {
@@ -691,7 +691,7 @@ export function useLauncherMachine(deps: LauncherDeps): {
 - [ ] **Step 3: 写 useUpdateProbe hook**
 
 ```ts
-// apps/codex-plus-manager/src/state/useUpdateProbe.ts
+// apps/codex-assistant-manager/src/state/useUpdateProbe.ts
 import { useEffect, useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -733,21 +733,21 @@ export function useUpdateProbe(delayMs = 5000): UpdateInfo | null {
 - [ ] **Step 4: 跑 tsc 确认类型通过**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 5: 跑 vitest 确认没回归**
 
 ```bash
-cd apps/codex-plus-manager && npm run test
+cd apps/codex-assistant-manager && npm run test
 ```
 Expected: 13 passed。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/state/
+git add apps/codex-assistant-manager/src/state/
 git commit -m "feat(manager): add useBackend / useLauncherMachine / useUpdateProbe hooks"
 ```
 
@@ -756,16 +756,16 @@ git commit -m "feat(manager): add useBackend / useLauncherMachine / useUpdatePro
 ## Task 5: 通用 Drawer + 5 个原子组件
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/components/Drawer.tsx`
-- Create: `apps/codex-plus-manager/src/components/LauncherButton.tsx`
-- Create: `apps/codex-plus-manager/src/components/CapabilityChips.tsx`
-- Create: `apps/codex-plus-manager/src/components/UpdateBanner.tsx`
-- Create: `apps/codex-plus-manager/src/components/AccountStatusCard.tsx`
+- Create: `apps/codex-assistant-manager/src/components/Drawer.tsx`
+- Create: `apps/codex-assistant-manager/src/components/LauncherButton.tsx`
+- Create: `apps/codex-assistant-manager/src/components/CapabilityChips.tsx`
+- Create: `apps/codex-assistant-manager/src/components/UpdateBanner.tsx`
+- Create: `apps/codex-assistant-manager/src/components/AccountStatusCard.tsx`
 
 - [ ] **Step 1: Drawer.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/components/Drawer.tsx
+// apps/codex-assistant-manager/src/components/Drawer.tsx
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 
@@ -808,7 +808,7 @@ export function Drawer({
 - [ ] **Step 2: LauncherButton.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/components/LauncherButton.tsx
+// apps/codex-assistant-manager/src/components/LauncherButton.tsx
 import { Loader2, Rocket, AlertTriangle, ArrowRight } from "lucide-react";
 import type { LauncherState } from "@/state/launcherMachine";
 import { TEXT } from "@/lib/text";
@@ -861,7 +861,7 @@ export function LauncherButton({
 - [ ] **Step 3: CapabilityChips.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/components/CapabilityChips.tsx
+// apps/codex-assistant-manager/src/components/CapabilityChips.tsx
 import { Check } from "lucide-react";
 import { TEXT } from "@/lib/text";
 
@@ -889,7 +889,7 @@ export function CapabilityChips() {
 - [ ] **Step 4: UpdateBanner.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/components/UpdateBanner.tsx
+// apps/codex-assistant-manager/src/components/UpdateBanner.tsx
 import { TEXT } from "@/lib/text";
 import type { UpdateInfo } from "@/state/useUpdateProbe";
 
@@ -915,7 +915,7 @@ export function UpdateBanner({
 - [ ] **Step 5: AccountStatusCard.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/components/AccountStatusCard.tsx
+// apps/codex-assistant-manager/src/components/AccountStatusCard.tsx
 import { UserCircle2 } from "lucide-react";
 import { TEXT } from "@/lib/text";
 import type { RelayKind } from "@/state/useLauncherMachine";
@@ -947,14 +947,14 @@ export function AccountStatusCard({
 - [ ] **Step 6: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 7: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/components/Drawer.tsx apps/codex-plus-manager/src/components/LauncherButton.tsx apps/codex-plus-manager/src/components/CapabilityChips.tsx apps/codex-plus-manager/src/components/UpdateBanner.tsx apps/codex-plus-manager/src/components/AccountStatusCard.tsx
+git add apps/codex-assistant-manager/src/components/Drawer.tsx apps/codex-assistant-manager/src/components/LauncherButton.tsx apps/codex-assistant-manager/src/components/CapabilityChips.tsx apps/codex-assistant-manager/src/components/UpdateBanner.tsx apps/codex-assistant-manager/src/components/AccountStatusCard.tsx
 git commit -m "feat(manager): add launcher / drawer / chips / banner / account-status components"
 ```
 
@@ -963,12 +963,12 @@ git commit -m "feat(manager): add launcher / drawer / chips / banner / account-s
 ## Task 6: Home 屏
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/screens/Home.tsx`
+- Create: `apps/codex-assistant-manager/src/screens/Home.tsx`
 
 - [ ] **Step 1: 写 Home.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/screens/Home.tsx
+// apps/codex-assistant-manager/src/screens/Home.tsx
 import { Settings } from "lucide-react";
 import { TEXT } from "@/lib/text";
 import { LauncherButton } from "@/components/LauncherButton";
@@ -1027,14 +1027,14 @@ export function Home({
 - [ ] **Step 2: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/screens/Home.tsx
+git add apps/codex-assistant-manager/src/screens/Home.tsx
 git commit -m "feat(manager): add Home screen composition"
 ```
 
@@ -1043,12 +1043,12 @@ git commit -m "feat(manager): add Home screen composition"
 ## Task 7: AccountDrawer（中转 / API Key 切换）
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/drawers/AccountDrawer.tsx`
+- Create: `apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx`
 
 - [ ] **Step 1: 写 AccountDrawer.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/drawers/AccountDrawer.tsx
+// apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx
 import { useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { TEXT } from "@/lib/text";
@@ -1143,19 +1143,19 @@ export function AccountDrawer({
 }
 ```
 
-> 字段名 `officialMixApiKey` / `officialMixBaseUrl` 已与 `BackendSettings`（`crates/codex-plus-core/src/settings.rs`）一致。若 tsc 报字段不匹配，按真实 settings 字段名修正——保持单点修改即可。
+> 字段名 `officialMixApiKey` / `officialMixBaseUrl` 已与 `BackendSettings`（`crates/codex-assistant-core/src/settings.rs`）一致。若 tsc 报字段不匹配，按真实 settings 字段名修正——保持单点修改即可。
 
 - [ ] **Step 2: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/drawers/AccountDrawer.tsx
+git add apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx
 git commit -m "feat(manager): add AccountDrawer with ChatGPT / API Key two-option switch"
 ```
 
@@ -1164,14 +1164,14 @@ git commit -m "feat(manager): add AccountDrawer with ChatGPT / API Key two-optio
 ## Task 8: panels 1/2 — Scripts / Providers / EntryPoints
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/panels/ScriptsPanel.tsx`
-- Create: `apps/codex-plus-manager/src/panels/ProvidersPanel.tsx`
-- Create: `apps/codex-plus-manager/src/panels/EntryPointsPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/ScriptsPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/ProvidersPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/EntryPointsPanel.tsx`
 
 - [ ] **Step 1: ScriptsPanel.tsx（脚本市场，最小版）**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/ScriptsPanel.tsx
+// apps/codex-assistant-manager/src/panels/ScriptsPanel.tsx
 import { useEffect, useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1232,7 +1232,7 @@ export function ScriptsPanel() {
 - [ ] **Step 2: ProvidersPanel.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/ProvidersPanel.tsx
+// apps/codex-assistant-manager/src/panels/ProvidersPanel.tsx
 import { useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1274,7 +1274,7 @@ export function ProvidersPanel() {
 - [ ] **Step 3: EntryPointsPanel.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/EntryPointsPanel.tsx
+// apps/codex-assistant-manager/src/panels/EntryPointsPanel.tsx
 import { useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1314,14 +1314,14 @@ export function EntryPointsPanel() {
 - [ ] **Step 4: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/panels/ScriptsPanel.tsx apps/codex-plus-manager/src/panels/ProvidersPanel.tsx apps/codex-plus-manager/src/panels/EntryPointsPanel.tsx
+git add apps/codex-assistant-manager/src/panels/ScriptsPanel.tsx apps/codex-assistant-manager/src/panels/ProvidersPanel.tsx apps/codex-assistant-manager/src/panels/EntryPointsPanel.tsx
 git commit -m "feat(manager): add Scripts / Providers / EntryPoints panels"
 ```
 
@@ -1330,14 +1330,14 @@ git commit -m "feat(manager): add Scripts / Providers / EntryPoints panels"
 ## Task 9: panels 2/2 — Diagnostics / RelayAdvanced / About
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/panels/DiagnosticsPanel.tsx`
-- Create: `apps/codex-plus-manager/src/panels/RelayAdvancedPanel.tsx`
-- Create: `apps/codex-plus-manager/src/panels/AboutPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/DiagnosticsPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/RelayAdvancedPanel.tsx`
+- Create: `apps/codex-assistant-manager/src/panels/AboutPanel.tsx`
 
 - [ ] **Step 1: DiagnosticsPanel.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/DiagnosticsPanel.tsx
+// apps/codex-assistant-manager/src/panels/DiagnosticsPanel.tsx
 import { useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1370,7 +1370,7 @@ export function DiagnosticsPanel() {
 - [ ] **Step 2: RelayAdvancedPanel.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/RelayAdvancedPanel.tsx
+// apps/codex-assistant-manager/src/panels/RelayAdvancedPanel.tsx
 import { useEffect, useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1429,7 +1429,7 @@ export function RelayAdvancedPanel() {
 - [ ] **Step 3: AboutPanel.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/panels/AboutPanel.tsx
+// apps/codex-assistant-manager/src/panels/AboutPanel.tsx
 import { useEffect, useState } from "react";
 import { callSafe } from "@/lib/invoke";
 
@@ -1470,14 +1470,14 @@ export function AboutPanel() {
 - [ ] **Step 4: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/panels/DiagnosticsPanel.tsx apps/codex-plus-manager/src/panels/RelayAdvancedPanel.tsx apps/codex-plus-manager/src/panels/AboutPanel.tsx
+git add apps/codex-assistant-manager/src/panels/DiagnosticsPanel.tsx apps/codex-assistant-manager/src/panels/RelayAdvancedPanel.tsx apps/codex-assistant-manager/src/panels/AboutPanel.tsx
 git commit -m "feat(manager): add Diagnostics / RelayAdvanced / About panels"
 ```
 
@@ -1486,12 +1486,12 @@ git commit -m "feat(manager): add Diagnostics / RelayAdvanced / About panels"
 ## Task 10: MoreDrawer 聚合 6 个 panels
 
 **Files:**
-- Create: `apps/codex-plus-manager/src/drawers/MoreDrawer.tsx`
+- Create: `apps/codex-assistant-manager/src/drawers/MoreDrawer.tsx`
 
 - [ ] **Step 1: 写 MoreDrawer.tsx**
 
 ```tsx
-// apps/codex-plus-manager/src/drawers/MoreDrawer.tsx
+// apps/codex-assistant-manager/src/drawers/MoreDrawer.tsx
 import { type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Drawer } from "@/components/Drawer";
@@ -1534,14 +1534,14 @@ export function MoreDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 - [ ] **Step 2: tsc 验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/drawers/MoreDrawer.tsx
+git add apps/codex-assistant-manager/src/drawers/MoreDrawer.tsx
 git commit -m "feat(manager): add MoreDrawer aggregating six collapsible panels"
 ```
 
@@ -1550,12 +1550,12 @@ git commit -m "feat(manager): add MoreDrawer aggregating six collapsible panels"
 ## Task 11: 替换 App.tsx 编排一切 + 接通自动更新
 
 **Files:**
-- Replace contents of: `apps/codex-plus-manager/src/App.tsx`
+- Replace contents of: `apps/codex-assistant-manager/src/App.tsx`
 
 - [ ] **Step 1: 用新 App.tsx 完整替换旧 2952 行**
 
 ```tsx
-// apps/codex-plus-manager/src/App.tsx
+// apps/codex-assistant-manager/src/App.tsx
 import { useCallback, useMemo, useState } from "react";
 import { Home } from "@/screens/Home";
 import { AccountDrawer } from "@/drawers/AccountDrawer";
@@ -1652,28 +1652,28 @@ export function App() {
 - [ ] **Step 2: 跑 tsc——这是大检查点**
 
 ```bash
-cd apps/codex-plus-manager && npm run check
+cd apps/codex-assistant-manager && npm run check
 ```
 Expected: 0 错误。如果有，按报错修正（**只可能是 normalize 字段名不匹配，所有调整点都集中在 `useBackend.ts` 和 `useUpdateProbe.ts` 里**）。
 
 - [ ] **Step 3: 跑 vitest 确保状态机测试仍过**
 
 ```bash
-cd apps/codex-plus-manager && npm run test
+cd apps/codex-assistant-manager && npm run test
 ```
 Expected: 13 passed。
 
 - [ ] **Step 4: 跑 vite build 验证打包**
 
 ```bash
-cd apps/codex-plus-manager && npm run vite:build
+cd apps/codex-assistant-manager && npm run vite:build
 ```
 Expected: 成功，无错误。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/codex-plus-manager/src/App.tsx
+git add apps/codex-assistant-manager/src/App.tsx
 git commit -m "feat(manager): replace App.tsx with launcher-first composition"
 ```
 
@@ -1722,7 +1722,7 @@ git commit -m "feat(manager): replace App.tsx with launcher-first composition"
 
 ## 7. 反馈包导出
 - 「更多设置」→「反馈包导出」→ 导出。
-- 桌面出现 `codex-plus-diagnostics-*.zip`。
+- 桌面出现 `codex-assistant-diagnostics-*.zip`。
 
 ## 8. 重置
 - 「更多设置」→「关于 / 重置」→ 重置所有设置。
@@ -1742,12 +1742,12 @@ git commit -m "docs: add manual smoke test for beginner UX redesign"
 ## Task 13: 终验证 + 旧依赖清理
 
 **Files:**
-- 仅检查；可能 Modify: `apps/codex-plus-manager/package.json`
+- 仅检查；可能 Modify: `apps/codex-assistant-manager/package.json`
 
 - [ ] **Step 1: 全量前端检查**
 
 ```bash
-cd apps/codex-plus-manager && npm run check && npm run test && npm run vite:build
+cd apps/codex-assistant-manager && npm run check && npm run test && npm run vite:build
 ```
 Expected: 全部 0 错误，build 成功。
 
@@ -1762,33 +1762,33 @@ Expected: clippy 0 警告；测试全过（与上一个 PR 一致的 256 通过�
 - [ ] **Step 3: 检查未使用的前端依赖**
 
 ```bash
-cd apps/codex-plus-manager && grep -rE "from \"@dnd-kit|from \"@radix-ui|from \"@tauri-apps/plugin-dialog\"" src/
+cd apps/codex-assistant-manager && grep -rE "from \"@dnd-kit|from \"@radix-ui|from \"@tauri-apps/plugin-dialog\"" src/
 ```
 Expected: 输出为空 → 这些依赖在新前端里全部未引用。
 
 - [ ] **Step 4: 移除未使用的前端依赖（基于 Step 3 结果）**
 
-如果 Step 3 输出为空，从 `apps/codex-plus-manager/package.json` 的 `dependencies` 删除：`@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`、`@radix-ui/react-slot`、`@tauri-apps/plugin-dialog`。
+如果 Step 3 输出为空，从 `apps/codex-assistant-manager/package.json` 的 `dependencies` 删除：`@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`、`@radix-ui/react-slot`、`@tauri-apps/plugin-dialog`。
 
 > 注：`class-variance-authority`、`clsx`、`tailwind-merge`、`lucide-react` 仍被 `components/ui/*` 间接使用，保留。
 
 Run:
 ```bash
-cd apps/codex-plus-manager && npm install
+cd apps/codex-assistant-manager && npm install
 ```
 Expected: lockfile 更新，无错误。
 
 - [ ] **Step 5: 再跑一次完整验证**
 
 ```bash
-cd apps/codex-plus-manager && npm run check && npm run test && npm run vite:build
+cd apps/codex-assistant-manager && npm run check && npm run test && npm run vite:build
 ```
 Expected: 全部通过。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add apps/codex-plus-manager/package.json apps/codex-plus-manager/package-lock.json
+git add apps/codex-assistant-manager/package.json apps/codex-assistant-manager/package-lock.json
 git commit -m "chore(manager): drop unused frontend deps after launcher-first rewrite"
 ```
 
@@ -1797,16 +1797,16 @@ git commit -m "chore(manager): drop unused frontend deps after launcher-first re
 ## 完成条件
 
 - [ ] 所有 13 个 task 的 commit 都已落地。
-- [ ] `cd apps/codex-plus-manager && npm run check` 0 错误。
-- [ ] `cd apps/codex-plus-manager && npm run test` ≥ 13 个测试通过。
-- [ ] `cd apps/codex-plus-manager && npm run vite:build` 成功。
+- [ ] `cd apps/codex-assistant-manager && npm run check` 0 错误。
+- [ ] `cd apps/codex-assistant-manager && npm run test` ≥ 13 个测试通过。
+- [ ] `cd apps/codex-assistant-manager && npm run vite:build` 成功。
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings` 0 警告。
 - [ ] `cargo test --workspace` 256+ 通过。
 - [ ] 手测 `docs/superpowers/specs/2026-05-23-beginner-ux-redesign-manual-smoke.md` 8 项全 PASS。
 
 ## 越界禁止
 
-- 不动 `crates/codex-plus-core/` 任何文件。
-- 不动 `apps/codex-plus-manager/src-tauri/` 任何 Rust 文件。
+- 不动 `crates/codex-assistant-core/` 任何文件。
+- 不动 `apps/codex-assistant-manager/src-tauri/` 任何 Rust 文件。
 - 不引入新的前端 UI 库（不加 Radix Dialog、不加 Headless UI、不加 Zustand、不加 SWR）。
 - 不写 i18n（中文一套）。

@@ -8,15 +8,15 @@ DIST="$ROOT/dist/macos"
 STAGE="$DIST/stage"
 BINARY_DIR="${BINARY_DIR:-$ROOT/target/release}"
 DMG="$DIST/CodexAssistant-${VERSION}-macos-${ARCH}.dmg"
-ICON_SOURCE="$ROOT/apps/codex-plus-manager/src-tauri/icons/icon.png"
-ICON_NAME="codex-plus-plus.icns"
+ICON_SOURCE="$ROOT/apps/codex-assistant-manager/src-tauri/icons/icon.png"
+ICON_NAME="codex-assistant.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
 
 rm -rf "$DIST"
 mkdir -p "$STAGE"
 
 prepare_icon() {
-  local iconset="$DIST/codex-plus-plus.iconset"
+  local iconset="$DIST/codex-assistant.iconset"
   rm -rf "$iconset"
   mkdir -p "$iconset"
 
@@ -77,8 +77,8 @@ PLIST
 }
 
 prepare_icon
-create_app "CodexAssistant" "CodexAssistant" "$BINARY_DIR/codex-plus-plus" "ai.ifq.codexassistant" "true"
-create_app "CodexAssistant 管理工具" "CodexAssistantManager" "$BINARY_DIR/codex-plus-plus-manager" "ai.ifq.codexassistant.manager" "false"
+create_app "CodexAssistant" "CodexAssistant" "$BINARY_DIR/codex-assistant" "ai.ifq.codexassistant" "true"
+create_app "CodexAssistant 管理工具" "CodexAssistantManager" "$BINARY_DIR/codex-assistant-manager" "ai.ifq.codexassistant.manager" "false"
 
 hdiutil create -volname "CodexAssistant" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
 echo "$DMG"

@@ -34,8 +34,8 @@ VIAddVersionKey  "LegalCopyright"  "© ${PUBLISHER}"
 VIAddVersionKey  "FileDescription" "${APP_NAME} Setup"
 VIAddVersionKey  "OriginalFilename" "${APP_NAME}-${VERSION}-windows-x64-setup.exe"
 
-!define MUI_ICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
-!define MUI_UNICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
+!define MUI_ICON "${ROOT}\apps\codex-assistant-manager\src-tauri\icons\icon.ico"
+!define MUI_UNICON "${ROOT}\apps\codex-assistant-manager\src-tauri\icons\icon.ico"
 !define MUI_ABORTWARNING
 
 ; Remember the chosen UI language across runs
@@ -44,7 +44,7 @@ VIAddVersionKey  "OriginalFilename" "${APP_NAME}-${VERSION}-windows-x64-setup.ex
 !define MUI_LANGDLL_REGISTRY_VALUENAME "InstallerLanguage"
 
 ; Offer to run the manager after install
-!define MUI_FINISHPAGE_RUN "$INSTDIR\codex-plus-plus-manager.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\codex-assistant-manager.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "启动 CodexAssistant 管理工具"
 
 !insertmacro MUI_PAGE_WELCOME
@@ -60,9 +60,9 @@ VIAddVersionKey  "OriginalFilename" "${APP_NAME}-${VERSION}-windows-x64-setup.ex
 ; Helper: kill running app instances and wait for handles to release
 ; -----------------------------------------------------------------------------
 !macro KillRunningInstances
-  nsExec::Exec 'taskkill /IM codex-plus-plus.exe /F'
+  nsExec::Exec 'taskkill /IM codex-assistant.exe /F'
   Pop $0
-  nsExec::Exec 'taskkill /IM codex-plus-plus-manager.exe /F'
+  nsExec::Exec 'taskkill /IM codex-assistant-manager.exe /F'
   Pop $0
   ; Give the OS time to release the executable handles before we touch the files
   Sleep 1500
@@ -90,21 +90,21 @@ Section "Install"
   !insertmacro KillRunningInstances
 
   ; Delete first so File can write even if a stale handle lingers
-  Delete "$INSTDIR\codex-plus-plus.exe"
-  Delete "$INSTDIR\codex-plus-plus-manager.exe"
+  Delete "$INSTDIR\codex-assistant.exe"
+  Delete "$INSTDIR\codex-assistant-manager.exe"
 
-  File "${ROOT}\dist\windows\app\codex-plus-plus.exe"
-  File "${ROOT}\dist\windows\app\codex-plus-plus-manager.exe"
+  File "${ROOT}\dist\windows\app\codex-assistant.exe"
+  File "${ROOT}\dist\windows\app\codex-assistant-manager.exe"
 
   ; Clean up legacy GBK-mangled shortcut filenames from older installs
   Delete "$DESKTOP\CodexAssistant 绠＄悊宸ュ叿.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\CodexAssistant 绠＄悊宸ュ叿.lnk"
 
-  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\codex-plus-plus.exe" "" "$INSTDIR\codex-plus-plus.exe"
-  CreateShortcut "$DESKTOP\${APP_NAME} 管理工具.lnk" "$INSTDIR\codex-plus-plus-manager.exe" "" "$INSTDIR\codex-plus-plus-manager.exe"
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\codex-assistant.exe" "" "$INSTDIR\codex-assistant.exe"
+  CreateShortcut "$DESKTOP\${APP_NAME} 管理工具.lnk" "$INSTDIR\codex-assistant-manager.exe" "" "$INSTDIR\codex-assistant-manager.exe"
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\codex-plus-plus.exe" "" "$INSTDIR\codex-plus-plus.exe"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME} 管理工具.lnk" "$INSTDIR\codex-plus-plus-manager.exe" "" "$INSTDIR\codex-plus-plus-manager.exe"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\codex-assistant.exe" "" "$INSTDIR\codex-assistant.exe"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME} 管理工具.lnk" "$INSTDIR\codex-assistant-manager.exe" "" "$INSTDIR\codex-assistant-manager.exe"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -119,7 +119,7 @@ Section "Install"
   WriteRegStr   HKCU "${UNINST_KEY}" "DisplayName"     "${APP_NAME}"
   WriteRegStr   HKCU "${UNINST_KEY}" "DisplayVersion"  "${VERSION}"
   WriteRegStr   HKCU "${UNINST_KEY}" "Publisher"       "${PUBLISHER}"
-  WriteRegStr   HKCU "${UNINST_KEY}" "DisplayIcon"     "$INSTDIR\codex-plus-plus-manager.exe"
+  WriteRegStr   HKCU "${UNINST_KEY}" "DisplayIcon"     "$INSTDIR\codex-assistant-manager.exe"
   WriteRegStr   HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr   HKCU "${UNINST_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr   HKCU "${UNINST_KEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
@@ -131,9 +131,9 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
-  nsExec::Exec 'taskkill /IM codex-plus-plus.exe /F'
+  nsExec::Exec 'taskkill /IM codex-assistant.exe /F'
   Pop $0
-  nsExec::Exec 'taskkill /IM codex-plus-plus-manager.exe /F'
+  nsExec::Exec 'taskkill /IM codex-assistant-manager.exe /F'
   Pop $0
   Sleep 1000
 
@@ -146,8 +146,8 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk"
   RMDir  "$SMPROGRAMS\${APP_NAME}"
 
-  Delete "$INSTDIR\codex-plus-plus.exe"
-  Delete "$INSTDIR\codex-plus-plus-manager.exe"
+  Delete "$INSTDIR\codex-assistant.exe"
+  Delete "$INSTDIR\codex-assistant-manager.exe"
   Delete "$INSTDIR\uninstall.exe"
   RMDir  "$INSTDIR"
 

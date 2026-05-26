@@ -3,7 +3,7 @@
 **Date:** 2026-05-23
 **Owner:** peixl
 **Status:** Approved (head-of-conversation 2026-05-23)
-**Scope:** Frontend (`apps/codex-plus-manager/src/`) full rewrite. Rust/Tauri backend unchanged.
+**Scope:** Frontend (`apps/codex-assistant-manager/src/`) full rewrite. Rust/Tauri backend unchanged.
 
 ## 1. Goal
 
@@ -142,7 +142,7 @@
 
 ## 9. 文件结构（前端重写）
 
-`apps/codex-plus-manager/src/`：
+`apps/codex-assistant-manager/src/`：
 
 ```
 src/

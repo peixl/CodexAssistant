@@ -28,8 +28,8 @@ closed without review.
 
 - [ ] `cargo test --workspace` passes locally
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings` is clean
-- [ ] `npm --prefix apps/codex-plus-manager run check` passes
-- [ ] `npm --prefix apps/codex-plus-manager run test` passes
+- [ ] `npm --prefix apps/codex-assistant-manager run check` passes
+- [ ] `npm --prefix apps/codex-assistant-manager run test` passes
 - [ ] Manually tested on the affected platform(s) above
 
 ## Linked issues

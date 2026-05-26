@@ -781,7 +781,7 @@ In `codex_session_delete/inject/renderer-inject.js`, after `function setCodexPlu
   }
 
   function refreshCodexPlusBackendToggles() {
-    document.querySelectorAll(".codex-plus-toggle[data-codex-backend-setting]").forEach((button) => {
+    document.querySelectorAll(".codex-assistant-toggle[data-codex-backend-setting]").forEach((button) => {
       const key = button.getAttribute("data-codex-backend-setting");
       button.dataset.enabled = String(!!codexPlusBackendSettings[key]);
     });
@@ -793,15 +793,15 @@ In `codex_session_delete/inject/renderer-inject.js`, after `function setCodexPlu
 In the existing settings rows near `conversationTimeline`, add:
 
 ```html
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">Provider 同步</div><div class="codex-plus-row-description">启动 Codex 前同步历史会话到当前 model_provider。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-backend-setting="providerSyncEnabled"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">Provider 同步</div><div class="codex-assistant-row-description">启动 Codex 前同步历史会话到当前 model_provider。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-backend-setting="providerSyncEnabled"><span></span></button>
             </div>
 ```
 
 - [ ] **Step 5: Wire click handler and initial load**
 
-In the CodexAssistant menu click handler, after existing `[data-codex-plus-setting]` handling, add:
+In the CodexAssistant menu click handler, after existing `[data-codex-assistant-setting]` handling, add:
 
 ```javascript
       const backendToggle = target?.closest("[data-codex-backend-setting]");
@@ -852,7 +852,7 @@ Run:
 python -m pytest -q tests/test_settings_store.py tests/test_provider_sync.py tests/test_launcher_user_scripts.py tests/test_launcher_cli.py tests/test_renderer_script.py
 ```
 
-Expected: all focused tests pass. If `tests/test_renderer_script.py` fails on the pre-existing `right: 140px` assertion, update that assertion to accept `right: var(--codex-plus-menu-right, 140px)` because the current source uses the CSS variable from commit `9ab834f`.
+Expected: all focused tests pass. If `tests/test_renderer_script.py` fails on the pre-existing `right: 140px` assertion, update that assertion to accept `right: var(--codex-assistant-menu-right, 140px)` because the current source uses the CSS variable from commit `9ab834f`.
 
 - [ ] **Step 2: Run full test suite**
 

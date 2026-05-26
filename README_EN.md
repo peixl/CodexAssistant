@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
+<img src="docs/images/codex-assistant.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
 
 # CodexAssistant
 
@@ -29,7 +29,7 @@ The system is built from three pieces — a **Rust silent launcher**, a **Tauri 
 
 - 🚀 **Zero-touch injection** — CDP-attaches to a running Codex process. No `app.asar` patching, no DLLs written into the Codex install directory.
 - 🔌 **Relay injection** — Writes an OpenAI Responses-compatible relay profile into `~/.codex/config.toml` as a dedicated provider; switch between multiple relay profiles and revert to the official ChatGPT login mode with one click.
-- ⚡ **Silent launcher** — `codex-plus-plus`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
+- ⚡ **Silent launcher** — `codex-assistant`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
 - 🎛️ **Tauri manager** — React 19 + TypeScript (strict) frontend with a Rust backend. Includes Diagnostics, Logs, Settings, Relay Injection, User Scripts, and Provider Sync panels with dark/light themes.
 - 🧩 **Enhancements** — Plugin entry unlock, forced install for restricted plugins, session delete, Markdown export, project move, Timeline, recommended content.
 - 📜 **User scripts** — Managed independently and injected after Codex starts.
@@ -58,13 +58,13 @@ You'll end up with two entry points:
 
 ```
 ┌─────────────────────────┐         ┌──────────────────────────┐
-│   CodexAssistant Manager │  IPC    │   codex-plus-plus.exe    │
+│   CodexAssistant Manager │  IPC    │   codex-assistant.exe    │
 │   (Tauri: Rust + React)  │◀──────▶│   Silent launcher (Rust)  │
 └────────────┬─────────────┘  HTTP  └─────────────┬────────────┘
              │ tauri commands                     │ spawn + monitor
              ▼                                    ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-core (Rust crate)           │
+   │            codex-assistant-core (Rust crate)           │
    │  · launcher / single-instance guard               │
    │  · CDP client + renderer-inject.js bootstrap      │
    │  · relay config writer & provider switcher        │
@@ -74,7 +74,7 @@ You'll end up with two entry points:
                     │ uses
                     ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-data (Rust crate)           │
+   │            codex-assistant-data (Rust crate)           │
    │  · SQLite adapter for ~/.codex/state_5.sqlite     │
    │  · Markdown export / Provider Sync                │
    │  · transactional backup + undo                    │
@@ -161,10 +161,10 @@ registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
 
 ```bash
 # 1. Install frontend deps
-npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-assistant-manager ci
 
 # 2. Build the frontend — tauri::generate_context! reads dist/ at compile time
-npm --prefix apps/codex-plus-manager run vite:build
+npm --prefix apps/codex-assistant-manager run vite:build
 
 # 3. Build all Rust artefacts (silent launcher + manager)
 cargo build --release
@@ -173,7 +173,7 @@ cargo build --release
 ### Run the manager in dev mode
 
 ```bash
-npm --prefix apps/codex-plus-manager run dev
+npm --prefix apps/codex-assistant-manager run dev
 ```
 
 ### Full local check (same gates as CI)
@@ -182,8 +182,8 @@ npm --prefix apps/codex-plus-manager run dev
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npm --prefix apps/codex-plus-manager run check
-npm --prefix apps/codex-plus-manager run test
+npm --prefix apps/codex-assistant-manager run check
+npm --prefix apps/codex-assistant-manager run test
 ```
 
 ### Project layout
@@ -191,14 +191,14 @@ npm --prefix apps/codex-plus-manager run test
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/     Silent launcher binary (codex-plus-plus)
-│   └── codex-plus-manager/      Tauri manager
+│   ├── codex-assistant-launcher/     Silent launcher binary (codex-assistant)
+│   └── codex-assistant-manager/      Tauri manager
 │       ├── src/                 React + TypeScript UI
 │       └── src-tauri/           Tauri commands & window management
 ├── assets/inject/               JS injected into the Codex renderer
 ├── crates/
-│   ├── codex-plus-core/         Launch, CDP, settings, relay, provider, update, bridge
-│   └── codex-plus-data/         SQLite adapter, Markdown export, Provider Sync
+│   ├── codex-assistant-core/         Launch, CDP, settings, relay, provider, update, bridge
+│   └── codex-assistant-data/         SQLite adapter, Markdown export, Provider Sync
 ├── scripts/installer/
 │   ├── macos/package-dmg.sh     macOS DMG packaging script
 │   └── windows/CodexAssistant.nsi  Windows NSIS installer script
@@ -247,9 +247,9 @@ Yes, but currently only Apple Silicon (`macos-arm64.dmg`) is published as a bina
 
 ```bash
 rustup target add x86_64-apple-darwin
-npm --prefix apps/codex-plus-manager ci
-npm --prefix apps/codex-plus-manager run vite:build
-cargo build --release --target x86_64-apple-darwin -p codex-plus-launcher -p codex-assistant
+npm --prefix apps/codex-assistant-manager ci
+npm --prefix apps/codex-assistant-manager run vite:build
+cargo build --release --target x86_64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 ```
 
 ### Can I run it on Linux?
