@@ -23,8 +23,10 @@ export const TEXT = {
     chatgpt: "使用 ChatGPT 账号（推荐，更稳定）",
     apiKey: "使用我自己的 API Key",
     openLogin: "打开登录页",
+    readCodex: "读取 Codex 配置",
     saveSwitch: "保存并切换",
     current: "当前模式",
+    codexHome: "读取位置",
   },
   more: {
     title: "更多设置",

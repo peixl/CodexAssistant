@@ -1089,9 +1089,18 @@ body {
   margin-bottom: 12px;
 }
 
+.compact-field {
+  margin-bottom: 8px;
+}
+
 .field span,
 .check-row span {
   color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.compact-field > span {
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
 }
 

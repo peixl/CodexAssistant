@@ -111,11 +111,14 @@ fn read_api_key(auth_path: &Path, config_path: &Path) -> (String, String) {
     }
 
     if let Ok(contents) = std::fs::read_to_string(config_path) {
-        let provider = table_values(&contents, &format!("model_providers.{RELAY_PROVIDER}"));
-        if let Some(token) = provider
-            .as_ref()
-            .and_then(|values| values.get("experimental_bearer_token"))
-            .map(|value| unquote_toml_string(value))
+        if let Some(token) = active_model_provider_value(&contents, "experimental_bearer_token")
+            .or_else(|| provider_value(&contents, RELAY_PROVIDER, "experimental_bearer_token"))
+            .or_else(|| {
+                LEGACY_RELAY_PROVIDERS.iter().find_map(|provider| {
+                    provider_value(&contents, provider, "experimental_bearer_token")
+                })
+            })
+            .or_else(|| root_key_string(&contents, "OPENAI_API_KEY"))
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
         {
@@ -130,29 +133,31 @@ fn read_base_url(config_path: &Path) -> (String, String) {
     let Ok(contents) = std::fs::read_to_string(config_path) else {
         return (String::new(), String::new());
     };
-    let provider = table_values(&contents, &format!("model_providers.{RELAY_PROVIDER}"));
-    if let Some(url) = provider
-        .as_ref()
-        .and_then(|values| values.get("base_url"))
-        .map(|value| unquote_toml_string(value))
+    if let Some(url) = active_model_provider_value(&contents, "base_url")
+        .or_else(|| provider_value(&contents, RELAY_PROVIDER, "base_url"))
+        .or_else(|| {
+            LEGACY_RELAY_PROVIDERS
+                .iter()
+                .find_map(|provider| provider_value(&contents, provider, "base_url"))
+        })
+        .or_else(|| root_key_string(&contents, "base_url"))
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
     {
         return (url, config_path.to_string_lossy().to_string());
     }
-    for legacy in LEGACY_RELAY_PROVIDERS {
-        let provider = table_values(&contents, &format!("model_providers.{legacy}"));
-        if let Some(url) = provider
-            .as_ref()
-            .and_then(|values| values.get("base_url"))
-            .map(|value| unquote_toml_string(value))
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-        {
-            return (url, config_path.to_string_lossy().to_string());
-        }
-    }
     (String::new(), String::new())
+}
+
+fn active_model_provider_value(contents: &str, key: &str) -> Option<String> {
+    let provider = root_key_string(contents, "model_provider")?;
+    provider_value(contents, &provider, key)
+}
+
+fn provider_value(contents: &str, provider: &str, key: &str) -> Option<String> {
+    table_values(contents, &format!("model_providers.{provider}"))
+        .and_then(|values| values.get(key).cloned())
+        .map(|value| unquote_toml_string(&value))
 }
 
 pub fn default_relay_status() -> RelayStatus {

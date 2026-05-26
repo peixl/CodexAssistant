@@ -491,6 +491,53 @@ experimental_bearer_token = "sk-from-config"
 }
 
 #[test]
+fn codex_credentials_reads_active_provider_key_and_base_url() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("config.toml"),
+        r#"model_provider = "custom1"
+[model_providers.CodexAssistant]
+base_url = "https://old-codex-assistant.example/v1"
+experimental_bearer_token = "sk-old"
+
+[model_providers.custom1]
+base_url = "https://active-provider.example/v1"
+experimental_bearer_token = "sk-active"
+"#,
+    )
+    .unwrap();
+
+    let creds = codex_credentials_from_home(temp.path());
+
+    assert_eq!(creds.api_key, "sk-active");
+    assert_eq!(creds.base_url, "https://active-provider.example/v1");
+    assert!(creds.api_key_source.contains("config.toml"));
+    assert!(creds.base_url_source.contains("config.toml"));
+}
+
+#[test]
+fn codex_credentials_reads_root_base_url_when_provider_table_missing() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("auth.json"),
+        r#"{"OPENAI_API_KEY":"sk-from-auth"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        temp.path().join("config.toml"),
+        r#"base_url = "https://root-base.example/v1"
+"#,
+    )
+    .unwrap();
+
+    let creds = codex_credentials_from_home(temp.path());
+
+    assert_eq!(creds.api_key, "sk-from-auth");
+    assert_eq!(creds.base_url, "https://root-base.example/v1");
+    assert!(creds.base_url_source.contains("config.toml"));
+}
+
+#[test]
 fn codex_credentials_returns_empty_when_files_missing() {
     let temp = tempfile::tempdir().unwrap();
     let creds = codex_credentials_from_home(temp.path());
