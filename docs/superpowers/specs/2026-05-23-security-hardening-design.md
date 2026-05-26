@@ -39,7 +39,7 @@
 ### 协议
 
 - 启动时生成 32 字节随机数，base64url 编码为 43 字符 token，存进程内 `OnceLock<String>`；进程退出即失效。
-- token 通过 CDP `Page.addScriptToEvaluateOnNewDocument` 注入到 `window.__CODEX_PLUS_HELPER_TOKEN__`（与现有 `window.__CODEX_SESSION_DELETE_HELPER__` 同一通道）。
+- token 通过 CDP `Page.addScriptToEvaluateOnNewDocument` 注入到 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`（与现有 `window.__CODEX_SESSION_DELETE_HELPER__` 同一通道）。
 - 客户端发往 `http://127.0.0.1:<helper_port>/*` 时，HTTP 头携带 `X-Codex-Helper-Token: <token>`。
 - 服务端在处理 `OPTIONS` 之外的所有方法时，先做常量时间比较；不匹配 → `401 Unauthorized`（响应体 `{"status":"failed","message":"unauthorized"}`），CORS 头照常返回避免浏览器把 401 当成网络层错误。
 - `OPTIONS` 预检放行（不验 token），`Access-Control-Allow-Headers` 追加 `X-Codex-Helper-Token`。
@@ -62,13 +62,13 @@
 - `crates/codex-plus-core/src/launcher.rs::handle_helper_connection`：
   - 在 `read_http_request` 后解析头部，提取 `X-Codex-Helper-Token`。
   - 当 `method != "OPTIONS"`：未通过 → 直接写 401 + 关闭连接 + 写 `security.helper_token_invalid` 诊断日志（不要把 token 本身写日志，只记 `provided_len`）。
-- `crates/codex-plus-core/src/assets.rs::injection_script`：签名改为 `injection_script(helper_port: u16, helper_token: &str) -> String`，注入 `window.__CODEX_PLUS_HELPER_TOKEN__`。
+- `crates/codex-plus-core/src/assets.rs::injection_script`：签名改为 `injection_script(helper_port: u16, helper_token: &str) -> String`，注入 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`。
 - 调用链跟随：
   - `crates/codex-plus-core/src/launcher.rs::inject_with_context`、`inject`
   - `apps/codex-plus-launcher/src/main.rs::try_inject_with_context`、`inject_with_context`
   - 凡是构造 `injection_script(helper_port)` 的地方都改为传 token；token 取自 `helper_auth::ensure_helper_token()`。
 - `assets/inject/renderer-inject.js`：
-  - 顶部新增 `const helperToken = window.__CODEX_PLUS_HELPER_TOKEN__ || "";`
+  - 顶部新增 `const helperToken = window.__CODEX_ASSISTANT_HELPER_TOKEN__ || "";`
   - 实现 `function helperFetch(path, init = {}) {` 把 `X-Codex-Helper-Token` 头并入 `init.headers`，调用 `fetch(`${helperBase}${path}`, init)`。
   - 替换三处 `fetch(\`${helperBase}…\`)`（行 2313、2949、2970）为 `helperFetch`。
   - **`sendBeacon` 无法携带自定义头**：把 `navigator.sendBeacon` 那一支砍掉，统一走 `helperFetch('/diagnostics/log', {method:'POST', keepalive:true, body:…})`；`keepalive: true` 能覆盖大多数页面卸载场景，且 `/diagnostics/log` 单条 payload ≪ 64 KiB 的 keepalive 限额。

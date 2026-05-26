@@ -1,5 +1,5 @@
 use crate::BackupStore;
-use codex_plus_core::models::{DeleteResult, DeleteStatus, SessionRef};
+use codex_assistant_core::models::{DeleteResult, DeleteStatus, SessionRef};
 use rusqlite::types::{ToSqlOutput, Value as SqlValue, ValueRef};
 use rusqlite::{Connection, ToSql};
 use serde_json::{Map, Value, json};

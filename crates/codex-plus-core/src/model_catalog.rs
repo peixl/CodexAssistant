@@ -4,16 +4,16 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 
 const BASE_URL_ENV_KEYS: &[&str] = &[
-    "CODEX_PLUS_OPENAI_BASE_URL",
-    "CODEX_PLUS_BASE_URL",
+    "CODEX_ASSISTANT_OPENAI_BASE_URL",
+    "CODEX_ASSISTANT_BASE_URL",
     "OPENAI_BASE_URL",
     "OPENAI_API_BASE_URL",
     "OPENAI_API_BASE",
     "OPENAI_API_URL",
 ];
 const API_KEY_ENV_KEYS: &[&str] = &[
-    "CODEX_PLUS_OPENAI_API_KEY",
-    "CODEX_PLUS_API_KEY",
+    "CODEX_ASSISTANT_OPENAI_API_KEY",
+    "CODEX_ASSISTANT_API_KEY",
     "OPENAI_API_KEY",
 ];
 

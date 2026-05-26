@@ -3,8 +3,8 @@
 fn main() {
     if std::env::args().any(|arg| arg == "--show-update") {
         unsafe {
-            std::env::set_var("CODEX_PLUS_SHOW_UPDATE", "1");
+            std::env::set_var("CODEX_ASSISTANT_SHOW_UPDATE", "1");
         }
     }
-    codex_plus_manager_lib::run();
+    codex_assistant_manager_lib::run();
 }

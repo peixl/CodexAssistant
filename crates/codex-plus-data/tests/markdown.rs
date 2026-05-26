@@ -1,5 +1,5 @@
-use codex_plus_core::models::{ExportStatus, SessionRef};
-use codex_plus_data::MarkdownExportService;
+use codex_assistant_core::models::{ExportStatus, SessionRef};
+use codex_assistant_data::MarkdownExportService;
 use rusqlite::Connection;
 use std::fs;
 use std::path::Path;

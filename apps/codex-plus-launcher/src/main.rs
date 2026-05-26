@@ -1,12 +1,12 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use anyhow::{Context, Result};
-use codex_plus_core::launcher::{
+use codex_assistant_core::launcher::{
     DefaultLaunchHooks, LaunchHooks, LaunchOptions, launch_and_inject_with_hooks,
 };
-use codex_plus_core::models::{DeleteResult, ExportResult, SessionRef};
-use codex_plus_core::routes::{BridgeContext, BridgeDataService, BridgeRuntimeService};
-use codex_plus_core::user_scripts::UserScriptManager;
+use codex_assistant_core::models::{DeleteResult, ExportResult, SessionRef};
+use codex_assistant_core::routes::{BridgeContext, BridgeDataService, BridgeRuntimeService};
+use codex_assistant_core::user_scripts::UserScriptManager;
 use serde_json::{Value, json};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         )
         .await;
         if check.is_err() {
-            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
                 "launcher.update_check_timeout",
                 json!({ "timeout_seconds": 45 }),
             );
@@ -62,16 +62,16 @@ async fn main() -> Result<()> {
 fn acquire_single_instance_guard(
     options: &LaunchOptions,
 ) -> anyhow::Result<Option<std::net::TcpListener>> {
-    match codex_plus_core::ports::acquire_loopback_port_guard(
-        codex_plus_core::ports::LAUNCHER_GUARD_PORT,
+    match codex_assistant_core::ports::acquire_loopback_port_guard(
+        codex_assistant_core::ports::LAUNCHER_GUARD_PORT,
     ) {
         Ok(listener) => Ok(Some(listener)),
         Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => {
             record_already_running_status(options);
-            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
                 "launcher.already_running",
                 json!({
-                    "guard_port": codex_plus_core::ports::LAUNCHER_GUARD_PORT
+                    "guard_port": codex_assistant_core::ports::LAUNCHER_GUARD_PORT
                 }),
             );
             Ok(None)
@@ -80,7 +80,7 @@ fn acquire_single_instance_guard(
             .with_context(|| {
                 format!(
                     "failed to acquire launcher guard port {}",
-                    codex_plus_core::ports::LAUNCHER_GUARD_PORT
+                    codex_assistant_core::ports::LAUNCHER_GUARD_PORT
                 )
             })
             .map(Some),
@@ -88,7 +88,7 @@ fn acquire_single_instance_guard(
 }
 
 fn record_already_running_status(options: &LaunchOptions) {
-    let status = codex_plus_core::status::LaunchStatus {
+    let status = codex_assistant_core::status::LaunchStatus {
         status: "running".to_string(),
         message: "CodexAssistant launcher is already running.".to_string(),
         started_at_ms: now_ms(),
@@ -111,7 +111,8 @@ fn now_ms() -> u64 {
 
 async fn notify_manager_when_update_available() -> anyhow::Result<bool> {
     let update =
-        codex_plus_core::update::check_for_update(codex_plus_core::version::VERSION).await?;
+        codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION)
+            .await?;
     if !update.update_available {
         return Ok(false);
     }
@@ -125,7 +126,7 @@ fn open_manager_with_update_prompt() -> anyhow::Result<()> {
     command.arg("--show-update");
     #[cfg(windows)]
     {
-        command.creation_flags(codex_plus_core::windows_create_no_window());
+        command.creation_flags(codex_assistant_core::windows_create_no_window());
     }
     command
         .spawn()
@@ -175,7 +176,7 @@ impl LaunchHooks for LauncherHooks {
     fn resolve_app_dir(
         &self,
         app_dir: Option<&std::path::Path>,
-        settings: &codex_plus_core::settings::BackendSettings,
+        settings: &codex_assistant_core::settings::BackendSettings,
     ) -> anyhow::Result<std::path::PathBuf> {
         self.core.resolve_app_dir(app_dir, settings)
     }
@@ -188,12 +189,14 @@ impl LaunchHooks for LauncherHooks {
         self.core.select_helper_port(requested)
     }
 
-    async fn load_settings(&self) -> anyhow::Result<codex_plus_core::settings::BackendSettings> {
+    async fn load_settings(
+        &self,
+    ) -> anyhow::Result<codex_assistant_core::settings::BackendSettings> {
         self.core.load_settings().await
     }
 
     async fn run_provider_sync(&self) -> anyhow::Result<()> {
-        let _ = tokio::task::spawn_blocking(|| codex_plus_data::run_provider_sync(None))
+        let _ = tokio::task::spawn_blocking(|| codex_assistant_data::run_provider_sync(None))
             .await
             .map_err(|error| anyhow::anyhow!("provider sync task failed: {error}"))?;
         Ok(())
@@ -208,7 +211,7 @@ impl LaunchHooks for LauncherHooks {
         app_dir: &Path,
         debug_port: u16,
         extra_args: &[String],
-    ) -> anyhow::Result<codex_plus_core::launcher::CodexLaunch> {
+    ) -> anyhow::Result<codex_assistant_core::launcher::CodexLaunch> {
         self.core
             .launch_codex(app_dir, debug_port, extra_args)
             .await
@@ -241,7 +244,7 @@ impl LaunchHooks for LauncherHooks {
 
     async fn wait_for_codex_exit(
         &self,
-        launch: &codex_plus_core::launcher::CodexLaunch,
+        launch: &codex_assistant_core::launcher::CodexLaunch,
     ) -> anyhow::Result<()> {
         self.core.wait_for_codex_exit(launch).await
     }
@@ -250,7 +253,7 @@ impl LaunchHooks for LauncherHooks {
         self.core.shutdown_helper(helper_port).await;
     }
 
-    async fn terminate_codex(&self, launch: &codex_plus_core::launcher::CodexLaunch) {
+    async fn terminate_codex(&self, launch: &codex_assistant_core::launcher::CodexLaunch) {
         self.core.terminate_codex(launch).await;
     }
 }
@@ -265,7 +268,7 @@ impl Default for LauncherDataService {
     fn default() -> Self {
         Self {
             db_path: default_codex_db_path(),
-            backup_dir: codex_plus_core::paths::default_app_state_dir().join("backups"),
+            backup_dir: codex_assistant_core::paths::default_app_state_dir().join("backups"),
         }
     }
 }
@@ -288,7 +291,7 @@ impl BridgeDataService for LauncherDataService {
 
     async fn export_markdown(&self, session: SessionRef) -> anyhow::Result<ExportResult> {
         let export_service =
-            codex_plus_data::MarkdownExportService::new(Some(self.db_path.clone()));
+            codex_assistant_data::MarkdownExportService::new(Some(self.db_path.clone()));
         tokio::task::spawn_blocking(move || export_service.export(&session))
             .await
             .map_err(|error| anyhow::anyhow!("export markdown task failed: {error}"))
@@ -333,10 +336,10 @@ impl BridgeDataService for LauncherDataService {
 }
 
 impl LauncherDataService {
-    fn storage_adapter(&self) -> codex_plus_data::SQLiteStorageAdapter {
-        codex_plus_data::SQLiteStorageAdapter::new(
+    fn storage_adapter(&self) -> codex_assistant_data::SQLiteStorageAdapter {
+        codex_assistant_data::SQLiteStorageAdapter::new(
             self.db_path.clone(),
-            codex_plus_data::BackupStore::new(self.backup_dir.clone()),
+            codex_assistant_data::BackupStore::new(self.backup_dir.clone()),
         )
     }
 }
@@ -390,16 +393,16 @@ impl BridgeRuntimeService for LauncherRuntimeService {
         let bundle = self.user_scripts.build_enabled_bundle()?;
         let websocket_url = self.websocket_url.lock().unwrap().clone();
         if let Some(websocket_url) = websocket_url.filter(|_| !bundle.trim().is_empty()) {
-            codex_plus_core::bridge::evaluate_script(&websocket_url, &bundle).await?;
+            codex_assistant_core::bridge::evaluate_script(&websocket_url, &bundle).await?;
         }
         self.user_scripts.inventory()
     }
 
     async fn open_devtools(&self) -> anyhow::Result<Value> {
         let debug_port = *self.debug_port.lock().unwrap();
-        let targets = codex_plus_core::cdp::list_targets(debug_port).await?;
-        let target = codex_plus_core::cdp::pick_page_target(&targets)?;
-        let url = codex_plus_core::routes::devtools_url(debug_port, &target.id);
+        let targets = codex_assistant_core::cdp::list_targets(debug_port).await?;
+        let target = codex_assistant_core::cdp::pick_page_target(&targets)?;
+        let url = codex_assistant_core::routes::devtools_url(debug_port, &target.id);
         open_url(&url)?;
         Ok(json!({
             "status": "ok",
@@ -413,7 +416,7 @@ impl BridgeRuntimeService for LauncherRuntimeService {
         #[cfg(windows)]
         {
             std::process::Command::new(&manager_path)
-                .creation_flags(codex_plus_core::windows_create_no_window())
+                .creation_flags(codex_assistant_core::windows_create_no_window())
                 .spawn()
                 .map_err(|error| anyhow::anyhow!("启动管理工具失败：{error}"))?;
         }
@@ -431,7 +434,7 @@ impl BridgeRuntimeService for LauncherRuntimeService {
 
     async fn backend_status(&self) -> anyhow::Result<Value> {
         Ok(
-            json!({"status": "ok", "message": "后端已连接", "version": codex_plus_core::version::VERSION}),
+            json!({"status": "ok", "message": "后端已连接", "version": codex_assistant_core::version::VERSION}),
         )
     }
 
@@ -440,31 +443,27 @@ impl BridgeRuntimeService for LauncherRuntimeService {
     }
 
     async fn codex_model_catalog(&self) -> anyhow::Result<Value> {
-        Ok(codex_plus_core::model_catalog::read_codex_model_catalog().await)
+        Ok(codex_assistant_core::model_catalog::read_codex_model_catalog().await)
     }
 
     async fn ads(&self) -> anyhow::Result<Value> {
-        codex_plus_core::ads::fetch_ad_list().await
+        codex_assistant_core::ads::fetch_ad_list().await
     }
 
     async fn zed_remote_status(&self) -> anyhow::Result<Value> {
-        Ok(codex_plus_core::zed_remote::zed_remote_status())
+        Ok(codex_assistant_core::zed_remote::zed_remote_status())
     }
 
     async fn resolve_zed_remote_host(&self, payload: Value) -> anyhow::Result<Value> {
-        Ok(codex_plus_core::zed_remote::resolve_ssh_target_response(
-            &payload,
-        ))
+        Ok(codex_assistant_core::zed_remote::resolve_ssh_target_response(&payload))
     }
 
     async fn fallback_zed_remote_request(&self, payload: Value) -> anyhow::Result<Value> {
-        Ok(codex_plus_core::zed_remote::fallback_open_request_response(
-            &payload,
-        ))
+        Ok(codex_assistant_core::zed_remote::fallback_open_request_response(&payload))
     }
 
     async fn open_zed_remote(&self, payload: Value) -> anyhow::Result<Value> {
-        Ok(codex_plus_core::zed_remote::open_zed_remote(&payload))
+        Ok(codex_assistant_core::zed_remote::open_zed_remote(&payload))
     }
 }
 
@@ -475,12 +474,12 @@ async fn inject_with_context(
     runtime: Arc<LauncherRuntimeService>,
 ) -> anyhow::Result<()> {
     let mut last_error = None;
-    for _ in 0..codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_COUNT {
+    for _ in 0..codex_assistant_core::launcher::BRIDGE_INJECTION_RETRY_COUNT {
         match try_inject_with_context(debug_port, helper_port, ctx.clone(), runtime.clone()).await {
             Ok(()) => return Ok(()),
             Err(error) => {
                 last_error = Some(error);
-                tokio::time::sleep(codex_plus_core::launcher::BRIDGE_INJECTION_RETRY_INTERVAL)
+                tokio::time::sleep(codex_assistant_core::launcher::BRIDGE_INJECTION_RETRY_INTERVAL)
                     .await;
             }
         }
@@ -494,16 +493,16 @@ async fn try_inject_with_context(
     ctx: BridgeContext,
     runtime: Arc<LauncherRuntimeService>,
 ) -> anyhow::Result<()> {
-    let targets = codex_plus_core::cdp::list_targets(debug_port).await?;
-    let target = codex_plus_core::cdp::pick_page_target(&targets)?;
+    let targets = codex_assistant_core::cdp::list_targets(debug_port).await?;
+    let target = codex_assistant_core::cdp::pick_page_target(&targets)?;
     let websocket_url = target
         .web_socket_debugger_url
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("selected CDP target has no websocket URL"))?;
     runtime.set_websocket_url(websocket_url);
-    let script = codex_plus_core::assets::injection_script(
+    let script = codex_assistant_core::assets::injection_script(
         helper_port,
-        codex_plus_core::helper_auth::ensure_helper_token(),
+        codex_assistant_core::helper_auth::ensure_helper_token(),
     );
     let user_bundle = runtime
         .user_scripts
@@ -514,13 +513,13 @@ async fn try_inject_with_context(
     } else {
         vec![script, user_bundle]
     };
-    codex_plus_core::bridge::install_bridge(
+    codex_assistant_core::bridge::install_bridge(
         websocket_url,
-        codex_plus_core::bridge::BRIDGE_BINDING_NAME,
+        codex_assistant_core::bridge::BRIDGE_BINDING_NAME,
         Arc::new(move |path, payload| {
             let ctx = ctx.clone();
             Box::pin(async move {
-                Ok(codex_plus_core::routes::handle_bridge_request(ctx, &path, payload).await)
+                Ok(codex_assistant_core::routes::handle_bridge_request(ctx, &path, payload).await)
             })
         }),
         &new_document_scripts,
@@ -529,7 +528,7 @@ async fn try_inject_with_context(
 }
 
 fn default_codex_db_path() -> PathBuf {
-    codex_db_path_from_home(codex_plus_core::relay_config::default_codex_home_dir())
+    codex_db_path_from_home(codex_assistant_core::relay_config::default_codex_home_dir())
 }
 
 fn codex_db_path_from_home(home: impl AsRef<Path>) -> PathBuf {
@@ -539,7 +538,7 @@ fn codex_db_path_from_home(home: impl AsRef<Path>) -> PathBuf {
 fn open_url(url: &str) -> anyhow::Result<()> {
     #[cfg(windows)]
     {
-        codex_plus_core::windows_open_url(url)
+        codex_assistant_core::windows_open_url(url)
             .map_err(|error| anyhow::anyhow!("failed to open DevTools URL: {error}"))
     }
 
@@ -574,7 +573,7 @@ fn manager_exe_path() -> PathBuf {
     let suffix = if cfg!(windows) { ".exe" } else { "" };
     dir.join(format!(
         "{}{}",
-        codex_plus_core::install::MANAGER_BINARY,
+        codex_assistant_core::install::MANAGER_BINARY,
         suffix
     ))
 }
@@ -659,7 +658,7 @@ mod tests {
         assert!(
             path.file_name()
                 .and_then(|name| name.to_str())
-                .is_some_and(|name| name.contains(codex_plus_core::install::MANAGER_BINARY))
+                .is_some_and(|name| name.contains(codex_assistant_core::install::MANAGER_BINARY))
         );
     }
 

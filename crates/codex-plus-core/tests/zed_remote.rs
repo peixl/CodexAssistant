@@ -1,4 +1,4 @@
-use codex_plus_core::zed_remote::{self, SshTarget, ZedRemoteError};
+use codex_assistant_core::zed_remote::{self, SshTarget, ZedRemoteError};
 use serde_json::json;
 
 #[test]

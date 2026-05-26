@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use codex_plus_core::cli_wrapper::{
+use codex_assistant_core::cli_wrapper::{
     build_wrapper_source, parse_wrapper_source_settings, resolve_real_codex_from_candidates,
     should_refresh_cli_wrapper, wrapper_dir_from_roaming, wrapper_settings_for_refresh,
 };
-use codex_plus_core::settings::BackendSettings;
+use codex_assistant_core::settings::BackendSettings;
 
 #[test]
 fn wrapper_source_embeds_absolute_real_codex_path() {
@@ -77,7 +77,7 @@ fn resolves_packaged_resources_when_user_runtime_is_missing() {
 }
 
 #[test]
-fn wrapper_dir_uses_roaming_codex_plus_plus() {
+fn wrapper_dir_uses_roaming_codex_assistant_plus() {
     assert_eq!(
         wrapper_dir_from_roaming(&PathBuf::from(r"C:\Users\me\AppData\Roaming")),
         PathBuf::from(r"C:\Users\me\AppData\Roaming\CodexAssistant")

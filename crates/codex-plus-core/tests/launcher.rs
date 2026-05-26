@@ -2,23 +2,25 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use codex_plus_core::app_paths::{
+use codex_assistant_core::app_paths::{
     build_codex_executable, codex_app_version, find_latest_codex_app_dir,
     find_latest_codex_app_dir_from_roots, find_macos_codex_app, normalize_codex_app_path,
     packaged_app_user_model_id, resolve_codex_app_dir_with_saved, user_data_candidates_from,
 };
-use codex_plus_core::launcher::{
+use codex_assistant_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
     build_codex_arguments, build_codex_command, build_macos_cleanup_command,
     build_macos_open_command, build_packaged_activation, codex_process_environment_from,
     launch_and_inject_with_hooks, preflight_loopback_reachable, with_temporary_proxy_environment,
 };
 #[cfg(windows)]
-use codex_plus_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
-use codex_plus_core::ports::select_platform_loopback_port_with;
-use codex_plus_core::proxy::has_proxy_environment;
-use codex_plus_core::settings::{BackendSettings, RelayProfile, RelayProtocol};
-use codex_plus_core::status::StatusStore;
+use codex_assistant_core::launcher::{
+    WindowsProcessControlStrategy, windows_process_control_strategy,
+};
+use codex_assistant_core::ports::select_platform_loopback_port_with;
+use codex_assistant_core::proxy::has_proxy_environment;
+use codex_assistant_core::settings::{BackendSettings, RelayProfile, RelayProtocol};
+use codex_assistant_core::status::StatusStore;
 
 #[test]
 fn app_paths_find_latest_windows_package_prefers_highest_version_app_dir() {
@@ -452,7 +454,7 @@ async fn default_helper_serves_backend_status_over_http() {
     drop(listener);
 
     hooks.start_helper(port).await.unwrap();
-    let token = codex_plus_core::helper_auth::ensure_helper_token();
+    let token = codex_assistant_core::helper_auth::ensure_helper_token();
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     let response = client
         .post(format!("http://127.0.0.1:{port}/backend/status"))
@@ -489,14 +491,14 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
 
     let temp = tempfile::tempdir().unwrap();
     let log_path = temp.path().join("codex-plus.log");
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let hooks = DefaultLaunchHooks::default();
     let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let port = listener.local_addr().unwrap().port();
     drop(listener);
 
     hooks.start_helper(port).await.unwrap();
-    let token = codex_plus_core::helper_auth::ensure_helper_token();
+    let token = codex_assistant_core::helper_auth::ensure_helper_token();
     let response = reqwest::Client::builder()
         .no_proxy()
         .build()
@@ -520,7 +522,7 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
     let contents = std::fs::read_to_string(&log_path).unwrap();
     assert!(contents.contains("renderer.backend_check_failed"));
     assert!(contents.contains("fetch failed"));
-    codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
+    codex_assistant_core::diagnostic_log::set_diagnostic_log_path_for_tests(None);
 }
 
 async fn loopback_available_for_test() -> bool {
@@ -547,7 +549,7 @@ async fn launch_lifecycle_runs_sync_before_launch_writes_success_and_shutdowns_o
         })
         .with_launch_result(CodexLaunch::Process {
             command: vec!["codex".to_string()],
-            wait_strategy: codex_plus_core::launcher::ProcessWaitStrategy::TrackedChild,
+            wait_strategy: codex_assistant_core::launcher::ProcessWaitStrategy::TrackedChild,
             macos_cleanup_policy: None,
         });
 
@@ -632,7 +634,7 @@ async fn launch_lifecycle_keeps_js_injection_in_relay_mode() {
     let status_store = StatusStore::new(temp.path().join("latest-status.json"));
     let events = Arc::new(Mutex::new(Vec::<String>::new()));
     let hooks = FakeHooks::new(events.clone()).with_settings(BackendSettings {
-        launch_mode: codex_plus_core::settings::LaunchMode::Relay,
+        launch_mode: codex_assistant_core::settings::LaunchMode::Relay,
         ..BackendSettings::default()
     });
 
@@ -798,7 +800,7 @@ async fn launch_starts_helper_when_chat_protocol_proxy_is_enabled() {
             base_url: "https://chat-only.example.test/v1".to_string(),
             api_key: "sk-test".to_string(),
             protocol: RelayProtocol::ChatCompletions,
-            relay_mode: codex_plus_core::settings::RelayMode::MixedApi,
+            relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
             official_mix_api_key: false,
             test_model: String::new(),
             config_contents: String::new(),
@@ -988,7 +990,7 @@ impl FakeHooks {
             settings: BackendSettings::default(),
             launch_result: CodexLaunch::Process {
                 command: vec!["codex".to_string()],
-                wait_strategy: codex_plus_core::launcher::ProcessWaitStrategy::TrackedChild,
+                wait_strategy: codex_assistant_core::launcher::ProcessWaitStrategy::TrackedChild,
                 macos_cleanup_policy: None,
             },
             launch_error: None,

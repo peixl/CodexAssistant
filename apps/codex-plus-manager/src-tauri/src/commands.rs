@@ -3,11 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use codex_plus_core::install::SILENT_BINARY;
-use codex_plus_core::script_market::{self, MarketScript, ScriptMarketManifest};
-use codex_plus_core::settings::{BackendSettings, RelayProfile, SettingsStore};
-use codex_plus_core::status::{LaunchStatus, StatusStore};
-use codex_plus_core::user_scripts::UserScriptManager;
+use codex_assistant_core::install::SILENT_BINARY;
+use codex_assistant_core::script_market::{self, MarketScript, ScriptMarketManifest};
+use codex_assistant_core::settings::{BackendSettings, RelayProfile, SettingsStore};
+use codex_assistant_core::status::{LaunchStatus, StatusStore};
+use codex_assistant_core::user_scripts::UserScriptManager;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -66,7 +66,7 @@ pub struct SettingsPayload {
 #[serde(rename_all = "camelCase")]
 pub struct CcsProvidersPayload {
     pub db_path: String,
-    pub providers: Vec<codex_plus_core::ccs_import::CcsProviderImport>,
+    pub providers: Vec<codex_assistant_core::ccs_import::CcsProviderImport>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -189,7 +189,7 @@ pub fn backend_version() -> CommandResult<VersionPayload> {
     ok(
         "后端版本已读取。",
         VersionPayload {
-            version: codex_plus_core::version::VERSION.to_string(),
+            version: codex_assistant_core::version::VERSION.to_string(),
         },
     )
 }
@@ -207,7 +207,7 @@ pub fn startup_options() -> CommandResult<StartupPayload> {
 pub fn startup_should_show_update() -> bool {
     should_show_update(
         std::env::args(),
-        std::env::var("CODEX_PLUS_SHOW_UPDATE").ok().as_deref(),
+        std::env::var("CODEX_ASSISTANT_SHOW_UPDATE").ok().as_deref(),
     )
 }
 
@@ -231,12 +231,12 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
                 silent_shortcut: path_state(None),
                 management_shortcut: path_state(None),
                 latest_launch: None,
-                current_version: codex_plus_core::version::VERSION.to_string(),
+                current_version: codex_assistant_core::version::VERSION.to_string(),
                 update_status: "not_checked".to_string(),
-                settings_path: codex_plus_core::paths::default_settings_path()
+                settings_path: codex_assistant_core::paths::default_settings_path()
                     .to_string_lossy()
                     .to_string(),
-                logs_path: codex_plus_core::paths::default_diagnostic_log_path()
+                logs_path: codex_assistant_core::paths::default_diagnostic_log_path()
                     .to_string_lossy()
                     .to_string(),
             },
@@ -247,17 +247,17 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
         OverviewPayload {
             codex_version: codex_app_path
                 .as_deref()
-                .and_then(codex_plus_core::app_paths::codex_app_version),
+                .and_then(codex_assistant_core::app_paths::codex_app_version),
             codex_app: path_state(codex_app_path),
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
             management_shortcut: shortcut_state(entrypoints.management_shortcut),
             latest_launch,
-            current_version: codex_plus_core::version::VERSION.to_string(),
+            current_version: codex_assistant_core::version::VERSION.to_string(),
             update_status: "not_checked".to_string(),
-            settings_path: codex_plus_core::paths::default_settings_path()
+            settings_path: codex_assistant_core::paths::default_settings_path()
                 .to_string_lossy()
                 .to_string(),
-            logs_path: codex_plus_core::paths::default_diagnostic_log_path()
+            logs_path: codex_assistant_core::paths::default_diagnostic_log_path()
                 .to_string_lossy()
                 .to_string(),
         },
@@ -265,15 +265,15 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 }
 
 #[tauri::command]
-pub fn launch_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
-    spawn_codex_plus_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
+pub fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
+    spawn_codex_assistant_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
 }
 
 #[tauri::command]
-pub fn restart_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
-    codex_plus_core::watcher::stop_launcher_processes();
-    codex_plus_core::watcher::stop_codex_processes();
-    spawn_codex_plus_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
+pub fn restart_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
+    codex_assistant_core::watcher::stop_launcher_processes();
+    codex_assistant_core::watcher::stop_codex_processes();
+    spawn_codex_assistant_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
 }
 
 #[tauri::command]
@@ -283,11 +283,14 @@ pub fn read_launch_status() -> CommandResult<LaunchStatusPayload> {
     ok("启动状态已读取。", LaunchStatusPayload { status, now_ms })
 }
 
-fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> CommandResult<Value> {
+fn spawn_codex_assistant_launch(
+    request: LaunchRequest,
+    accepted_message: &str,
+) -> CommandResult<Value> {
     let debug_port = request.debug_port;
     let helper_port = request.helper_port;
     let app_path = request.app_path_trimmed().to_string();
-    let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+    let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
         "manager.launch_requested",
         json!({
             "debug_port": debug_port,
@@ -297,7 +300,7 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
     );
 
     if let Err(message) = preflight_check_launch(&request) {
-        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+        let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
             "manager.launch_preflight_failed",
             json!({ "message": message }),
         );
@@ -338,13 +341,16 @@ fn preflight_check_launch(request: &LaunchRequest) -> Result<(), String> {
     let saved_app = settings.codex_app_path.trim();
     let app_path_arg = (!requested_app.is_empty()).then(|| Path::new(requested_app));
     let saved_app_opt = (!saved_app.is_empty()).then_some(saved_app);
-    if codex_plus_core::app_paths::resolve_codex_app_dir_with_saved(app_path_arg, saved_app_opt)
-        .is_none()
+    if codex_assistant_core::app_paths::resolve_codex_app_dir_with_saved(
+        app_path_arg,
+        saved_app_opt,
+    )
+    .is_none()
     {
         return Err("未找到 Codex App，请先在「更多设置」中指定 Codex 安装路径。".to_string());
     }
 
-    let launcher = codex_plus_core::install::companion_binary_path(SILENT_BINARY);
+    let launcher = codex_assistant_core::install::companion_binary_path(SILENT_BINARY);
     if !launcher.exists() {
         return Err(format!(
             "未找到静默启动器二进制：{}，请重新安装 CodexAssistant。",
@@ -356,7 +362,7 @@ fn preflight_check_launch(request: &LaunchRequest) -> Result<(), String> {
 }
 
 fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
-    let launcher = codex_plus_core::install::companion_binary_path(SILENT_BINARY);
+    let launcher = codex_assistant_core::install::companion_binary_path(SILENT_BINARY);
     let mut command = std::process::Command::new(&launcher);
     let app_path = request.app_path_trimmed();
     if !app_path.is_empty() {
@@ -405,7 +411,7 @@ pub fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload
             &format!("保存设置失败：{error}"),
             SettingsPayload {
                 settings,
-                settings_path: codex_plus_core::paths::default_settings_path()
+                settings_path: codex_assistant_core::paths::default_settings_path()
                     .to_string_lossy()
                     .to_string(),
                 user_scripts: user_script_inventory(),
@@ -416,8 +422,8 @@ pub fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload
 
 #[tauri::command]
 pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
-    let db_path = codex_plus_core::ccs_import::default_ccs_db_path();
-    match codex_plus_core::ccs_import::list_codex_providers_from_db(&db_path) {
+    let db_path = codex_assistant_core::ccs_import::default_ccs_db_path();
+    match codex_assistant_core::ccs_import::list_codex_providers_from_db(&db_path) {
         Ok(providers) => ok(
             &format!("已读取 CCS Codex 供应商：{} 个。", providers.len()),
             CcsProvidersPayload {
@@ -437,7 +443,7 @@ pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
 
 #[tauri::command]
 pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
-    let providers = match codex_plus_core::ccs_import::list_codex_providers_from_default_db() {
+    let providers = match codex_assistant_core::ccs_import::list_codex_providers_from_default_db() {
         Ok(providers) => providers,
         Err(error) => {
             let payload = settings_payload_value().unwrap_or_else(|(_, payload)| payload);
@@ -464,7 +470,8 @@ pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
         if existing_keys.iter().any(|existing| existing == &key) {
             continue;
         }
-        let profile = codex_plus_core::ccs_import::relay_profile_from_ccs(&provider, &existing_ids);
+        let profile =
+            codex_assistant_core::ccs_import::relay_profile_from_ccs(&provider, &existing_ids);
         existing_ids.push(profile.id.clone());
         existing_keys.push(key);
         settings.relay_profiles.push(profile);
@@ -500,9 +507,9 @@ fn ccs_import_key(name: &str, base_url: &str) -> String {
 }
 
 fn normalize_settings_before_save(mut settings: BackendSettings) -> BackendSettings {
-    if let Some(path) =
-        codex_plus_core::app_paths::normalize_codex_app_path(Path::new(&settings.codex_app_path))
-    {
+    if let Some(path) = codex_assistant_core::app_paths::normalize_codex_app_path(Path::new(
+        &settings.codex_app_path,
+    )) {
         settings.codex_app_path = path.to_string_lossy().to_string();
     }
     settings
@@ -510,9 +517,10 @@ fn normalize_settings_before_save(mut settings: BackendSettings) -> BackendSetti
 
 #[tauri::command]
 pub async fn sync_providers_now() -> CommandResult<Value> {
-    let result = tauri::async_runtime::spawn_blocking(|| codex_plus_data::run_provider_sync(None))
-        .await
-        .map_err(|error| anyhow::anyhow!("provider sync task failed: {error}"));
+    let result =
+        tauri::async_runtime::spawn_blocking(|| codex_assistant_data::run_provider_sync(None))
+            .await
+            .map_err(|error| anyhow::anyhow!("provider sync task failed: {error}"));
     match result {
         Ok(sync) => ok(
             &format!(
@@ -534,7 +542,7 @@ pub async fn sync_providers_now() -> CommandResult<Value> {
 
 #[tauri::command]
 pub async fn load_ads() -> CommandResult<AdsPayload> {
-    match codex_plus_core::ads::fetch_ad_list().await {
+    match codex_assistant_core::ads::fetch_ad_list().await {
         Ok(payload) => ok("推荐内容已加载。", ads_payload(payload)),
         Err(error) => failed(
             &format!("推荐内容加载失败：{error}"),
@@ -677,7 +685,7 @@ pub async fn repair_shortcuts() -> InstallActionResult {
 #[tauri::command]
 pub fn repair_backend() -> CommandResult<SettingsPayload> {
     let settings = SettingsStore::default().load().unwrap_or_default();
-    let message = match codex_plus_core::cli_wrapper::ensure_cli_wrapper(&settings) {
+    let message = match codex_assistant_core::cli_wrapper::ensure_cli_wrapper(&settings) {
         Ok(Some(install)) => format!(
             "后端已修复，命令包装器已指向 {}。",
             install.real_codex.to_string_lossy()
@@ -690,7 +698,9 @@ pub fn repair_backend() -> CommandResult<SettingsPayload> {
 
 #[tauri::command]
 pub async fn check_update() -> CommandResult<Value> {
-    match codex_plus_core::update::check_for_update(codex_plus_core::version::VERSION).await {
+    match codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION)
+        .await
+    {
         Ok(update) => {
             let status = if update.update_available {
                 "ok"
@@ -719,7 +729,7 @@ pub async fn check_update() -> CommandResult<Value> {
         Err(error) => failed(
             &format!("检查更新失败：{error}"),
             json!({
-                "currentVersion": codex_plus_core::version::VERSION,
+                "currentVersion": codex_assistant_core::version::VERSION,
                 "latestVersion": Value::Null,
                 "releaseSummary": "",
                 "assetName": Value::Null,
@@ -734,23 +744,23 @@ pub async fn check_update() -> CommandResult<Value> {
 
 #[tauri::command]
 pub async fn perform_update(
-    release: Option<codex_plus_core::update::Release>,
+    release: Option<codex_assistant_core::update::Release>,
 ) -> CommandResult<Value> {
     let Some(release) = release else {
         return failed(
             "请先检查更新并选择可下载的 Release asset。",
             json!({
-                "currentVersion": codex_plus_core::version::VERSION,
+                "currentVersion": codex_assistant_core::version::VERSION,
                 "progress": 0
             }),
         );
     };
-    let download_dir = codex_plus_core::paths::default_app_state_dir().join("updates");
-    match codex_plus_core::update::perform_update(&release, &download_dir).await {
+    let download_dir = codex_assistant_core::paths::default_app_state_dir().join("updates");
+    match codex_assistant_core::update::perform_update(&release, &download_dir).await {
         Ok(result) => ok(
             "安装包已下载并启动，请按安装向导完成更新。",
             json!({
-                "currentVersion": codex_plus_core::version::VERSION,
+                "currentVersion": codex_assistant_core::version::VERSION,
                 "latestVersion": result.release.version,
                 "releaseSummary": result.release.body,
                 "installedPath": result.installer_path.to_string_lossy(),
@@ -761,7 +771,7 @@ pub async fn perform_update(
         Err(error) => failed(
             &format!("安装更新失败：{error}"),
             json!({
-                "currentVersion": codex_plus_core::version::VERSION,
+                "currentVersion": codex_assistant_core::version::VERSION,
                 "latestVersion": release.version,
                 "releaseSummary": release.body,
                 "progress": 0
@@ -777,9 +787,10 @@ pub fn load_watcher_state() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn install_watcher() -> CommandResult<WatcherPayload> {
-    let launcher_path =
-        codex_plus_core::install::companion_binary_path(codex_plus_core::install::SILENT_BINARY);
-    match codex_plus_core::watcher::install_watcher(&launcher_path, default_debug_port()) {
+    let launcher_path = codex_assistant_core::install::companion_binary_path(
+        codex_assistant_core::install::SILENT_BINARY,
+    );
+    match codex_assistant_core::watcher::install_watcher(&launcher_path, default_debug_port()) {
         Ok(()) => ok("watcher 已安装。", watcher_payload()),
         Err(error) => failed(&format!("安装 watcher 失败：{error}"), watcher_payload()),
     }
@@ -787,7 +798,7 @@ pub fn install_watcher() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn uninstall_watcher() -> CommandResult<WatcherPayload> {
-    match codex_plus_core::watcher::uninstall_watcher() {
+    match codex_assistant_core::watcher::uninstall_watcher() {
         Ok(()) => ok("watcher 已移除。", watcher_payload()),
         Err(error) => failed(&format!("移除 watcher 失败：{error}"), watcher_payload()),
     }
@@ -795,7 +806,7 @@ pub fn uninstall_watcher() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn enable_watcher() -> CommandResult<WatcherPayload> {
-    match codex_plus_core::watcher::enable_watcher() {
+    match codex_assistant_core::watcher::enable_watcher() {
         Ok(()) => ok("watcher 已启用。", watcher_payload()),
         Err(error) => failed(&format!("启用 watcher 失败：{error}"), watcher_payload()),
     }
@@ -803,7 +814,7 @@ pub fn enable_watcher() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn disable_watcher() -> CommandResult<WatcherPayload> {
-    match codex_plus_core::watcher::disable_watcher() {
+    match codex_assistant_core::watcher::disable_watcher() {
         Ok(()) => ok("watcher 已禁用。", watcher_payload()),
         Err(error) => failed(&format!("禁用 watcher 失败：{error}"), watcher_payload()),
     }
@@ -811,7 +822,7 @@ pub fn disable_watcher() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
-    let path = codex_plus_core::paths::default_diagnostic_log_path();
+    let path = codex_assistant_core::paths::default_diagnostic_log_path();
     match read_tail(&path, request.lines) {
         Ok(text) => ok(
             "日志已读取。",
@@ -851,7 +862,7 @@ pub fn reset_settings() -> CommandResult<SettingsPayload> {
             &format!("重置设置失败：{error}"),
             SettingsPayload {
                 settings,
-                settings_path: codex_plus_core::paths::default_settings_path()
+                settings_path: codex_assistant_core::paths::default_settings_path()
                     .to_string_lossy()
                     .to_string(),
                 user_scripts: user_script_inventory(),
@@ -862,7 +873,7 @@ pub fn reset_settings() -> CommandResult<SettingsPayload> {
 
 #[tauri::command]
 pub fn relay_status() -> CommandResult<RelayPayload> {
-    let status = codex_plus_core::relay_config::default_relay_status();
+    let status = codex_assistant_core::relay_config::default_relay_status();
     let message = if status.authenticated {
         "已检测到 ChatGPT 登录状态。"
     } else {
@@ -873,7 +884,7 @@ pub fn relay_status() -> CommandResult<RelayPayload> {
 
 #[tauri::command]
 pub fn read_relay_files() -> CommandResult<RelayFilesPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
     match relay_files_payload_from_home(&home) {
         Ok(payload) => ok("配置文件内容已读取。", payload),
         Err(error) => failed(
@@ -890,7 +901,7 @@ pub fn read_relay_files() -> CommandResult<RelayFilesPayload> {
 
 #[tauri::command]
 pub fn save_relay_file(request: SaveRelayFileRequest) -> CommandResult<RelayFilesPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
     match save_relay_file_in_home(&home, &request.kind, &request.contents)
         .and_then(|_| relay_files_payload_from_home(&home))
     {
@@ -920,7 +931,7 @@ pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayPro
     } else {
         profile.test_model.trim()
     };
-    match codex_plus_core::relay_config::test_relay_profile(&profile, test_model).await {
+    match codex_assistant_core::relay_config::test_relay_profile(&profile, test_model).await {
         Ok(result) => {
             let status = if result.http_status < 400 {
                 "ok"
@@ -959,25 +970,25 @@ pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayPro
 
 #[tauri::command]
 pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
     let settings = SettingsStore::default().load().unwrap_or_default();
     let relay = settings.active_relay_profile();
     log_relay_apply_request("manager.apply_relay_injection", &settings, &relay);
     if relay_has_complete_files(&relay) {
-        return match codex_plus_core::relay_config::apply_relay_files_to_home(
+        return match codex_assistant_core::relay_config::apply_relay_files_to_home(
             &home,
             &relay.config_contents,
             &relay.auth_contents,
         ) {
             Ok(result) => {
-                let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+                let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
                 ok(
                     "已切换到当前中转的完整 config.toml / auth.json。",
                     relay_payload(status, result.backup_path),
                 )
             }
             Err(error) => {
-                let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+                let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
                 failed(
                     &format!("切换完整中转配置失败：{error}"),
                     relay_payload(status, None),
@@ -986,31 +997,31 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
         };
     }
 
-    let auth = codex_plus_core::relay_config::chatgpt_auth_status_from_home(&home);
+    let auth = codex_assistant_core::relay_config::chatgpt_auth_status_from_home(&home);
     if !auth.authenticated {
-        let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+        let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
         return failed(
             "未检测到 ChatGPT 登录状态，已停止写入中转配置。",
             relay_payload(status, None),
         );
     }
 
-    match codex_plus_core::relay_config::apply_relay_config_to_home_with_protocol(
+    match codex_assistant_core::relay_config::apply_relay_config_to_home_with_protocol(
         &home,
         &relay.base_url,
         &relay.api_key,
         relay.protocol,
-        codex_plus_core::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT,
+        codex_assistant_core::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT,
     ) {
         Ok(result) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             ok(
                 "中转配置已写入，密钥未在界面明文显示。",
                 relay_payload(status, result.backup_path),
             )
         }
         Err(error) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             failed(
                 &format!("写入中转配置失败：{error}"),
                 relay_payload(status, None),
@@ -1021,25 +1032,25 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
 
 #[tauri::command]
 pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
     let settings = SettingsStore::default().load().unwrap_or_default();
     let relay = settings.active_relay_profile();
     log_relay_apply_request("manager.apply_pure_api_injection", &settings, &relay);
     if relay_has_complete_files(&relay) {
-        return match codex_plus_core::relay_config::apply_relay_files_to_home(
+        return match codex_assistant_core::relay_config::apply_relay_files_to_home(
             &home,
             &relay.config_contents,
             &relay.auth_contents,
         ) {
             Ok(result) => {
-                let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+                let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
                 ok(
                     "已切换到当前中转的完整 config.toml / auth.json。",
                     relay_payload(status, result.backup_path),
                 )
             }
             Err(error) => {
-                let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+                let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
                 failed(
                     &format!("切换完整纯 API 配置失败：{error}"),
                     relay_payload(status, None),
@@ -1048,22 +1059,22 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
         };
     }
 
-    match codex_plus_core::relay_config::apply_pure_api_config_to_home_with_protocol(
+    match codex_assistant_core::relay_config::apply_pure_api_config_to_home_with_protocol(
         &home,
         &relay.base_url,
         &relay.api_key,
         relay.protocol,
-        codex_plus_core::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT,
+        codex_assistant_core::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT,
     ) {
         Ok(result) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             ok(
                 "纯 API 模式已写入：auth.json 已切换为 OPENAI_API_KEY，config.toml 已写入 CodexAssistant provider。",
                 relay_payload(status, result.backup_path),
             )
         }
         Err(error) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             failed(
                 &format!("写入纯 API 模式失败：{error}"),
                 relay_payload(status, None),
@@ -1074,17 +1085,17 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
 
 #[tauri::command]
 pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
-    match codex_plus_core::relay_config::clear_relay_config_to_home(&home) {
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
+    match codex_assistant_core::relay_config::clear_relay_config_to_home(&home) {
         Ok(result) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             ok(
                 "已清除 CodexAssistant 中转 API 模式，并切换到官方 ChatGPT 登录模式。",
                 relay_payload(status, result.backup_path),
             )
         }
         Err(error) => {
-            let status = codex_plus_core::relay_config::relay_status_from_home(&home);
+            let status = codex_assistant_core::relay_config::relay_status_from_home(&home);
             failed(
                 &format!("清除中转配置失败：{error}"),
                 relay_payload(status, None),
@@ -1096,14 +1107,14 @@ pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
 #[tauri::command]
 pub async fn detect_codex_app_path() -> CommandResult<CodexAppPathPayload> {
     let path = tauri::async_runtime::spawn_blocking(|| {
-        codex_plus_core::app_paths::resolve_codex_app_dir(None)
+        codex_assistant_core::app_paths::resolve_codex_app_dir(None)
     })
     .await
     .ok()
     .flatten();
     match path {
         Some(path) => {
-            let version = codex_plus_core::app_paths::codex_app_version(&path);
+            let version = codex_assistant_core::app_paths::codex_app_version(&path);
             ok(
                 "已自动检测到 Codex 安装位置。",
                 CodexAppPathPayload {
@@ -1163,9 +1174,9 @@ pub async fn pick_codex_app_path(app: tauri::AppHandle) -> CommandResult<CodexAp
         );
     };
 
-    match codex_plus_core::app_paths::normalize_codex_app_path(&raw) {
+    match codex_assistant_core::app_paths::normalize_codex_app_path(&raw) {
         Some(path) => {
-            let version = codex_plus_core::app_paths::codex_app_version(&path);
+            let version = codex_assistant_core::app_paths::codex_app_version(&path);
             ok(
                 "已选择 Codex 路径。",
                 CodexAppPathPayload {
@@ -1186,8 +1197,8 @@ pub async fn pick_codex_app_path(app: tauri::AppHandle) -> CommandResult<CodexAp
 
 #[tauri::command]
 pub fn read_codex_credentials() -> CommandResult<CodexCredentialsPayload> {
-    let home = codex_plus_core::relay_config::default_codex_home_dir();
-    let creds = codex_plus_core::relay_config::codex_credentials_from_home(&home);
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
+    let creds = codex_assistant_core::relay_config::codex_credentials_from_home(&home);
     let message = if creds.api_key.is_empty() && creds.base_url.is_empty() {
         "未在本地 ~/.codex 中找到已保存的 API Key 或 Base URL。".to_string()
     } else {
@@ -1205,16 +1216,16 @@ pub fn read_codex_credentials() -> CommandResult<CodexCredentialsPayload> {
     )
 }
 
-fn relay_has_complete_files(relay: &codex_plus_core::settings::RelayProfile) -> bool {
+fn relay_has_complete_files(relay: &codex_assistant_core::settings::RelayProfile) -> bool {
     !relay.config_contents.trim().is_empty() && !relay.auth_contents.trim().is_empty()
 }
 
 fn log_relay_apply_request(
     event: &str,
     settings: &BackendSettings,
-    relay: &codex_plus_core::settings::RelayProfile,
+    relay: &codex_assistant_core::settings::RelayProfile,
 ) {
-    let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+    let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
         event,
         json!({
             "activeRelayId": settings.active_relay_id,
@@ -1231,7 +1242,7 @@ fn log_relay_apply_request(
 }
 
 fn refresh_cli_wrapper_after_settings_save(settings: &BackendSettings) -> String {
-    match codex_plus_core::cli_wrapper::ensure_cli_wrapper(settings) {
+    match codex_assistant_core::cli_wrapper::ensure_cli_wrapper(settings) {
         Ok(Some(install)) => format!(
             " 命令包装器已更新：{}。",
             install.real_codex.to_string_lossy()
@@ -1242,7 +1253,7 @@ fn refresh_cli_wrapper_after_settings_save(settings: &BackendSettings) -> String
 }
 
 fn relay_payload(
-    status: codex_plus_core::relay_config::RelayStatus,
+    status: codex_assistant_core::relay_config::RelayStatus,
     backup_path: Option<String>,
 ) -> RelayPayload {
     RelayPayload {
@@ -1307,7 +1318,7 @@ fn ads_payload(payload: Value) -> AdsPayload {
 fn open_url(url: &str) -> anyhow::Result<()> {
     #[cfg(windows)]
     {
-        codex_plus_core::windows_open_url(url)
+        codex_assistant_core::windows_open_url(url)
     }
     #[cfg(not(windows))]
     {
@@ -1329,7 +1340,7 @@ fn settings_payload(message: &str, failure_context: &str) -> CommandResult<Setti
 #[allow(clippy::result_large_err)]
 fn settings_payload_value() -> Result<SettingsPayload, (anyhow::Error, SettingsPayload)> {
     let store = SettingsStore::default();
-    let settings_path = codex_plus_core::paths::default_settings_path()
+    let settings_path = codex_assistant_core::paths::default_settings_path()
         .to_string_lossy()
         .to_string();
     match store.load() {
@@ -1352,7 +1363,7 @@ fn settings_payload_value() -> Result<SettingsPayload, (anyhow::Error, SettingsP
 fn fallback_settings_payload() -> SettingsPayload {
     SettingsPayload {
         settings: SettingsStore::default().load().unwrap_or_default(),
-        settings_path: codex_plus_core::paths::default_settings_path()
+        settings_path: codex_assistant_core::paths::default_settings_path()
             .to_string_lossy()
             .to_string(),
         user_scripts: user_script_inventory(),
@@ -1488,17 +1499,17 @@ fn diagnostics_report() -> String {
         OverviewPayload {
             codex_version: codex_app_path
                 .as_deref()
-                .and_then(codex_plus_core::app_paths::codex_app_version),
+                .and_then(codex_assistant_core::app_paths::codex_app_version),
             codex_app: path_state(codex_app_path),
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
             management_shortcut: shortcut_state(entrypoints.management_shortcut),
             latest_launch,
-            current_version: codex_plus_core::version::VERSION.to_string(),
+            current_version: codex_assistant_core::version::VERSION.to_string(),
             update_status: "not_checked".to_string(),
-            settings_path: codex_plus_core::paths::default_settings_path()
+            settings_path: codex_assistant_core::paths::default_settings_path()
                 .to_string_lossy()
                 .to_string(),
-            logs_path: codex_plus_core::paths::default_diagnostic_log_path()
+            logs_path: codex_assistant_core::paths::default_diagnostic_log_path()
                 .to_string_lossy()
                 .to_string(),
         },
@@ -1510,12 +1521,12 @@ fn diagnostics_report() -> String {
         .as_millis();
     serde_json::to_string_pretty(&json!({
         "generatedAtMs": generated_at_ms,
-        "version": codex_plus_core::version::VERSION,
+        "version": codex_assistant_core::version::VERSION,
         "overview": overview.payload,
         "settings": settings,
         "logs": {
-            "diagnosticLogPath": codex_plus_core::paths::default_diagnostic_log_path(),
-            "latestStatusPath": codex_plus_core::paths::default_latest_status_path()
+            "diagnosticLogPath": codex_assistant_core::paths::default_diagnostic_log_path(),
+            "latestStatusPath": codex_assistant_core::paths::default_latest_status_path()
         },
         "platform": {
             "os": std::env::consts::OS,
@@ -1532,7 +1543,7 @@ fn load_overview_payload() -> (
 ) {
     let settings = SettingsStore::default().load().unwrap_or_default();
     (
-        codex_plus_core::app_paths::resolve_codex_app_dir_with_saved(
+        codex_assistant_core::app_paths::resolve_codex_app_dir_with_saved(
             None,
             Some(settings.codex_app_path.as_str()),
         ),
@@ -1552,9 +1563,9 @@ fn install_background_failure(action: &str, error: impl std::fmt::Display) -> In
 }
 
 fn watcher_payload() -> WatcherPayload {
-    let flag = codex_plus_core::watcher::default_watcher_disabled_flag();
+    let flag = codex_assistant_core::watcher::default_watcher_disabled_flag();
     WatcherPayload {
-        installed: codex_plus_core::watcher::is_watcher_installed(),
+        installed: codex_assistant_core::watcher::is_watcher_installed(),
         enabled: !flag.exists(),
         disabled_flag: flag.to_string_lossy().to_string(),
     }
@@ -1641,13 +1652,13 @@ mod tests {
     #[test]
     fn startup_options_honors_show_update_environment() {
         unsafe {
-            std::env::set_var("CODEX_PLUS_SHOW_UPDATE", "1");
+            std::env::set_var("CODEX_ASSISTANT_SHOW_UPDATE", "1");
         }
 
         let result = startup_options();
 
         unsafe {
-            std::env::remove_var("CODEX_PLUS_SHOW_UPDATE");
+            std::env::remove_var("CODEX_ASSISTANT_SHOW_UPDATE");
         }
 
         assert_eq!(result.status, "ok");
@@ -1714,7 +1725,7 @@ mod tests {
     #[test]
     fn relay_payload_does_not_expose_token_text() {
         let payload = relay_payload(
-            codex_plus_core::relay_config::RelayStatus {
+            codex_assistant_core::relay_config::RelayStatus {
                 authenticated: true,
                 auth_source: "registry.json".to_string(),
                 account_label: Some("user@example.test".to_string()),
@@ -1831,14 +1842,14 @@ mod tests {
     }
 
     #[test]
-    fn launch_codex_plus_returns_failed_envelope_when_codex_app_missing() {
+    fn launch_codex_assistant_returns_failed_envelope_when_codex_app_missing() {
         let request = LaunchRequest {
             app_path: Some("/__codex_assistant_test_missing__".to_string()),
             debug_port: 9229,
             helper_port: 57321,
         };
 
-        let result = launch_codex_plus(request);
+        let result = launch_codex_assistant(request);
 
         // Either preflight catches it (failed envelope) or, if a local Codex is found via
         // saved settings, the spawn path is exercised. Both are valid; we only assert

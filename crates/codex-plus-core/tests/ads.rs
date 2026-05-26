@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 
-use codex_plus_core::ads::{
+use codex_assistant_core::ads::{
     DEFAULT_AD_LIST_URLS, cache_busted_ad_url, fetch_ad_list_from_urls, normalize_ad_payload,
 };
 use serde_json::json;

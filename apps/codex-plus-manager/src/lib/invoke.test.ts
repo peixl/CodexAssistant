@@ -92,7 +92,7 @@ describe("callSafe", () => {
       status: "failed",
       message: "启动静默入口失败：no such file",
     });
-    const r = await callSafe("launch_codex_plus");
+    const r = await callSafe("launch_codex_assistant");
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.error.code).toBe("backend_failed");
@@ -109,7 +109,7 @@ describe("callSafe", () => {
 
   it("treats status=accepted as success", async () => {
     invokeMock.mockResolvedValueOnce({ status: "accepted", message: "queued" });
-    const r = await callSafe("launch_codex_plus");
+    const r = await callSafe("launch_codex_assistant");
     expect(r.ok).toBe(true);
   });
 });

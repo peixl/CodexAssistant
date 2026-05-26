@@ -1,4 +1,4 @@
-use codex_plus_data::{ProviderSyncStatus, run_provider_sync};
+use codex_assistant_data::{ProviderSyncStatus, run_provider_sync};
 use rusqlite::Connection;
 use serde_json::json;
 use std::fs;

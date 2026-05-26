@@ -4,7 +4,7 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::thread;
 
-use codex_plus_core::model_catalog::read_codex_model_catalog_from_home;
+use codex_assistant_core::model_catalog::read_codex_model_catalog_from_home;
 use serde_json::json;
 
 #[tokio::test]
