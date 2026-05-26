@@ -43,16 +43,14 @@ jobs:
       BINARY_DIR: ${{ github.workspace }}/target/aarch64-apple-darwin/release
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --target aarch64-apple-darwin
           rustup default stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: release-aarch64-apple-darwin
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -90,6 +88,9 @@ jobs:
       TARGET: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Setup Rust toolchain
         run: |
@@ -107,11 +108,6 @@ jobs:
           foreach ($p in $paths) {
             try { Add-MpPreference -ExclusionPath $p -ErrorAction Stop } catch { Write-Host "skip $p ($($_.Exception.Message))" }
           }
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: release-x86_64-pc-windows-msvc
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -161,6 +157,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Verify build artifacts are attached to release
         env:

@@ -45,16 +45,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --component clippy --component rustfmt
           rustup default stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ci-ubuntu-latest
 
       - name: Install Linux build dependencies
         run: |
@@ -96,16 +94,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --component clippy
           rustup default stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ci-${{ matrix.os }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -134,6 +130,9 @@ jobs:
         working-directory: apps/codex-assistant-manager
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ''
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
