@@ -248,6 +248,42 @@ pub fn apply_relay_config_to_home_with_protocol(
     protocol: RelayProtocol,
     proxy_port: u16,
 ) -> anyhow::Result<RelayApplyResult> {
+    apply_relay_config_to_home_with_protocol_transport(
+        home,
+        base_url,
+        bearer_token,
+        protocol,
+        proxy_port,
+        true,
+    )
+}
+
+pub fn apply_relay_config_to_home_for_launch(
+    home: &Path,
+    base_url: &str,
+    bearer_token: &str,
+    protocol: RelayProtocol,
+    proxy_port: u16,
+    local_proxy_available: bool,
+) -> anyhow::Result<RelayApplyResult> {
+    apply_relay_config_to_home_with_protocol_transport(
+        home,
+        base_url,
+        bearer_token,
+        protocol,
+        proxy_port,
+        local_proxy_available,
+    )
+}
+
+fn apply_relay_config_to_home_with_protocol_transport(
+    home: &Path,
+    base_url: &str,
+    bearer_token: &str,
+    protocol: RelayProtocol,
+    proxy_port: u16,
+    local_proxy_available: bool,
+) -> anyhow::Result<RelayApplyResult> {
     let base_url = base_url.trim();
     if base_url.is_empty() {
         anyhow::bail!("中转 Base URL 不能为空");
@@ -259,8 +295,14 @@ pub fn apply_relay_config_to_home_with_protocol(
     std::fs::create_dir_all(home)?;
     let config_path = home.join("config.toml");
     let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
-    let codex_base_url = codex_base_url_for_protocol(base_url, protocol, proxy_port);
-    let updated = upsert_model_provider_config(&existing, &codex_base_url, bearer_token);
+    let provider =
+        codex_provider_config_for_protocol(base_url, protocol, proxy_port, local_proxy_available);
+    let updated = upsert_model_provider_config(
+        &existing,
+        &provider.base_url,
+        bearer_token,
+        provider.wire_api,
+    );
     std::fs::write(&config_path, updated)?;
     let status = relay_config_status_from_home(home);
     Ok(RelayApplyResult {
@@ -354,8 +396,13 @@ pub fn apply_pure_api_config_to_home_with_protocol(
 
     let config_path = home.join("config.toml");
     let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
-    let codex_base_url = codex_base_url_for_protocol(base_url, protocol, proxy_port);
-    let updated = upsert_model_provider_config(&existing, &codex_base_url, bearer_token);
+    let provider = codex_provider_config_for_protocol(base_url, protocol, proxy_port, true);
+    let updated = upsert_model_provider_config(
+        &existing,
+        &provider.base_url,
+        bearer_token,
+        provider.wire_api,
+    );
     std::fs::write(&config_path, updated)?;
     let status = relay_config_status_from_home(home);
     Ok(RelayApplyResult {
@@ -422,12 +469,30 @@ fn relay_profile_test_payload(protocol: RelayProtocol, model: &str) -> Value {
     }
 }
 
-fn codex_base_url_for_protocol(base_url: &str, protocol: RelayProtocol, proxy_port: u16) -> String {
+struct CodexProviderConfig {
+    base_url: String,
+    wire_api: &'static str,
+}
+
+fn codex_provider_config_for_protocol(
+    base_url: &str,
+    protocol: RelayProtocol,
+    proxy_port: u16,
+    local_proxy_available: bool,
+) -> CodexProviderConfig {
     match protocol {
-        RelayProtocol::Responses => base_url.to_string(),
-        RelayProtocol::ChatCompletions => {
-            crate::protocol_proxy::local_responses_proxy_base_url(proxy_port)
-        }
+        RelayProtocol::Responses => CodexProviderConfig {
+            base_url: base_url.to_string(),
+            wire_api: "responses",
+        },
+        RelayProtocol::ChatCompletions if local_proxy_available => CodexProviderConfig {
+            base_url: crate::protocol_proxy::local_responses_proxy_base_url(proxy_port),
+            wire_api: "responses",
+        },
+        RelayProtocol::ChatCompletions => CodexProviderConfig {
+            base_url: base_url.to_string(),
+            wire_api: "chat",
+        },
     }
 }
 
@@ -590,7 +655,12 @@ fn upsert_root_keys(contents: &str, entries: &[(&str, String)]) -> String {
     updated
 }
 
-fn upsert_model_provider_config(contents: &str, base_url: &str, bearer_token: &str) -> String {
+fn upsert_model_provider_config(
+    contents: &str,
+    base_url: &str,
+    bearer_token: &str,
+    wire_api: &str,
+) -> String {
     let mut updated = upsert_root_keys(
         contents,
         &[(
@@ -608,7 +678,7 @@ fn upsert_model_provider_config(contents: &str, base_url: &str, bearer_token: &s
     let provider_lines = vec![
         format!("[model_providers.{RELAY_PROVIDER}]"),
         format!("name = \"{}\"", toml_escape(RELAY_PROVIDER)),
-        "wire_api = \"responses\"".to_string(),
+        format!("wire_api = \"{}\"", toml_escape(wire_api)),
         "requires_openai_auth = true".to_string(),
         format!("base_url = \"{}\"", toml_escape(base_url)),
         format!(
