@@ -822,8 +822,12 @@ pub fn disable_watcher() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
-    let path = codex_assistant_core::paths::default_diagnostic_log_path();
-    match read_tail(&path, request.lines) {
+    let path = codex_assistant_core::diagnostic_log::diagnostic_log_path();
+    read_latest_logs_from_path(&path, request)
+}
+
+fn read_latest_logs_from_path(path: &Path, request: LogRequest) -> CommandResult<LogsPayload> {
+    match read_tail(path, request.lines) {
         Ok(text) => ok(
             "日志已读取。",
             LogsPayload {
@@ -1715,11 +1719,12 @@ mod tests {
 
     #[test]
     fn missing_logs_return_failed_status() {
-        let result = read_latest_logs(LogRequest { lines: 25 });
+        let temp_dir = tempfile::tempdir().unwrap();
+        let missing_log = temp_dir.path().join("missing.log");
+        let result = read_latest_logs_from_path(&missing_log, LogRequest { lines: 25 });
 
-        if result.payload.text.is_empty() {
-            assert_eq!(result.status, "failed");
-        }
+        assert_eq!(result.status, "failed");
+        assert!(result.payload.text.is_empty());
     }
 
     #[test]
