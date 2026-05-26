@@ -47,7 +47,7 @@ Thank you for your interest in contributing to CodexAssistant!
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/    # Silent launcher binary (codex-plus-plus)
+│   ├── codex-plus-launcher/    # Silent launcher binary (codex-assistant)
 │   └── codex-plus-manager/     # Tauri manager (React + Rust)
 │       ├── src/                # React + TypeScript UI
 │       └── src-tauri/          # Tauri shell + commands

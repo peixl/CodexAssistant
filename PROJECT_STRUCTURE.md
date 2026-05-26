@@ -16,7 +16,7 @@
 
 ```
 CodexAssistant (桌面应用)
-  ├── codex-plus-plus (静默启动器 - Rust Binary)
+  ├── codex-assistant (静默启动器 - Rust Binary)
   │   └── 启动 Codex + CDP 注入 (无 UI)
   │
   ├── CodexAssistant Manager (Tauri GUI)
@@ -67,7 +67,7 @@ CodexAssistant/
 │
 ├── 📂 apps/
 │   │
-│   ├── codex-plus-launcher/                  # 静默启动器 (codex-plus-plus)
+│   ├── codex-plus-launcher/                  # 静默启动器 (codex-assistant)
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       └── main.rs (22KB)                # 启动逻辑、CDP 连接、脚本注入
@@ -168,7 +168,7 @@ CodexAssistant/
 
 ## 🔑 核心功能模块
 
-### 1. 静默启动器 (codex-plus-plus)
+### 1. 静默启动器 (codex-assistant)
 - **文件**: `apps/codex-plus-launcher/src/main.rs`
 - **大小**: 22KB
 - **功能**: 启动 Codex → 连接 CDP → 注入脚本

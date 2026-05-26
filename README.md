@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
+<img src="docs/images/codex-assistant.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
 
 # CodexAssistant
 
@@ -29,7 +29,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
 
 - 🚀 **零侵入注入** — 通过 CDP 向已启动的 Codex 注入增强脚本，不动 Codex 的原始安装文件，不写 DLL 到 Codex 目录。
 - 🔌 **中转 (Relay) 注入** — 在 `~/.codex/config.toml` 中以独立 provider 写入兼容 OpenAI Responses API 的中转配置，多套配置一键切换，支持随时清除并退回官方 ChatGPT 登录态。
-- ⚡ **静默启动器** — 独立的 `codex-plus-plus` 二进制以最小开销启动 Codex，Windows 无控制台黑框，macOS 隐藏 Dock 图标，提供单实例守卫。
+- ⚡ **静默启动器** — 独立的 `codex-assistant` 二进制以最小开销启动 Codex，Windows 无控制台黑框，macOS 隐藏 Dock 图标，提供单实例守卫。
 - 🎛️ **Tauri 管理工具** — React 19 + TypeScript (strict) 前端 + Rust 后端，含诊断、日志、设置、中转管理、用户脚本、Provider Sync 等面板，支持深浅主题切换。
 - 🧩 **增强能力** — 插件入口解锁、强制安装特殊插件、会话删除、Markdown 导出、项目移动、Timeline、推荐内容。
 - 📜 **用户脚本** — 独立管理用户自定义脚本，在 Codex 启动后按需注入。
@@ -58,7 +58,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
 
 ```
 ┌─────────────────────────┐         ┌──────────────────────────┐
-│  CodexAssistant 管理工具  │  IPC    │   codex-plus-plus.exe    │
+│  CodexAssistant 管理工具  │  IPC    │   codex-assistant.exe    │
 │   (Tauri: Rust + React)  │◀──────▶│   静默启动器 (Rust binary)  │
 └────────────┬─────────────┘  HTTP  └─────────────┬────────────┘
              │ tauri commands                     │ spawn + monitor
@@ -193,7 +193,7 @@ npm --prefix apps/codex-plus-manager run test
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/     静默启动器二进制 (codex-plus-plus)
+│   ├── codex-plus-launcher/     静默启动器二进制 (codex-assistant)
 │   └── codex-plus-manager/      Tauri 管理工具
 │       ├── src/                 React + TypeScript UI
 │       └── src-tauri/           Tauri 命令与窗口管理

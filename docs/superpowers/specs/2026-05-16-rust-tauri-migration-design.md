@@ -157,8 +157,8 @@ Windows install creates two desktop shortcuts:
 
 Windows packaging uses separate entry binaries so window behavior is predictable:
 
-- `codex-plus-plus.exe`: no-window silent launcher for the `CodexAssistant` shortcut.
-- `codex-plus-plus-manager.exe`: Tauri management console for `CodexAssistant 管理工具`.
+- `codex-assistant.exe`: no-window silent launcher for the `CodexAssistant` shortcut.
+- `codex-assistant-manager.exe`: Tauri management console for `CodexAssistant 管理工具`.
 
 Windows uninstall removes both shortcuts and the uninstall registry entry. Optional data removal deletes CodexAssistant-owned data such as logs, settings, and backups.
 

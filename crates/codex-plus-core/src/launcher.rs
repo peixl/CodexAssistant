@@ -1588,27 +1588,23 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
 /// kill-switch filters that silently drop 127.0.0.1 SYN packets — `listen()` and
 /// `bind()` still succeed, so the symptom looks like Codex is broken when it isn't.
 pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::net::Ipv4Addr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let addrs = vec![
-        IpAddr::V4(Ipv4Addr::LOCALHOST),
-        IpAddr::V6(Ipv6Addr::LOCALHOST),
-    ];
-    let mut any_success = false;
-    let mut last_error = None;
-
-    for addr in addrs {
-        let listener = match tokio::net::TcpListener::bind((addr, 0)).await {
-            Ok(l) => l,
-            Err(e) => {
-                last_error = Some(e.into());
+    let mut last_error: Option<anyhow::Error> = None;
+    for attempt in 1..=PREFLIGHT_LOOPBACK_ATTEMPTS {
+        let listener = match tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await {
+            Ok(listener) => listener,
+            Err(error) => {
+                last_error = Some(anyhow::anyhow!(
+                    "loopback pre-flight attempt {attempt}: failed to bind 127.0.0.1:0: {error}"
+                ));
+                tokio::time::sleep(PREFLIGHT_LOOPBACK_RETRY_INTERVAL).await;
                 continue;
             }
         };
         let port = listener.local_addr()?.port();
 
-        let server_addr = addr;
         let server = tokio::spawn(async move {
             if let Ok((mut stream, _)) = listener.accept().await {
                 let _ = stream.write_all(b"ok").await;
@@ -1617,40 +1613,46 @@ pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
         });
 
         let probe = async {
-            let mut stream = tokio::net::TcpStream::connect((server_addr, port)).await?;
+            let mut stream = tokio::net::TcpStream::connect((Ipv4Addr::LOCALHOST, port)).await?;
             let mut buf = [0u8; 2];
             stream.read_exact(&mut buf).await?;
             anyhow::Ok(())
         };
 
-        let outcome = tokio::time::timeout(std::time::Duration::from_millis(2500), probe).await;
+        let outcome = tokio::time::timeout(PREFLIGHT_LOOPBACK_TIMEOUT, probe).await;
         server.abort();
 
-        if let Ok(Ok(())) = outcome {
-            any_success = true;
-            break;
-        } else {
-            if let Ok(Err(error)) = outcome {
-                last_error = Some(error);
-            } else {
+        match outcome {
+            Ok(Ok(())) => return Ok(()),
+            Ok(Err(error)) => {
                 last_error = Some(anyhow::anyhow!(
-                    "TCP connect to {} timed out after 2500ms",
-                    addr
+                    "loopback pre-flight attempt {attempt}: TCP connect to 127.0.0.1 failed: {error}"
+                ));
+            }
+            Err(_) => {
+                last_error = Some(anyhow::anyhow!(
+                    "loopback pre-flight attempt {attempt}: TCP connect to 127.0.0.1 timed out after {}ms",
+                    PREFLIGHT_LOOPBACK_TIMEOUT.as_millis()
                 ));
             }
         }
+
+        if attempt < PREFLIGHT_LOOPBACK_ATTEMPTS {
+            tokio::time::sleep(PREFLIGHT_LOOPBACK_RETRY_INTERVAL).await;
+        }
     }
 
-    if any_success {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(loopback_preflight_message(
-            &last_error
-                .unwrap_or_else(|| anyhow::anyhow!("all loopback interfaces failed"))
-                .to_string()
-        )))
-    }
+    Err(anyhow::anyhow!(loopback_preflight_message(
+        &last_error
+            .unwrap_or_else(|| anyhow::anyhow!("loopback pre-flight failed without a diagnostic"))
+            .to_string()
+    )))
 }
+
+const PREFLIGHT_LOOPBACK_ATTEMPTS: u32 = 3;
+const PREFLIGHT_LOOPBACK_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(2500);
+const PREFLIGHT_LOOPBACK_RETRY_INTERVAL: std::time::Duration =
+    std::time::Duration::from_millis(250);
 
 fn loopback_preflight_message(detail: &str) -> String {
     if cfg!(target_os = "windows") {

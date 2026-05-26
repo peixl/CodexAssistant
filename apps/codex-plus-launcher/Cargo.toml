@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "codex-plus-plus"
+name = "codex-assistant"
 path = "src/main.rs"
 
 [dependencies]

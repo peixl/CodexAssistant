@@ -26,7 +26,7 @@ fn github_payload_selects_platform_installer() {
         "body": "fixes",
         "assets": [
             {"name": "source.zip", "browser_download_url": "https://example.test/source.zip"},
-            {"name": "codex-plus-plus-manager.exe", "browser_download_url": "https://example.test/manager.exe"},
+            {"name": "codex-assistant-manager.exe", "browser_download_url": "https://example.test/manager.exe"},
             {"name": "CodexAssistant_1.0.9_x64-setup.exe", "browser_download_url": "https://example.test/setup.exe"},
             {"name": "CodexAssistant_1.0.9_x64.dmg", "browser_download_url": "https://example.test/app.dmg"}
         ]
@@ -89,7 +89,7 @@ fn asset_selection_prefers_current_platform_artifacts() {
             None::<String>,
         ),
         (
-            "codex-plus-plus-manager.exe".to_string(),
+            "codex-assistant-manager.exe".to_string(),
             "https://example.test/manager.exe".to_string(),
             None::<String>,
         ),

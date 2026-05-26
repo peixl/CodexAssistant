@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
+<img src="docs/images/codex-assistant.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
 
 # CodexAssistant
 
@@ -29,7 +29,7 @@ The system is built from three pieces — a **Rust silent launcher**, a **Tauri 
 
 - 🚀 **Zero-touch injection** — CDP-attaches to a running Codex process. No `app.asar` patching, no DLLs written into the Codex install directory.
 - 🔌 **Relay injection** — Writes an OpenAI Responses-compatible relay profile into `~/.codex/config.toml` as a dedicated provider; switch between multiple relay profiles and revert to the official ChatGPT login mode with one click.
-- ⚡ **Silent launcher** — `codex-plus-plus`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
+- ⚡ **Silent launcher** — `codex-assistant`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
 - 🎛️ **Tauri manager** — React 19 + TypeScript (strict) frontend with a Rust backend. Includes Diagnostics, Logs, Settings, Relay Injection, User Scripts, and Provider Sync panels with dark/light themes.
 - 🧩 **Enhancements** — Plugin entry unlock, forced install for restricted plugins, session delete, Markdown export, project move, Timeline, recommended content.
 - 📜 **User scripts** — Managed independently and injected after Codex starts.
@@ -58,7 +58,7 @@ You'll end up with two entry points:
 
 ```
 ┌─────────────────────────┐         ┌──────────────────────────┐
-│   CodexAssistant Manager │  IPC    │   codex-plus-plus.exe    │
+│   CodexAssistant Manager │  IPC    │   codex-assistant.exe    │
 │   (Tauri: Rust + React)  │◀──────▶│   Silent launcher (Rust)  │
 └────────────┬─────────────┘  HTTP  └─────────────┬────────────┘
              │ tauri commands                     │ spawn + monitor
@@ -191,7 +191,7 @@ npm --prefix apps/codex-plus-manager run test
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/     Silent launcher binary (codex-plus-plus)
+│   ├── codex-plus-launcher/     Silent launcher binary (codex-assistant)
 │   └── codex-plus-manager/      Tauri manager
 │       ├── src/                 React + TypeScript UI
 │       └── src-tauri/           Tauri commands & window management

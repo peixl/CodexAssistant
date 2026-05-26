@@ -186,7 +186,7 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "codex-plus-plus"
+name = "codex-assistant"
 path = "src/main.rs"
 
 [dependencies]
@@ -279,7 +279,7 @@ name = "codex_plus_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "codex-plus-plus-manager"
+name = "codex-assistant-manager"
 path = "src/main.rs"
 
 [dependencies]
@@ -537,7 +537,7 @@ git commit -m "feat: port data operations to Rust"
 - Modify: `crates/codex-plus-core/src/lib.rs`
 - Create: `crates/codex-plus-core/tests/cdp_bridge.rs`
 - Copy asset: `assets/inject/renderer-inject.js`
-- Copy assets: `assets/images/codex-plus-plus.ico`, `assets/images/codex-plus-plus.png`, sponsor images
+- Copy assets: `assets/images/codex-assistant.ico`, `assets/images/codex-assistant.png`, sponsor images
 
 - [ ] **Step 1: Write bridge script tests**
 
@@ -862,7 +862,7 @@ CodexAssistant 管理工具.app
 
 - [ ] **Step 2: Implement Windows install/uninstall**
 
-Generate two shortcuts and one uninstall registry entry. The silent shortcut points to `codex-plus-plus.exe`; the management shortcut points to `codex-plus-plus-manager.exe`.
+Generate two shortcuts and one uninstall registry entry. The silent shortcut points to `codex-assistant.exe`; the management shortcut points to `codex-assistant-manager.exe`.
 
 - [ ] **Step 3: Implement macOS install/uninstall**
 
@@ -928,8 +928,8 @@ Make `setup.bat` open or install the Rust/Tauri management tool. It should not c
 Document release artifacts:
 
 ```text
-codex-plus-plus.exe
-codex-plus-plus-manager.exe
+codex-assistant.exe
+codex-assistant-manager.exe
 CodexAssistant.app
 CodexAssistant 管理工具.app
 ```

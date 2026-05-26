@@ -111,10 +111,10 @@ fn macos_packager_hides_silent_launcher_but_not_manager() {
     assert!(script.contains("BINARY_DIR=\"${BINARY_DIR:-$ROOT/target/release}\""));
     assert!(script.contains("CodexAssistant-${VERSION}-macos-${ARCH}.dmg"));
     assert!(script.contains(
-        "create_app \"CodexAssistant\" \"CodexAssistant\" \"$BINARY_DIR/codex-plus-plus\" \"ai.ifq.codexassistant\" \"true\""
+        "create_app \"CodexAssistant\" \"CodexAssistant\" \"$BINARY_DIR/codex-assistant\" \"ai.ifq.codexassistant\" \"true\""
     ));
     assert!(script.contains(
-        "create_app \"CodexAssistant 管理工具\" \"CodexAssistantManager\" \"$BINARY_DIR/codex-plus-plus-manager\" \"ai.ifq.codexassistant.manager\" \"false\""
+        "create_app \"CodexAssistant 管理工具\" \"CodexAssistantManager\" \"$BINARY_DIR/codex-assistant-manager\" \"ai.ifq.codexassistant.manager\" \"false\""
     ));
 }
 

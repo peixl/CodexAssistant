@@ -107,7 +107,7 @@ pub fn filter_killable_launcher_processes<'a>(
     processes
         .into_iter()
         .filter(|(process_id, _, exe_file)| {
-            !protected.contains(process_id) && exe_file.eq_ignore_ascii_case("codex-plus-plus.exe")
+            !protected.contains(process_id) && exe_file.eq_ignore_ascii_case("codex-assistant.exe")
         })
         .map(|(process_id, _, _)| process_id)
         .collect()
