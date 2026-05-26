@@ -8,7 +8,7 @@
 
 # Node / Vite
 node_modules/
-apps/codex-plus-manager/dist/
+apps/codex-assistant-manager/dist/
 
 # Root workspace lockfile — root package.json only forwards scripts to
 # apps/*; npm regenerates this whenever a root-level script runs.
@@ -16,7 +16,7 @@ apps/codex-plus-manager/dist/
 /package-lock.json
 
 # Tauri (generated at build time)
-apps/codex-plus-manager/src-tauri/gen/
+apps/codex-assistant-manager/src-tauri/gen/
 
 # Installer packaging output (scripts/installer/macos/package-dmg.sh writes here)
 /dist/
@@ -91,7 +91,7 @@ coverage/
 .nyc_output/
 
 # ─── Tauri per-app target (defensive; workspace target is root) ─
-apps/codex-plus-manager/src-tauri/target/
+apps/codex-assistant-manager/src-tauri/target/
 
 # ─── Local tooling state ──────────────────────────────────────
 .claude/

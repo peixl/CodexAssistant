@@ -365,8 +365,8 @@ version = "1.1.5"
 dependencies = [
  "anyhow",
  "async-trait",
- "codex-plus-core",
- "codex-plus-data",
+ "codex-assistant-core",
+ "codex-assistant-data",
  "directories",
  "serde",
  "serde_json",
@@ -377,7 +377,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "codex-plus-core"
+name = "codex-assistant-core"
 version = "1.1.5"
 dependencies = [
  "anyhow",
@@ -399,13 +399,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "codex-plus-data"
+name = "codex-assistant-data"
 version = "1.1.5"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "chrono",
- "codex-plus-core",
+ "codex-assistant-core",
  "rusqlite",
  "serde",
  "serde_json",
@@ -415,13 +415,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "codex-plus-launcher"
+name = "codex-assistant-launcher"
 version = "1.1.5"
 dependencies = [
  "anyhow",
  "async-trait",
- "codex-plus-core",
- "codex-plus-data",
+ "codex-assistant-core",
+ "codex-assistant-data",
  "directories",
  "serde_json",
  "tokio",

@@ -488,7 +488,7 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
     }
 
     let temp = tempfile::tempdir().unwrap();
-    let log_path = temp.path().join("codex-plus.log");
+    let log_path = temp.path().join("codex-assistant.log");
     codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let hooks = DefaultLaunchHooks::default();
     let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();

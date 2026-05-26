@@ -58,7 +58,7 @@ mod tests {
 
     fn temp_dir() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
-            "codex-plus-core-status-test-{}-{}",
+            "codex-assistant-core-status-test-{}-{}",
             std::process::id(),
             NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed)
         ));

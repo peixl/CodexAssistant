@@ -403,7 +403,7 @@ impl LaunchHooks for DefaultLaunchHooks {
     }
 
     async fn run_provider_sync(&self) -> anyhow::Result<()> {
-        anyhow::bail!("provider sync requires launcher hooks with codex-plus-data integration")
+        anyhow::bail!("provider sync requires launcher hooks with codex-assistant-data integration")
     }
 
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()> {
@@ -1587,7 +1587,92 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
 /// drivers (WireGuard/Wintun, Cisco AnyConnect, Zscaler) commonly install WFP
 /// kill-switch filters that silently drop 127.0.0.1 SYN packets — `listen()` and
 /// `bind()` still succeed, so the symptom looks like Codex is broken when it isn't.
+///
+/// Some Chinese-market HIPS suites (notably Tencent QQ PC Manager:
+/// `QQPCRTP` / `qmbsrv`) also drop 127.0.0.1 SYN for unsigned binaries that
+/// lack a per-program ALLOW rule. When the first probe round fails on Windows
+/// we attempt a one-time self-heal: register an explicit Windows Firewall
+/// allow rule for the launcher binary (UAC-elevated), then retry. This is a
+/// compliant fix — we only widen the allow-list for our own exe, never
+/// disable the user's security software.
 pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
+    let initial = run_loopback_probe_rounds().await;
+    if initial.is_ok() {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        match try_loopback_self_heal_windows().await {
+            Ok(true) => {
+                let retry = run_loopback_probe_rounds().await;
+                if retry.is_ok() {
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "loopback.self_heal.success",
+                        serde_json::json!({}),
+                    );
+                    return Ok(());
+                }
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "loopback.self_heal.no_effect",
+                    serde_json::json!({
+                        "diagnostic": retry.as_ref().err().map(|e| e.to_string()).unwrap_or_default(),
+                    }),
+                );
+                return retry;
+            }
+            Ok(false) => {
+                // self-heal not applicable (e.g. rules already present, or
+                // we already retried this binary this session) — fall through.
+            }
+            Err(e) => {
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "loopback.self_heal.failed",
+                    serde_json::json!({ "error": e.to_string() }),
+                );
+            }
+        }
+    }
+
+    initial
+}
+
+#[cfg(target_os = "windows")]
+async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
+    use std::sync::OnceLock;
+    static ALREADY_TRIED: OnceLock<std::sync::Mutex<std::collections::HashSet<PathBuf>>> =
+        OnceLock::new();
+
+    let exe = std::env::current_exe()
+        .context("self_heal: std::env::current_exe failed")?;
+    let canonical = exe.canonicalize().unwrap_or(exe);
+
+    let tried = ALREADY_TRIED.get_or_init(Default::default);
+    {
+        let mut guard = tried.lock().expect("loopback self-heal mutex poisoned");
+        if guard.contains(&canonical) {
+            return Ok(false);
+        }
+        guard.insert(canonical.clone());
+    }
+
+    if crate::windows_integration::loopback_firewall_rules_present(&canonical) {
+        // Rules exist; QQPC may be filtering at a layer the rule doesn't cover.
+        // Skip re-prompting for UAC.
+        return Ok(false);
+    }
+
+    let exe_for_blocking = canonical.clone();
+    let blocking = tokio::task::spawn_blocking(move || {
+        crate::windows_integration::ensure_loopback_firewall_allow(&exe_for_blocking)
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("self_heal: spawn_blocking join failed: {e}"))?;
+    blocking?;
+    Ok(true)
+}
+
+async fn run_loopback_probe_rounds() -> anyhow::Result<()> {
     use std::net::Ipv4Addr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

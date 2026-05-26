@@ -60,15 +60,15 @@ jobs:
           node-version: '20'
 
       - name: Install frontend dependencies
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: npm ci
 
       - name: Build frontend assets
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: npm run vite:build
 
       - name: Build release binaries
-        run: cargo build --release --target aarch64-apple-darwin -p codex-plus-launcher -p codex-assistant
+        run: cargo build --release --target aarch64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 
       - name: Package DMG
         run: bash scripts/installer/macos/package-dmg.sh "$VERSION" "$ARCH"
@@ -119,15 +119,15 @@ jobs:
           node-version: '20'
 
       - name: Install frontend dependencies
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: npm ci
 
       - name: Build frontend assets
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: npm run vite:build
 
       - name: Build release binaries
-        run: cargo build --release --target x86_64-pc-windows-msvc -p codex-plus-launcher -p codex-assistant
+        run: cargo build --release --target x86_64-pc-windows-msvc -p codex-assistant-launcher -p codex-assistant
 
       - name: Stage installer payload
         shell: pwsh

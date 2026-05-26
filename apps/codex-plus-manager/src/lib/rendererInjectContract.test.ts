@@ -15,7 +15,7 @@ describe("renderer injection contract", () => {
   it("keeps plugin unlock controls and runtime hooks enabled outside relay mode", () => {
     expect(rendererInject).toContain("pluginEntryUnlock: true");
     expect(rendererInject).toContain("forcePluginInstall: true");
-    expect(rendererInject).toContain('data-codex-plus-setting="pluginEntryUnlock"');
+    expect(rendererInject).toContain('data-codex-assistant-setting="pluginEntryUnlock"');
     expect(rendererInject).toContain("function enablePluginEntry()");
     expect(rendererInject).toContain("function unblockPluginInstallButtons()");
     expect(rendererInject).toContain("Plugins - Unlocked");

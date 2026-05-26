@@ -8,7 +8,7 @@ DIST="$ROOT/dist/macos"
 STAGE="$DIST/stage"
 BINARY_DIR="${BINARY_DIR:-$ROOT/target/release}"
 DMG="$DIST/CodexAssistant-${VERSION}-macos-${ARCH}.dmg"
-ICON_SOURCE="$ROOT/apps/codex-plus-manager/src-tauri/icons/icon.png"
+ICON_SOURCE="$ROOT/apps/codex-assistant-manager/src-tauri/icons/icon.png"
 ICON_NAME="codex-assistant.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
 

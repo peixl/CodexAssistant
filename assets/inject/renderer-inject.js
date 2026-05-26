@@ -54,8 +54,8 @@
   const chatsSortDbRefreshIntervalMs = 5000;
   const styleId = "codex-delete-style";
   const codexDeleteStyleVersion = "12";
-  const codexPlusMenuId = "codex-plus-menu";
-  const codexPlusMenuFloatingClass = "codex-plus-menu-floating";
+  const codexPlusMenuId = "codex-assistant-menu";
+  const codexPlusMenuFloatingClass = "codex-assistant-menu-floating";
   const codexDeleteVersion = "7";
   const codexExportVersion = "1";
   const codexProjectMoveVersion = "1";
@@ -370,11 +370,11 @@
       }
       #${codexPlusMenuId}.${codexPlusMenuFloatingClass} {
         position: fixed;
-        top: var(--codex-plus-menu-top, 0);
-        right: var(--codex-plus-menu-right, 140px);
+        top: var(--codex-assistant-menu-top, 0);
+        right: var(--codex-assistant-menu-right, 140px);
         left: auto;
         z-index: 2147483645;
-        height: var(--codex-plus-menu-height, 30px);
+        height: var(--codex-assistant-menu-height, 30px);
         color: #d1d5db;
         font: 13px system-ui, sans-serif;
         text-align: right;
@@ -392,7 +392,7 @@
         pointer-events: auto;
         -webkit-app-region: no-drag;
       }
-      .codex-plus-trigger {
+      .codex-assistant-trigger {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -409,80 +409,80 @@
         -webkit-app-region: no-drag;
       }
       :root {
-        --codex-plus-modal-bg: #ffffff;
-        --codex-plus-modal-fg: #1a1c1f;
-        --codex-plus-modal-muted: #64748b;
-        --codex-plus-modal-border: rgba(15, 23, 42, .12);
-        --codex-plus-modal-border-strong: rgba(15, 23, 42, .18);
-        --codex-plus-modal-divider: rgba(15, 23, 42, .08);
-        --codex-plus-modal-soft: rgba(15, 23, 42, .04);
-        --codex-plus-modal-soft-strong: rgba(15, 23, 42, .08);
-        --codex-plus-modal-scrollbar: rgba(15, 23, 42, .22);
-        --codex-plus-modal-scrollbar-hover: rgba(15, 23, 42, .35);
-        --codex-plus-modal-shadow: 0 24px 60px rgba(15, 23, 42, .18);
-        --codex-plus-modal-overlay: rgba(15, 23, 42, .35);
-        --codex-plus-action-bg: #f1f5f9;
-        --codex-plus-action-fg: #1a1c1f;
-        --codex-plus-toggle-off: #cbd5e1;
-        --codex-plus-tab-fg: #475569;
-        --codex-plus-warning: #b45309;
-        --codex-plus-danger: #b91c1c;
-        --codex-plus-accent: #10a37f;
-        --codex-plus-accent-fg: #ffffff;
-        --codex-plus-accent-soft: rgba(16, 163, 127, .14);
-        --codex-plus-accent-soft-strong: rgba(16, 163, 127, .22);
+        --codex-assistant-modal-bg: #ffffff;
+        --codex-assistant-modal-fg: #1a1c1f;
+        --codex-assistant-modal-muted: #64748b;
+        --codex-assistant-modal-border: rgba(15, 23, 42, .12);
+        --codex-assistant-modal-border-strong: rgba(15, 23, 42, .18);
+        --codex-assistant-modal-divider: rgba(15, 23, 42, .08);
+        --codex-assistant-modal-soft: rgba(15, 23, 42, .04);
+        --codex-assistant-modal-soft-strong: rgba(15, 23, 42, .08);
+        --codex-assistant-modal-scrollbar: rgba(15, 23, 42, .22);
+        --codex-assistant-modal-scrollbar-hover: rgba(15, 23, 42, .35);
+        --codex-assistant-modal-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+        --codex-assistant-modal-overlay: rgba(15, 23, 42, .35);
+        --codex-assistant-action-bg: #f1f5f9;
+        --codex-assistant-action-fg: #1a1c1f;
+        --codex-assistant-toggle-off: #cbd5e1;
+        --codex-assistant-tab-fg: #475569;
+        --codex-assistant-warning: #b45309;
+        --codex-assistant-danger: #b91c1c;
+        --codex-assistant-accent: #10a37f;
+        --codex-assistant-accent-fg: #ffffff;
+        --codex-assistant-accent-soft: rgba(16, 163, 127, .14);
+        --codex-assistant-accent-soft-strong: rgba(16, 163, 127, .22);
       }
-      [data-codex-plus-theme="dark"] {
-        --codex-plus-modal-bg: #2b2b2b;
-        --codex-plus-modal-fg: #f3f4f6;
-        --codex-plus-modal-muted: #a1a1aa;
-        --codex-plus-modal-border: rgba(255, 255, 255, .12);
-        --codex-plus-modal-border-strong: rgba(255, 255, 255, .18);
-        --codex-plus-modal-divider: rgba(255, 255, 255, .1);
-        --codex-plus-modal-soft: rgba(255, 255, 255, .04);
-        --codex-plus-modal-soft-strong: rgba(255, 255, 255, .08);
-        --codex-plus-modal-scrollbar: rgba(255, 255, 255, .28);
-        --codex-plus-modal-scrollbar-hover: rgba(255, 255, 255, .38);
-        --codex-plus-modal-shadow: 0 24px 80px rgba(0, 0, 0, .45);
-        --codex-plus-modal-overlay: rgba(0, 0, 0, .45);
-        --codex-plus-action-bg: #3f3f46;
-        --codex-plus-action-fg: #f3f4f6;
-        --codex-plus-toggle-off: #52525b;
-        --codex-plus-tab-fg: #d1d5db;
-        --codex-plus-warning: #fbbf24;
-        --codex-plus-danger: #f87171;
-        --codex-plus-accent: #10a37f;
-        --codex-plus-accent-fg: #ffffff;
-        --codex-plus-accent-soft: rgba(16, 163, 127, .18);
-        --codex-plus-accent-soft-strong: rgba(16, 163, 127, .26);
+      [data-codex-assistant-theme="dark"] {
+        --codex-assistant-modal-bg: #2b2b2b;
+        --codex-assistant-modal-fg: #f3f4f6;
+        --codex-assistant-modal-muted: #a1a1aa;
+        --codex-assistant-modal-border: rgba(255, 255, 255, .12);
+        --codex-assistant-modal-border-strong: rgba(255, 255, 255, .18);
+        --codex-assistant-modal-divider: rgba(255, 255, 255, .1);
+        --codex-assistant-modal-soft: rgba(255, 255, 255, .04);
+        --codex-assistant-modal-soft-strong: rgba(255, 255, 255, .08);
+        --codex-assistant-modal-scrollbar: rgba(255, 255, 255, .28);
+        --codex-assistant-modal-scrollbar-hover: rgba(255, 255, 255, .38);
+        --codex-assistant-modal-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+        --codex-assistant-modal-overlay: rgba(0, 0, 0, .45);
+        --codex-assistant-action-bg: #3f3f46;
+        --codex-assistant-action-fg: #f3f4f6;
+        --codex-assistant-toggle-off: #52525b;
+        --codex-assistant-tab-fg: #d1d5db;
+        --codex-assistant-warning: #fbbf24;
+        --codex-assistant-danger: #f87171;
+        --codex-assistant-accent: #10a37f;
+        --codex-assistant-accent-fg: #ffffff;
+        --codex-assistant-accent-soft: rgba(16, 163, 127, .18);
+        --codex-assistant-accent-soft-strong: rgba(16, 163, 127, .26);
       }
-      .codex-plus-modal-overlay {
+      .codex-assistant-modal-overlay {
         position: fixed;
         inset: 0;
         z-index: 2147483646;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--codex-plus-modal-overlay);
+        background: var(--codex-assistant-modal-overlay);
         pointer-events: auto;
         -webkit-app-region: no-drag;
       }
-      .codex-plus-modal-content {
+      .codex-assistant-modal-content {
         width: min(520px, calc(100vw - 48px));
         max-height: min(680px, calc(100vh - 40px));
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        border: 1px solid var(--codex-plus-modal-border);
+        border: 1px solid var(--codex-assistant-modal-border);
         border-radius: 18px;
-        background: var(--codex-plus-modal-bg);
-        color: var(--codex-plus-modal-fg);
+        background: var(--codex-assistant-modal-bg);
+        color: var(--codex-assistant-modal-fg);
         font: 14px system-ui, sans-serif;
-        box-shadow: var(--codex-plus-modal-shadow);
+        box-shadow: var(--codex-assistant-modal-shadow);
         pointer-events: auto;
         -webkit-app-region: no-drag;
       }
-      .codex-plus-modal-header {
+      .codex-assistant-modal-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -490,21 +490,21 @@
         flex: 0 0 auto;
         -webkit-app-region: no-drag;
       }
-      .codex-plus-modal-title { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 650; }
-      .codex-plus-backend-indicator { width: 9px; height: 9px; border-radius: 999px; background: var(--codex-plus-modal-muted); display: inline-block; }
-      .codex-plus-backend-indicator[data-status="ok"] { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,.75); }
-      .codex-plus-backend-indicator[data-status="failed"] { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,.75); }
-      .codex-plus-backend-indicator[data-status="checking"] { background: #fbbf24; }
-      .codex-plus-modal-close {
+      .codex-assistant-modal-title { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 650; }
+      .codex-assistant-backend-indicator { width: 9px; height: 9px; border-radius: 999px; background: var(--codex-assistant-modal-muted); display: inline-block; }
+      .codex-assistant-backend-indicator[data-status="ok"] { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,.75); }
+      .codex-assistant-backend-indicator[data-status="failed"] { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,.75); }
+      .codex-assistant-backend-indicator[data-status="checking"] { background: #fbbf24; }
+      .codex-assistant-modal-close {
         border: 0;
         background: transparent;
-        color: var(--codex-plus-modal-muted);
+        color: var(--codex-assistant-modal-muted);
         font-size: 20px;
         cursor: pointer;
         pointer-events: auto;
         -webkit-app-region: no-drag;
       }
-      .codex-plus-modal-body {
+      .codex-assistant-modal-body {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
@@ -512,38 +512,38 @@
         scrollbar-gutter: stable;
         padding: 4px 20px 16px;
         scrollbar-width: thin;
-        scrollbar-color: var(--codex-plus-modal-scrollbar) transparent;
+        scrollbar-color: var(--codex-assistant-modal-scrollbar) transparent;
       }
-      .codex-plus-modal-body::-webkit-scrollbar { width: 10px; }
-      .codex-plus-modal-body::-webkit-scrollbar-track { background: transparent; }
-      .codex-plus-modal-body::-webkit-scrollbar-thumb {
+      .codex-assistant-modal-body::-webkit-scrollbar { width: 10px; }
+      .codex-assistant-modal-body::-webkit-scrollbar-track { background: transparent; }
+      .codex-assistant-modal-body::-webkit-scrollbar-thumb {
         border: 2px solid transparent;
         border-radius: 999px;
-        background: var(--codex-plus-modal-scrollbar);
+        background: var(--codex-assistant-modal-scrollbar);
         background-clip: padding-box;
       }
-      .codex-plus-modal-body::-webkit-scrollbar-thumb:hover { background: var(--codex-plus-modal-scrollbar-hover); background-clip: padding-box; }
-      .codex-plus-row {
+      .codex-assistant-modal-body::-webkit-scrollbar-thumb:hover { background: var(--codex-assistant-modal-scrollbar-hover); background-clip: padding-box; }
+      .codex-assistant-row {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
         padding: 10px 0;
-        border-top: 1px solid var(--codex-plus-modal-divider);
+        border-top: 1px solid var(--codex-assistant-modal-divider);
       }
-      .codex-plus-row:first-child { border-top: 0; }
-      .codex-plus-row-title { font-weight: 550; line-height: 1.35; }
-      .codex-plus-row-description { margin-top: 2px; color: var(--codex-plus-modal-muted); font-size: 12px; line-height: 1.4; }
-      .codex-plus-model-compat-warning { margin-top: 6px; color: var(--codex-plus-warning); font-size: 12px; line-height: 1.45; }
-      .codex-plus-toggle {
+      .codex-assistant-row:first-child { border-top: 0; }
+      .codex-assistant-row-title { font-weight: 550; line-height: 1.35; }
+      .codex-assistant-row-description { margin-top: 2px; color: var(--codex-assistant-modal-muted); font-size: 12px; line-height: 1.4; }
+      .codex-assistant-model-compat-warning { margin-top: 6px; color: var(--codex-assistant-warning); font-size: 12px; line-height: 1.45; }
+      .codex-assistant-toggle {
         width: 42px;
         height: 24px;
         border: 0;
         border-radius: 999px;
-        background: var(--codex-plus-toggle-off);
+        background: var(--codex-assistant-toggle-off);
         padding: 2px;
       }
-      .codex-plus-toggle span {
+      .codex-assistant-toggle span {
         display: block;
         width: 20px;
         height: 20px;
@@ -552,41 +552,41 @@
         transition: transform .12s ease;
         box-shadow: 0 1px 2px rgba(15, 23, 42, .15);
       }
-      .codex-plus-toggle,
-      .codex-plus-action-button,
-      .codex-plus-issue-button,
-      .codex-plus-backend-status {
+      .codex-assistant-toggle,
+      .codex-assistant-action-button,
+      .codex-assistant-issue-button,
+      .codex-assistant-backend-status {
         flex-shrink: 0;
         align-self: center;
       }
-      .codex-plus-toggle[data-enabled="true"] { background: var(--codex-plus-accent); }
-      .codex-plus-toggle[data-enabled="true"] span { transform: translateX(18px); }
-      .codex-plus-toggle[data-relay-unneeded="true"] { width: 72px; cursor: default; background: var(--codex-plus-accent-soft); color: var(--codex-plus-accent); }
-      .codex-plus-toggle[data-relay-unneeded="true"] span { display: none; }
-      .codex-plus-toggle[data-relay-unneeded="true"]::after { content: "无需开启"; font-size: 12px; font-weight: 650; line-height: 1; }
-      .codex-plus-width-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 176px; align-self: center; }
-      .codex-plus-width-input {
+      .codex-assistant-toggle[data-enabled="true"] { background: var(--codex-assistant-accent); }
+      .codex-assistant-toggle[data-enabled="true"] span { transform: translateX(18px); }
+      .codex-assistant-toggle[data-relay-unneeded="true"] { width: 72px; cursor: default; background: var(--codex-assistant-accent-soft); color: var(--codex-assistant-accent); }
+      .codex-assistant-toggle[data-relay-unneeded="true"] span { display: none; }
+      .codex-assistant-toggle[data-relay-unneeded="true"]::after { content: "无需开启"; font-size: 12px; font-weight: 650; line-height: 1; }
+      .codex-assistant-width-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 176px; align-self: center; }
+      .codex-assistant-width-input {
         width: 78px;
         height: 26px;
         box-sizing: border-box;
-        border: 1px solid var(--codex-plus-modal-border-strong);
+        border: 1px solid var(--codex-assistant-modal-border-strong);
         border-radius: 7px;
-        background: var(--codex-plus-modal-soft);
-        color: var(--codex-plus-modal-fg);
+        background: var(--codex-assistant-modal-soft);
+        color: var(--codex-assistant-modal-fg);
         font: 12px system-ui, sans-serif;
         padding: 0 8px;
       }
-      .codex-plus-width-input:disabled { opacity: .55; cursor: not-allowed; }
-      .codex-plus-service-tier-control { display: grid; gap: 6px; min-width: 316px; justify-items: end; align-self: center; }
-      .codex-plus-service-tier-status { color: var(--codex-plus-modal-muted); font-size: 12px; line-height: 1.3; text-align: right; }
-      .codex-plus-service-tier-status[data-status="ok"] { color: #34d399; }
-      .codex-plus-service-tier-status[data-status="failed"] { color: var(--codex-plus-danger); }
-      .codex-plus-service-tier-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-      .codex-plus-service-tier-thread-actions { opacity: .88; align-items: center; }
-      .codex-plus-service-tier-thread-label { color: var(--codex-plus-modal-muted); font: 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
-      .codex-plus-service-tier-button { border: 1px solid var(--codex-plus-modal-border-strong); border-radius: 7px; background: var(--codex-plus-action-bg); color: var(--codex-plus-action-fg); font: 12px system-ui, sans-serif; padding: 5px 8px; white-space: nowrap; }
-      .codex-plus-service-tier-button[data-active="true"] { border-color: var(--codex-plus-accent); background: var(--codex-plus-accent-soft-strong); color: var(--codex-plus-accent); }
-      .codex-plus-service-tier-button:disabled { opacity: .55; cursor: not-allowed; }
+      .codex-assistant-width-input:disabled { opacity: .55; cursor: not-allowed; }
+      .codex-assistant-service-tier-control { display: grid; gap: 6px; min-width: 316px; justify-items: end; align-self: center; }
+      .codex-assistant-service-tier-status { color: var(--codex-assistant-modal-muted); font-size: 12px; line-height: 1.3; text-align: right; }
+      .codex-assistant-service-tier-status[data-status="ok"] { color: #34d399; }
+      .codex-assistant-service-tier-status[data-status="failed"] { color: var(--codex-assistant-danger); }
+      .codex-assistant-service-tier-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+      .codex-assistant-service-tier-thread-actions { opacity: .88; align-items: center; }
+      .codex-assistant-service-tier-thread-label { color: var(--codex-assistant-modal-muted); font: 12px/1.2 system-ui, sans-serif; white-space: nowrap; }
+      .codex-assistant-service-tier-button { border: 1px solid var(--codex-assistant-modal-border-strong); border-radius: 7px; background: var(--codex-assistant-action-bg); color: var(--codex-assistant-action-fg); font: 12px system-ui, sans-serif; padding: 5px 8px; white-space: nowrap; }
+      .codex-assistant-service-tier-button[data-active="true"] { border-color: var(--codex-assistant-accent); background: var(--codex-assistant-accent-soft-strong); color: var(--codex-assistant-accent); }
+      .codex-assistant-service-tier-button:disabled { opacity: .55; cursor: not-allowed; }
       .${codexServiceTierBadgeClass} {
         display: inline-flex;
         align-items: center;
@@ -595,43 +595,43 @@
         height: 24px;
         min-width: 54px;
         box-sizing: border-box;
-        border: 1px solid var(--codex-plus-modal-border-strong);
+        border: 1px solid var(--codex-assistant-modal-border-strong);
         border-radius: 999px;
-        background: var(--codex-plus-modal-soft);
-        color: var(--codex-plus-modal-muted);
+        background: var(--codex-assistant-modal-soft);
+        color: var(--codex-assistant-modal-muted);
         font: 600 12px/1 system-ui, sans-serif;
         padding: 0 8px;
         white-space: nowrap;
         cursor: pointer;
       }
-      .${codexServiceTierBadgeClass}:hover { border-color: var(--codex-plus-accent); background: var(--codex-plus-accent-soft); }
-      .${codexServiceTierBadgeClass}[data-tier="fast"] { border-color: var(--codex-plus-accent); background: var(--codex-plus-accent-soft-strong); color: var(--codex-plus-accent); }
-      .${codexServiceTierBadgeClass}[data-tier="loading"] { color: var(--codex-plus-modal-muted); }
-      .${codexServiceTierBadgeClass}[data-tier="failed"] { border-color: rgba(239,68,68,.42); background: rgba(239,68,68,.12); color: var(--codex-plus-danger); }
+      .${codexServiceTierBadgeClass}:hover { border-color: var(--codex-assistant-accent); background: var(--codex-assistant-accent-soft); }
+      .${codexServiceTierBadgeClass}[data-tier="fast"] { border-color: var(--codex-assistant-accent); background: var(--codex-assistant-accent-soft-strong); color: var(--codex-assistant-accent); }
+      .${codexServiceTierBadgeClass}[data-tier="loading"] { color: var(--codex-assistant-modal-muted); }
+      .${codexServiceTierBadgeClass}[data-tier="failed"] { border-color: rgba(239,68,68,.42); background: rgba(239,68,68,.12); color: var(--codex-assistant-danger); }
       .${codexServiceTierBadgeClass}[data-disabled="true"] { cursor: not-allowed; opacity: .78; }
-      .codex-plus-about { color: var(--codex-plus-modal-muted); line-height: 1.5; }
-      .codex-plus-about a { color: var(--codex-plus-accent); }
-      .codex-plus-tabs { display: flex; gap: 8px; padding: 0 20px 6px; flex: 0 0 auto; }
-      .codex-plus-tab-button { border: 1px solid var(--codex-plus-modal-border); border-radius: 999px; background: transparent; color: var(--codex-plus-tab-fg); font: 12px system-ui, sans-serif; padding: 5px 10px; cursor: pointer; }
-      .codex-plus-tab-button[data-active="true"] { background: var(--codex-plus-accent); color: var(--codex-plus-accent-fg); border-color: var(--codex-plus-accent); }
-      .codex-plus-panel[hidden] { display: none; }
-      .codex-plus-action-button,
-      .codex-plus-issue-button { border: 1px solid var(--codex-plus-modal-border-strong); border-radius: 7px; background: var(--codex-plus-action-bg); color: var(--codex-plus-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
-      .codex-plus-backend-status { display: grid; gap: 4px; min-width: 132px; justify-items: end; }
-      .codex-plus-backend-label { color: var(--codex-plus-modal-muted); font-size: 12px; }
-      .codex-plus-backend-label[data-status="ok"] { color: #34d399; }
-      .codex-plus-backend-label[data-status="failed"] { color: var(--codex-plus-danger); }
-      .codex-plus-backend-repair { border: 1px solid var(--codex-plus-modal-border-strong); border-radius: 7px; background: var(--codex-plus-action-bg); color: var(--codex-plus-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
-      .codex-plus-backend-repair[hidden] { display: none; }
-      .codex-plus-user-script-warning { margin-top: 4px; color: var(--codex-plus-warning); font-size: 12px; }
-      .codex-plus-user-script-dirs { margin-top: 6px; color: var(--codex-plus-modal-muted); font-size: 11px; line-height: 1.4; word-break: break-all; }
-      .codex-plus-user-script-list { margin-top: 8px; display: grid; gap: 6px; }
-      .codex-plus-user-script-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--codex-plus-modal-divider); border-radius: 8px; padding: 6px 8px; }
-      .codex-plus-user-script-name { font-size: 12px; }
-      .codex-plus-user-script-meta { margin-top: 2px; color: var(--codex-plus-modal-muted); font-size: 11px; }
-      .codex-plus-user-script-error { margin-top: 2px; color: var(--codex-plus-danger); font-size: 11px; word-break: break-all; }
-      .codex-plus-user-script-actions { display: grid; justify-items: end; gap: 8px; min-width: 120px; }
-      .codex-plus-user-script-reload { border: 1px solid var(--codex-plus-modal-border-strong); border-radius: 7px; background: var(--codex-plus-action-bg); color: var(--codex-plus-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
+      .codex-assistant-about { color: var(--codex-assistant-modal-muted); line-height: 1.5; }
+      .codex-assistant-about a { color: var(--codex-assistant-accent); }
+      .codex-assistant-tabs { display: flex; gap: 8px; padding: 0 20px 6px; flex: 0 0 auto; }
+      .codex-assistant-tab-button { border: 1px solid var(--codex-assistant-modal-border); border-radius: 999px; background: transparent; color: var(--codex-assistant-tab-fg); font: 12px system-ui, sans-serif; padding: 5px 10px; cursor: pointer; }
+      .codex-assistant-tab-button[data-active="true"] { background: var(--codex-assistant-accent); color: var(--codex-assistant-accent-fg); border-color: var(--codex-assistant-accent); }
+      .codex-assistant-panel[hidden] { display: none; }
+      .codex-assistant-action-button,
+      .codex-assistant-issue-button { border: 1px solid var(--codex-assistant-modal-border-strong); border-radius: 7px; background: var(--codex-assistant-action-bg); color: var(--codex-assistant-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
+      .codex-assistant-backend-status { display: grid; gap: 4px; min-width: 132px; justify-items: end; }
+      .codex-assistant-backend-label { color: var(--codex-assistant-modal-muted); font-size: 12px; }
+      .codex-assistant-backend-label[data-status="ok"] { color: #34d399; }
+      .codex-assistant-backend-label[data-status="failed"] { color: var(--codex-assistant-danger); }
+      .codex-assistant-backend-repair { border: 1px solid var(--codex-assistant-modal-border-strong); border-radius: 7px; background: var(--codex-assistant-action-bg); color: var(--codex-assistant-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
+      .codex-assistant-backend-repair[hidden] { display: none; }
+      .codex-assistant-user-script-warning { margin-top: 4px; color: var(--codex-assistant-warning); font-size: 12px; }
+      .codex-assistant-user-script-dirs { margin-top: 6px; color: var(--codex-assistant-modal-muted); font-size: 11px; line-height: 1.4; word-break: break-all; }
+      .codex-assistant-user-script-list { margin-top: 8px; display: grid; gap: 6px; }
+      .codex-assistant-user-script-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--codex-assistant-modal-divider); border-radius: 8px; padding: 6px 8px; }
+      .codex-assistant-user-script-name { font-size: 12px; }
+      .codex-assistant-user-script-meta { margin-top: 2px; color: var(--codex-assistant-modal-muted); font-size: 11px; }
+      .codex-assistant-user-script-error { margin-top: 2px; color: var(--codex-assistant-danger); font-size: 11px; word-break: break-all; }
+      .codex-assistant-user-script-actions { display: grid; justify-items: end; gap: 8px; min-width: 120px; }
+      .codex-assistant-user-script-reload { border: 1px solid var(--codex-assistant-modal-border-strong); border-radius: 7px; background: var(--codex-assistant-action-bg); color: var(--codex-assistant-action-fg); font: 12px system-ui, sans-serif; padding: 6px 8px; cursor: pointer; }
       .${timelineClass} {
         position: fixed;
         top: calc(72px + 12px);
@@ -799,7 +799,7 @@
   function refreshConversationViewControls() {
     const enabled = !!codexPlusSettings().conversationView;
     const width = conversationViewWidth();
-    document.querySelectorAll("[data-codex-plus-conversation-view-width]").forEach((input) => {
+    document.querySelectorAll("[data-codex-assistant-conversation-view-width]").forEach((input) => {
       input.value = String(width);
       input.disabled = !enabled;
     });
@@ -812,8 +812,8 @@
   }
 
   function renderCodexPlusMenu() {
-    document.querySelectorAll(".codex-plus-toggle[data-codex-plus-setting]").forEach((button) => {
-      const key = button.getAttribute("data-codex-plus-setting");
+    document.querySelectorAll(".codex-assistant-toggle[data-codex-assistant-setting]").forEach((button) => {
+      const key = button.getAttribute("data-codex-assistant-setting");
       button.dataset.enabled = String(!!codexPlusSettings()[key]);
     });
     refreshConversationViewControls();
@@ -1426,7 +1426,7 @@
   }
 
   function refreshCodexPlusBackendToggles() {
-    document.querySelectorAll(".codex-plus-toggle[data-codex-backend-setting]").forEach((button) => {
+    document.querySelectorAll(".codex-assistant-toggle[data-codex-backend-setting]").forEach((button) => {
       const key = button.getAttribute("data-codex-backend-setting");
       button.dataset.enabled = String(!!codexPlusBackendSettings[key]);
     });
@@ -1445,7 +1445,7 @@
     const status = codexPlusBackendStatus.status || "failed";
     if (codexPlusBackendStatus.version) {
       codexPlusVersion = codexPlusBackendStatus.version;
-      document.querySelectorAll("[data-codex-plus-version]").forEach((node) => {
+      document.querySelectorAll("[data-codex-assistant-version]").forEach((node) => {
         node.textContent = `CodexAssistant ${codexPlusVersion}`;
       });
     }
@@ -1527,13 +1527,13 @@
       return;
     }
     list.innerHTML = codexPlusUserScripts.scripts.map((script) => `
-      <div class="codex-plus-user-script-item">
+      <div class="codex-assistant-user-script-item">
         <div>
-          <div class="codex-plus-user-script-name">${escapeHtml(script.name || script.key)}</div>
-          <div class="codex-plus-user-script-meta">${script.source === "builtin" ? "内置" : "用户"} · ${userScriptStatusLabel(script.status)}</div>
-          ${script.error ? `<div class="codex-plus-user-script-error">${escapeHtml(script.error)}</div>` : ""}
+          <div class="codex-assistant-user-script-name">${escapeHtml(script.name || script.key)}</div>
+          <div class="codex-assistant-user-script-meta">${script.source === "builtin" ? "内置" : "用户"} · ${userScriptStatusLabel(script.status)}</div>
+          ${script.error ? `<div class="codex-assistant-user-script-error">${escapeHtml(script.error)}</div>` : ""}
         </div>
-        <button type="button" class="codex-plus-toggle" data-codex-user-script-key="${escapeHtml(script.key)}" data-enabled="${String(!!script.enabled)}"><span></span></button>
+        <button type="button" class="codex-assistant-toggle" data-codex-user-script-key="${escapeHtml(script.key)}" data-enabled="${String(!!script.enabled)}"><span></span></button>
       </div>
     `).join("");
   }
@@ -1573,32 +1573,32 @@
 
   function renderCodexPlusAdGroup(type, emptyText) {
     const ads = codexPlusAds.filter((ad) => ad.type === type);
-    if (!ads.length) return `<div class="codex-plus-ad-empty">${escapeHtml(emptyText)}</div>`;
+    if (!ads.length) return `<div class="codex-assistant-ad-empty">${escapeHtml(emptyText)}</div>`;
     return ads.map((ad) => `
-      <article class="codex-plus-ad-card">
-        <div class="codex-plus-ad-content">
-          <h3 class="codex-plus-ad-title">${escapeHtml(ad.title)}</h3>
-          <p class="codex-plus-ad-description">${escapeHtml(ad.description)}</p>
-          <div class="codex-plus-ad-highlights">
+      <article class="codex-assistant-ad-card">
+        <div class="codex-assistant-ad-content">
+          <h3 class="codex-assistant-ad-title">${escapeHtml(ad.title)}</h3>
+          <p class="codex-assistant-ad-description">${escapeHtml(ad.description)}</p>
+          <div class="codex-assistant-ad-highlights">
             ${ad.highlights.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
           </div>
-          <a class="codex-plus-ad-link" href="${escapeHtml(ad.url)}" target="_blank" rel="noreferrer">访问 ${escapeHtml(new URL(ad.url).hostname)}</a>
+          <a class="codex-assistant-ad-link" href="${escapeHtml(ad.url)}" target="_blank" rel="noreferrer">访问 ${escapeHtml(new URL(ad.url).hostname)}</a>
         </div>
       </article>
     `).join("");
   }
 
   function renderCodexPlusAds() {
-    if (!codexPlusAdsLoaded) return `<div class="codex-plus-ad-empty">推荐内容加载中…</div>`;
-    if (!codexPlusAds.length) return `<div class="codex-plus-ad-empty">暂无推荐内容。</div>`;
+    if (!codexPlusAdsLoaded) return `<div class="codex-assistant-ad-empty">推荐内容加载中…</div>`;
+    if (!codexPlusAds.length) return `<div class="codex-assistant-ad-empty">暂无推荐内容。</div>`;
     return `
-      <section class="codex-plus-ad-section">
-        <h3 class="codex-plus-ad-section-title">赞助商推荐</h3>
-        <div class="codex-plus-ad-list">${renderCodexPlusAdGroup("sponsor", "暂无赞助商推荐。")}</div>
+      <section class="codex-assistant-ad-section">
+        <h3 class="codex-assistant-ad-section-title">赞助商推荐</h3>
+        <div class="codex-assistant-ad-list">${renderCodexPlusAdGroup("sponsor", "暂无赞助商推荐。")}</div>
       </section>
-      <section class="codex-plus-ad-section">
-        <h3 class="codex-plus-ad-section-title">普通推荐</h3>
-        <div class="codex-plus-ad-list">${renderCodexPlusAdGroup("normal", "暂无普通推荐。")}</div>
+      <section class="codex-assistant-ad-section">
+        <h3 class="codex-assistant-ad-section-title">普通推荐</h3>
+        <div class="codex-assistant-ad-list">${renderCodexPlusAdGroup("normal", "暂无普通推荐。")}</div>
       </section>
     `;
   }
@@ -1640,164 +1640,164 @@
       codexPlusAds = [];
     } finally {
       codexPlusAdsLoaded = true;
-      const panel = document.querySelector('[data-codex-plus-panel="sponsor"] .codex-plus-ad-remote');
+      const panel = document.querySelector('[data-codex-assistant-panel="sponsor"] .codex-assistant-ad-remote');
       if (panel) panel.innerHTML = renderCodexPlusAds();
     }
   }
 
   function selectCodexPlusTab(tab) {
-    document.querySelectorAll(".codex-plus-modal-content").forEach((modal) => {
+    document.querySelectorAll(".codex-assistant-modal-content").forEach((modal) => {
       modal.dataset.codexPlusActiveTab = tab;
     });
-    document.querySelectorAll("[data-codex-plus-tab]").forEach((button) => {
-      button.dataset.active = String(button.getAttribute("data-codex-plus-tab") === tab);
+    document.querySelectorAll("[data-codex-assistant-tab]").forEach((button) => {
+      button.dataset.active = String(button.getAttribute("data-codex-assistant-tab") === tab);
     });
-    document.querySelectorAll("[data-codex-plus-panel]").forEach((panel) => {
-      panel.hidden = panel.getAttribute("data-codex-plus-panel") !== tab;
+    document.querySelectorAll("[data-codex-assistant-panel]").forEach((panel) => {
+      panel.hidden = panel.getAttribute("data-codex-assistant-panel") !== tab;
     });
     if (tab === "userScripts") loadUserScripts();
   }
 
   function openCodexPlusModal() {
-    document.querySelectorAll(".codex-plus-modal-overlay").forEach((node) => node.remove());
-    document.querySelectorAll('[data-codex-plus-dialog="true"]').forEach((node) => node.remove());
+    document.querySelectorAll(".codex-assistant-modal-overlay").forEach((node) => node.remove());
+    document.querySelectorAll('[data-codex-assistant-dialog="true"]').forEach((node) => node.remove());
     const overlay = document.createElement("div");
-    overlay.className = "codex-plus-modal-overlay";
+    overlay.className = "codex-assistant-modal-overlay";
     overlay.innerHTML = `
-      <div class="codex-plus-modal-content" role="dialog" aria-modal="true" aria-label="CodexAssistant">
-        <div class="codex-plus-modal-header">
-          <div class="codex-plus-modal-title"><span class="codex-plus-backend-indicator" data-codex-backend-indicator="true" data-status="checking"></span><span data-codex-plus-version="true">CodexAssistant ${codexPlusVersion}</span></div>
-          <button type="button" class="codex-plus-modal-close" aria-label="关闭">×</button>
+      <div class="codex-assistant-modal-content" role="dialog" aria-modal="true" aria-label="CodexAssistant">
+        <div class="codex-assistant-modal-header">
+          <div class="codex-assistant-modal-title"><span class="codex-assistant-backend-indicator" data-codex-backend-indicator="true" data-status="checking"></span><span data-codex-assistant-version="true">CodexAssistant ${codexPlusVersion}</span></div>
+          <button type="button" class="codex-assistant-modal-close" aria-label="关闭">×</button>
         </div>
-        <div class="codex-plus-tabs" role="tablist" aria-label="CodexAssistant">
-          <button type="button" class="codex-plus-tab-button" data-codex-plus-tab="home" data-active="true">主页</button>
-          <button type="button" class="codex-plus-tab-button" data-codex-plus-tab="userScripts" data-active="false">用户脚本</button>
+        <div class="codex-assistant-tabs" role="tablist" aria-label="CodexAssistant">
+          <button type="button" class="codex-assistant-tab-button" data-codex-assistant-tab="home" data-active="true">主页</button>
+          <button type="button" class="codex-assistant-tab-button" data-codex-assistant-tab="userScripts" data-active="false">用户脚本</button>
         </div>
-        <div class="codex-plus-modal-body">
-          <div class="codex-plus-panel" data-codex-plus-panel="home">
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">后端连接</div><div class="codex-plus-row-description">每 5 秒检查一次 launcher 后端状态；断开时可尝试修复后端运行。</div></div>
-              <div class="codex-plus-backend-status">
-                <div class="codex-plus-backend-label" data-codex-backend-status="true" data-status="checking">正在检查后端…</div>
-                <button type="button" class="codex-plus-backend-repair" data-codex-backend-repair="true" hidden>修复后端运行</button>
+        <div class="codex-assistant-modal-body">
+          <div class="codex-assistant-panel" data-codex-assistant-panel="home">
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">后端连接</div><div class="codex-assistant-row-description">每 5 秒检查一次 launcher 后端状态；断开时可尝试修复后端运行。</div></div>
+              <div class="codex-assistant-backend-status">
+                <div class="codex-assistant-backend-label" data-codex-backend-status="true" data-status="checking">正在检查后端…</div>
+                <button type="button" class="codex-assistant-backend-repair" data-codex-backend-repair="true" hidden>修复后端运行</button>
               </div>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">页面功能增强</div><div class="codex-plus-row-description">关闭后停用删除、导出、移动、Timeline、插件相关和菜单位置增强。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-backend-setting="enhancementsEnabled"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">页面功能增强</div><div class="codex-assistant-row-description">关闭后停用删除、导出、移动、Timeline、插件相关和菜单位置增强。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-backend-setting="enhancementsEnabled"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">插件选项解锁</div><div class="codex-plus-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强模式下无需开启；ChatGPT 登录态会保留官方插件入口。" : "完整增强模式会显示并启用插件入口。"}</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="pluginEntryUnlock" ${codexPlusBackendSettings.launchMode === "relay" ? 'disabled data-relay-unneeded="true"' : ""}><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">插件选项解锁</div><div class="codex-assistant-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强模式下无需开启；ChatGPT 登录态会保留官方插件入口。" : "完整增强模式会显示并启用插件入口。"}</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="pluginEntryUnlock" ${codexPlusBackendSettings.launchMode === "relay" ? 'disabled data-relay-unneeded="true"' : ""}><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">特殊插件强制安装</div><div class="codex-plus-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强模式下无需开启；不会改插件安装入口。" : "解除 App unavailable / 应用不可用导致的前端安装禁用。"}</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="forcePluginInstall" ${codexPlusBackendSettings.launchMode === "relay" ? 'disabled data-relay-unneeded="true"' : ""}><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">特殊插件强制安装</div><div class="codex-assistant-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强模式下无需开启；不会改插件安装入口。" : "解除 App unavailable / 应用不可用导致的前端安装禁用。"}</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="forcePluginInstall" ${codexPlusBackendSettings.launchMode === "relay" ? 'disabled data-relay-unneeded="true"' : ""}><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">模型白名单解锁</div><div class="codex-plus-row-description">从环境变量和 Codex config.toml 中的中转站 /v1/models 拉取模型，并补进模型选择列表。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="modelWhitelistUnlock"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">模型白名单解锁</div><div class="codex-assistant-row-description">从环境变量和 Codex config.toml 中的中转站 /v1/models 拉取模型，并补进模型选择列表。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="modelWhitelistUnlock"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">Fast 按钮</div><div class="codex-plus-row-description">显示服务模式切换按钮，并允许把请求切到 Fast / priority；默认关闭以避免误触高价服务模式。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="serviceTierControls"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">Fast 按钮</div><div class="codex-assistant-row-description">显示服务模式切换按钮，并允许把请求切到 Fast / priority；默认关闭以避免误触高价服务模式。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="serviceTierControls"><span></span></button>
             </div>
-            <div class="codex-plus-row" data-codex-service-tier-controls="true">
-              <div><div class="codex-plus-row-title">服务模式</div><div class="codex-plus-row-description">继承使用 config.toml 的 service tier；全局模式覆盖全部 thread；自定义允许按 thread 覆盖。</div></div>
-              <div class="codex-plus-service-tier-control">
-                <div class="codex-plus-service-tier-status" data-codex-service-tier-status="true" data-status="loading">正在读取…</div>
-                <div class="codex-plus-service-tier-actions">
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-inherit="true">继承</button>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-standard="true">全局 Standard</button>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-fast="true">全局 Fast</button>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-custom="true">自定义</button>
+            <div class="codex-assistant-row" data-codex-service-tier-controls="true">
+              <div><div class="codex-assistant-row-title">服务模式</div><div class="codex-assistant-row-description">继承使用 config.toml 的 service tier；全局模式覆盖全部 thread；自定义允许按 thread 覆盖。</div></div>
+              <div class="codex-assistant-service-tier-control">
+                <div class="codex-assistant-service-tier-status" data-codex-service-tier-status="true" data-status="loading">正在读取…</div>
+                <div class="codex-assistant-service-tier-actions">
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-inherit="true">继承</button>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-standard="true">全局 Standard</button>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-fast="true">全局 Fast</button>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-custom="true">自定义</button>
                 </div>
-                <div class="codex-plus-service-tier-actions codex-plus-service-tier-thread-actions">
-                  <span class="codex-plus-service-tier-thread-label">当前 thread 覆盖</span>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-thread-inherit="true" title="当前 thread 不单独覆盖，继承 config.toml">继承</button>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-thread-standard="true" title="仅当前 thread 使用 Standard，并切到自定义模式">Standard</button>
-                  <button type="button" class="codex-plus-service-tier-button" data-codex-service-tier-thread-fast="true" title="仅当前 thread 使用 Fast，并切到自定义模式">Fast</button>
+                <div class="codex-assistant-service-tier-actions codex-assistant-service-tier-thread-actions">
+                  <span class="codex-assistant-service-tier-thread-label">当前 thread 覆盖</span>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-thread-inherit="true" title="当前 thread 不单独覆盖，继承 config.toml">继承</button>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-thread-standard="true" title="仅当前 thread 使用 Standard，并切到自定义模式">Standard</button>
+                  <button type="button" class="codex-assistant-service-tier-button" data-codex-service-tier-thread-fast="true" title="仅当前 thread 使用 Fast，并切到自定义模式">Fast</button>
                 </div>
               </div>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">会话删除</div><div class="codex-plus-row-description">在会话列表悬停显示删除按钮，并支持撤销。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="sessionDelete"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">会话删除</div><div class="codex-assistant-row-description">在会话列表悬停显示删除按钮，并支持撤销。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="sessionDelete"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">Markdown 导出</div><div class="codex-plus-row-description">在会话列表显示导出按钮，按本地 rollout 导出带时间戳的 Markdown。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="markdownExport"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">Markdown 导出</div><div class="codex-assistant-row-description">在会话列表显示导出按钮，按本地 rollout 导出带时间戳的 Markdown。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="markdownExport"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">会话项目移动</div><div class="codex-plus-row-description">在会话列表悬停显示移动按钮，可移动到普通对话或其他本地项目。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="projectMove"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">会话项目移动</div><div class="codex-assistant-row-description">在会话列表悬停显示移动按钮，可移动到普通对话或其他本地项目。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="projectMove"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">对话 Timeline</div><div class="codex-plus-row-description">在对话右侧显示用户提问时间线，悬停查看摘要，点击跳转。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="conversationTimeline"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">对话 Timeline</div><div class="codex-assistant-row-description">在对话右侧显示用户提问时间线，悬停查看摘要，点击跳转。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="conversationTimeline"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">对话居中宽度</div><div class="codex-plus-row-description">开启后把主对话和输入框限制到固定最大宽度，适合大屏阅读。</div></div>
-              <div class="codex-plus-width-control">
-                <input class="codex-plus-width-input" data-codex-plus-conversation-view-width="true" min="${conversationViewMinWidth}" max="${conversationViewMaxAllowedWidth}" step="10" type="number" value="${conversationViewWidth()}">
-                <button type="button" class="codex-plus-toggle" data-codex-plus-setting="conversationView"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">对话居中宽度</div><div class="codex-assistant-row-description">开启后把主对话和输入框限制到固定最大宽度，适合大屏阅读。</div></div>
+              <div class="codex-assistant-width-control">
+                <input class="codex-assistant-width-input" data-codex-assistant-conversation-view-width="true" min="${conversationViewMinWidth}" max="${conversationViewMaxAllowedWidth}" step="10" type="number" value="${conversationViewWidth()}">
+                <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="conversationView"><span></span></button>
               </div>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">切换对话保留位置</div><div class="codex-plus-row-description">开启后在不同 thread 之间切换时恢复到上一次浏览位置，不再自动跳到底部。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="threadScrollRestore"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">切换对话保留位置</div><div class="codex-assistant-row-description">开启后在不同 thread 之间切换时恢复到上一次浏览位置，不再自动跳到底部。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="threadScrollRestore"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">Zed Remote open</div><div class="codex-plus-row-description">Open supported remote SSH file references in Zed without patching Codex.app.</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="zedRemoteOpen"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">Zed Remote open</div><div class="codex-assistant-row-description">Open supported remote SSH file references in Zed without patching Codex.app.</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="zedRemoteOpen"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">历史会话修复</div><div class="codex-plus-row-description">切换官方登录、混合 API 或纯 API 后，让旧对话重新显示在当前模式下。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-backend-setting="providerSyncEnabled"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">历史会话修复</div><div class="codex-assistant-row-description">切换官方登录、混合 API 或纯 API 后，让旧对话重新显示在当前模式下。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-backend-setting="providerSyncEnabled"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">页面增强模式</div><div class="codex-plus-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强：保留会话删除、导出、项目移动、Timeline 和用户脚本，仅关闭插件入口相关增强。" : "完整增强：加载插件入口、强制安装、项目路径移动等全部页面能力。"}</div></div>
-              <button type="button" class="codex-plus-action-button" data-codex-open-manager="true">打开管理工具</button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">页面增强模式</div><div class="codex-assistant-row-description">${codexPlusBackendSettings.launchMode === "relay" ? "兼容增强：保留会话删除、导出、项目移动、Timeline 和用户脚本，仅关闭插件入口相关增强。" : "完整增强：加载插件入口、强制安装、项目路径移动等全部页面能力。"}</div></div>
+              <button type="button" class="codex-assistant-action-button" data-codex-open-manager="true">打开管理工具</button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">原生菜单栏位置</div><div class="codex-plus-row-description">把 CodexAssistant 菜单插入顶部原生菜单栏；默认关闭以避免页面重渲染冲突。</div></div>
-              <button type="button" class="codex-plus-toggle" data-codex-plus-setting="nativeMenuPlacement"><span></span></button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">原生菜单栏位置</div><div class="codex-assistant-row-description">把 CodexAssistant 菜单插入顶部原生菜单栏；默认关闭以避免页面重渲染冲突。</div></div>
+              <button type="button" class="codex-assistant-toggle" data-codex-assistant-setting="nativeMenuPlacement"><span></span></button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">打开 DevTools</div><div class="codex-plus-row-description">打开当前 Codex 页面开发者工具，方便查看用户脚本报错。</div></div>
-              <button type="button" class="codex-plus-action-button" data-codex-open-devtools="true">打开 DevTools</button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">打开 DevTools</div><div class="codex-assistant-row-description">打开当前 Codex 页面开发者工具，方便查看用户脚本报错。</div></div>
+              <button type="button" class="codex-assistant-action-button" data-codex-open-devtools="true">打开 DevTools</button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">关于 CodexAssistant</div><div class="codex-plus-about">CodexAssistant 由 <strong>IFQ.AI</strong> 出品，是通过外部 launcher 注入的增强菜单，不修改 Codex App 原始安装文件。<br>Build: <span data-codex-plus-build="true">${codexPlusBuild}</span><br>GitHub: <a href="https://github.com/peixl/CodexAssistant" target="_blank" rel="noreferrer">https://github.com/peixl/CodexAssistant</a><br>Discord: <a href="https://discord.gg/y96kX7A76v" target="_blank" rel="noreferrer">https://discord.gg/y96kX7A76v</a></div></div>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">关于 CodexAssistant</div><div class="codex-assistant-about">CodexAssistant 由 <strong>IFQ.AI</strong> 出品，是通过外部 launcher 注入的增强菜单，不修改 Codex App 原始安装文件。<br>Build: <span data-codex-assistant-build="true">${codexPlusBuild}</span><br>GitHub: <a href="https://github.com/peixl/CodexAssistant" target="_blank" rel="noreferrer">https://github.com/peixl/CodexAssistant</a><br>Discord: <a href="https://discord.gg/y96kX7A76v" target="_blank" rel="noreferrer">https://discord.gg/y96kX7A76v</a></div></div>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">Discord 社区</div><div class="codex-plus-row-description">加入 Discord 获取更新消息、反馈问题或交流使用体验。</div></div>
-              <button type="button" class="codex-plus-action-button" data-codex-plus-discord="true">打开 Discord</button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">Discord 社区</div><div class="codex-assistant-row-description">加入 Discord 获取更新消息、反馈问题或交流使用体验。</div></div>
+              <button type="button" class="codex-assistant-action-button" data-codex-assistant-discord="true">打开 Discord</button>
             </div>
-            <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">提出问题</div><div class="codex-plus-row-description">打开 GitHub Issues 反馈问题或建议。</div></div>
-              <button type="button" class="codex-plus-issue-button" data-codex-plus-issue="true">提出问题</button>
+            <div class="codex-assistant-row">
+              <div><div class="codex-assistant-row-title">提出问题</div><div class="codex-assistant-row-description">打开 GitHub Issues 反馈问题或建议。</div></div>
+              <button type="button" class="codex-assistant-issue-button" data-codex-assistant-issue="true">提出问题</button>
             </div>
           </div>
-          <div class="codex-plus-panel" data-codex-plus-panel="userScripts" hidden>
-            <div class="codex-plus-row" data-codex-user-scripts-section="true">
+          <div class="codex-assistant-panel" data-codex-assistant-panel="userScripts" hidden>
+            <div class="codex-assistant-row" data-codex-user-scripts-section="true">
               <div>
-                <div class="codex-plus-row-title">用户脚本</div>
-                <div class="codex-plus-row-description">启用用户脚本：自动加载内置目录和用户配置目录中的 .js 文件。</div>
-                <div class="codex-plus-user-script-warning">禁用后需重载页面或重启 CodexAssistant 才能完全移除已执行效果。</div>
-                <div class="codex-plus-user-script-dirs" data-codex-user-script-dirs="true">正在读取脚本目录…</div>
-                <div class="codex-plus-user-script-list" data-codex-user-script-list="true">正在读取用户脚本…</div>
+                <div class="codex-assistant-row-title">用户脚本</div>
+                <div class="codex-assistant-row-description">启用用户脚本：自动加载内置目录和用户配置目录中的 .js 文件。</div>
+                <div class="codex-assistant-user-script-warning">禁用后需重载页面或重启 CodexAssistant 才能完全移除已执行效果。</div>
+                <div class="codex-assistant-user-script-dirs" data-codex-user-script-dirs="true">正在读取脚本目录…</div>
+                <div class="codex-assistant-user-script-list" data-codex-user-script-list="true">正在读取用户脚本…</div>
               </div>
-              <div class="codex-plus-user-script-actions">
-                <button type="button" class="codex-plus-toggle" data-codex-user-scripts-enabled="true"><span></span></button>
-                <button type="button" class="codex-plus-user-script-reload" data-codex-user-scripts-reload="true">重新加载用户脚本</button>
+              <div class="codex-assistant-user-script-actions">
+                <button type="button" class="codex-assistant-toggle" data-codex-user-scripts-enabled="true"><span></span></button>
+                <button type="button" class="codex-assistant-user-script-reload" data-codex-user-scripts-reload="true">重新加载用户脚本</button>
               </div>
             </div>
           </div>
         </div>
       </div>
     `;
-    const closeButton = overlay.querySelector(".codex-plus-modal-close");
+    const closeButton = overlay.querySelector(".codex-assistant-modal-close");
     closeButton?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1805,12 +1805,12 @@
     }, true);
     overlay.addEventListener("input", (event) => {
       const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-      const widthInput = target?.closest("[data-codex-plus-conversation-view-width]");
+      const widthInput = target?.closest("[data-codex-assistant-conversation-view-width]");
       if (widthInput) setConversationViewWidth(widthInput.value);
     }, true);
     overlay.addEventListener("change", (event) => {
       const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-      const widthInput = target?.closest("[data-codex-plus-conversation-view-width]");
+      const widthInput = target?.closest("[data-codex-assistant-conversation-view-width]");
       if (widthInput) {
         const width = normalizeConversationViewWidth(widthInput.value);
         widthInput.value = String(width || conversationViewWidth());
@@ -1819,13 +1819,13 @@
     }, true);
     overlay.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-      if (event.target === overlay || target?.closest(".codex-plus-modal-close")) {
+      if (event.target === overlay || target?.closest(".codex-assistant-modal-close")) {
         overlay.remove();
         return;
       }
-      const tabButton = target?.closest("[data-codex-plus-tab]");
+      const tabButton = target?.closest("[data-codex-assistant-tab]");
       if (tabButton) {
-        selectCodexPlusTab(tabButton.getAttribute("data-codex-plus-tab"));
+        selectCodexPlusTab(tabButton.getAttribute("data-codex-assistant-tab"));
         return;
       }
       if (target?.closest("[data-codex-open-devtools]")) {
@@ -1836,7 +1836,7 @@
         openManagerFromCodex();
         return;
       }
-      if (target?.closest("[data-codex-plus-discord]")) {
+      if (target?.closest("[data-codex-assistant-discord]")) {
         window.open("https://discord.gg/y96kX7A76v", "_blank");
         return;
       }
@@ -1844,7 +1844,7 @@
         repairBackend();
         return;
       }
-      const issueButton = target?.closest("[data-codex-plus-issue]");
+      const issueButton = target?.closest("[data-codex-assistant-issue]");
       if (issueButton) {
         const issueUrl = "https://github.com/peixl/CodexAssistant/issues";
         window.open(issueUrl, "_blank");
@@ -1892,10 +1892,10 @@
         loadUserScripts("/user-scripts/reload", {});
         return;
       }
-      const toggle = target?.closest("[data-codex-plus-setting]");
+      const toggle = target?.closest("[data-codex-assistant-setting]");
       if (toggle) {
         if (toggle.disabled) return;
-        const key = toggle.getAttribute("data-codex-plus-setting");
+        const key = toggle.getAttribute("data-codex-assistant-setting");
         setCodexPlusSetting(key, !codexPlusSettings()[key]);
         return;
       }
@@ -1926,7 +1926,7 @@
   }
 
   function removeDuplicateCodexPlusMenus(keep) {
-    document.querySelectorAll(`#${codexPlusMenuId}, [data-codex-plus-menu="true"]`).forEach((node) => {
+    document.querySelectorAll(`#${codexPlusMenuId}, [data-codex-assistant-menu="true"]`).forEach((node) => {
       if (node !== keep) node.remove();
     });
     Array.from(document.querySelectorAll("button")).forEach((button) => {
@@ -1997,18 +1997,18 @@
       const measuredGap = toolbarButtons[1] ? toolbarButtons[1].rect.left - toolbarButtons[0].rect.right : 0;
       const styles = anchor.button.parentElement ? getComputedStyle(anchor.button.parentElement) : null;
       const gap = Math.max(numericCssValue(styles?.columnGap || styles?.gap), measuredGap, 0);
-      setCssPropIfChanged(menu, "--codex-plus-menu-top", `${anchor.rect.top}px`);
-      setCssPropIfChanged(menu, "--codex-plus-menu-height", `${anchor.rect.height}px`);
-      setCssPropIfChanged(menu, "--codex-plus-menu-right", `${Math.max(0, window.innerWidth - anchor.rect.left + gap)}px`);
+      setCssPropIfChanged(menu, "--codex-assistant-menu-top", `${anchor.rect.top}px`);
+      setCssPropIfChanged(menu, "--codex-assistant-menu-height", `${anchor.rect.height}px`);
+      setCssPropIfChanged(menu, "--codex-assistant-menu-right", `${Math.max(0, window.innerWidth - anchor.rect.left + gap)}px`);
       return;
     }
 
     const headerRect = header.getBoundingClientRect();
     if (headerRect.height) {
-      setCssPropIfChanged(menu, "--codex-plus-menu-top", `${headerRect.top}px`);
-      setCssPropIfChanged(menu, "--codex-plus-menu-height", `${headerRect.height}px`);
+      setCssPropIfChanged(menu, "--codex-assistant-menu-top", `${headerRect.top}px`);
+      setCssPropIfChanged(menu, "--codex-assistant-menu-height", `${headerRect.height}px`);
     }
-    menu.style.removeProperty("--codex-plus-menu-right");
+    menu.style.removeProperty("--codex-assistant-menu-right");
   }
 
   function installCodexPlusMenu() {
@@ -2031,11 +2031,11 @@
     trigger.type = "button";
     trigger.textContent = codexPlusTriggerLabel;
     const indicator = document.createElement("span");
-    indicator.className = "codex-plus-backend-indicator";
+    indicator.className = "codex-assistant-backend-indicator";
     indicator.dataset.codexBackendIndicator = "true";
     indicator.dataset.status = codexPlusBackendStatus.status || "checking";
     trigger.prepend(indicator);
-    const nativeButtonClass = insertionPoint?.nativeButtonClass || "codex-plus-trigger";
+    const nativeButtonClass = insertionPoint?.nativeButtonClass || "codex-assistant-trigger";
     configureCodexPlusTrigger(menu, trigger, nativeButtonClass);
     menu.appendChild(trigger);
     if (insertionPoint) {
@@ -5567,8 +5567,8 @@
     const root = document.documentElement;
     if (!root) return;
     const theme = detectCodexHostTheme();
-    if (root.getAttribute("data-codex-plus-theme") !== theme) {
-      root.setAttribute("data-codex-plus-theme", theme);
+    if (root.getAttribute("data-codex-assistant-theme") !== theme) {
+      root.setAttribute("data-codex-assistant-theme", theme);
     }
   }
 
@@ -6215,7 +6215,7 @@
   }
 
   function isExtensionUiNode(node) {
-    return !!node?.closest?.(`.codex-delete-toast, .codex-delete-confirm-overlay, .codex-plus-modal-overlay, .${projectMoveOverlayClass}, .${timelineClass}, .codex-conversation-timeline, .${codexServiceTierBadgeClass}, .codex-zed-remote-button, .codex-zed-remote-toast, #codex-plus-menu`);
+    return !!node?.closest?.(`.codex-delete-toast, .codex-delete-confirm-overlay, .codex-assistant-modal-overlay, .${projectMoveOverlayClass}, .${timelineClass}, .codex-conversation-timeline, .${codexServiceTierBadgeClass}, .codex-zed-remote-button, .codex-zed-remote-toast, #codex-assistant-menu`);
   }
 
   function scanRelevantSelector() {

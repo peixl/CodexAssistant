@@ -39,14 +39,14 @@ FILE: README.md
 FILE: README_EN.md
 FILE: SECURITY.md
 DIR: apps
-  DIR: codex-plus-launcher
-  DIR: codex-plus-manager
+  DIR: codex-assistant-launcher
+  DIR: codex-assistant-manager
 DIR: assets
   DIR: images
   DIR: inject
 DIR: crates
-  DIR: codex-plus-core
-  DIR: codex-plus-data
+  DIR: codex-assistant-core
+  DIR: codex-assistant-data
 DIR: docs
   DIR: images
   DIR: superpowers

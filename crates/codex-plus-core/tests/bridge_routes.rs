@@ -491,7 +491,7 @@ async fn core_runtime_manager_route_attempts_to_open_manager_binary() {
 #[tokio::test]
 async fn bridge_backend_status_writes_diagnostic_log() {
     let temp = tempfile::tempdir().unwrap();
-    let log_path = temp.path().join("codex-plus.log");
+    let log_path = temp.path().join("codex-assistant.log");
     codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let ctx = BridgeContext::core(Arc::new(CoreRuntimeService::new(
         9229,

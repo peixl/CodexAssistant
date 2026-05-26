@@ -4,7 +4,7 @@
 
 **Goal:** 实现 spec `docs/superpowers/specs/2026-05-23-security-hardening-design.md` 中的三项加固：本地桥 token 鉴权、自动更新 sha256 校验、脚本市场强制 sha256。
 
-**Architecture:** 在 `codex-plus-core` 新增叶子模块 `helper_auth`，通过 CDP 把每次启动随机生成的 token 注入到渲染端 `window.__CODEX_PLUS_HELPER_TOKEN__`；本地 HTTP 桥在 `handle_helper_connection` 入口做常量时间比较。更新和市场两块在 `update.rs` / `script_market.rs` 内部增加 `verify_*_sha256` 检查并修改解析逻辑。所有安全失败路径写 `diagnostic_log` 的 `security.*` 事件。
+**Architecture:** 在 `codex-assistant-core` 新增叶子模块 `helper_auth`，通过 CDP 把每次启动随机生成的 token 注入到渲染端 `window.__CODEX_PLUS_HELPER_TOKEN__`；本地 HTTP 桥在 `handle_helper_connection` 入口做常量时间比较。更新和市场两块在 `update.rs` / `script_market.rs` 内部增加 `verify_*_sha256` 检查并修改解析逻辑。所有安全失败路径写 `diagnostic_log` 的 `security.*` 事件。
 
 **Tech Stack:** Rust 2024 edition、tokio、reqwest（rustls-tls）、sha2、base64、getrandom（新增）、Tauri 2.x、原生 JS 注入脚本。
 
@@ -14,17 +14,17 @@
 
 | 文件 | 改动类型 | 责任 |
 |---|---|---|
-| `crates/codex-plus-core/Cargo.toml` | 修改 | 增 `getrandom = "0.2"` 依赖 |
+| `crates/codex-assistant-core/Cargo.toml` | 修改 | 增 `getrandom = "0.2"` 依赖 |
 | `Cargo.toml`（workspace 根） | 修改 | 增 `getrandom = { version = "0.2", features = ["std"] }` 工作区版本 |
-| `crates/codex-plus-core/src/helper_auth.rs` | 新增 | token 生成、常量时间比较 |
-| `crates/codex-plus-core/src/lib.rs` | 修改 | 暴露 `pub mod helper_auth` |
-| `crates/codex-plus-core/src/assets.rs` | 修改 | `injection_script` 增 token 参数 |
-| `crates/codex-plus-core/src/launcher.rs` | 修改 | `handle_helper_connection` 增 token 校验；`try_inject` 传 token |
-| `crates/codex-plus-core/tests/cdp_bridge.rs` | 修改 | 调用点跟随新签名 |
-| `apps/codex-plus-launcher/src/main.rs` | 修改 | `try_inject_with_context` 传 token |
+| `crates/codex-assistant-core/src/helper_auth.rs` | 新增 | token 生成、常量时间比较 |
+| `crates/codex-assistant-core/src/lib.rs` | 修改 | 暴露 `pub mod helper_auth` |
+| `crates/codex-assistant-core/src/assets.rs` | 修改 | `injection_script` 增 token 参数 |
+| `crates/codex-assistant-core/src/launcher.rs` | 修改 | `handle_helper_connection` 增 token 校验；`try_inject` 传 token |
+| `crates/codex-assistant-core/tests/cdp_bridge.rs` | 修改 | 调用点跟随新签名 |
+| `apps/codex-assistant-launcher/src/main.rs` | 修改 | `try_inject_with_context` 传 token |
 | `assets/inject/renderer-inject.js` | 修改 | 引入 `helperFetch` 包装；删除 sendBeacon |
-| `crates/codex-plus-core/src/update.rs` | 修改 | `ReleaseAsset.sha256`、`verify_asset_sha256`、`perform_update` 强制校验 |
-| `crates/codex-plus-core/src/script_market.rs` | 修改 | 解析丢弃缺 sha256；`verify_sha256` 拒绝空值；`download_script` 走 proxied_client |
+| `crates/codex-assistant-core/src/update.rs` | 修改 | `ReleaseAsset.sha256`、`verify_asset_sha256`、`perform_update` 强制校验 |
+| `crates/codex-assistant-core/src/script_market.rs` | 修改 | 解析丢弃缺 sha256；`verify_sha256` 拒绝空值；`download_script` 走 proxied_client |
 
 ---
 
@@ -32,7 +32,7 @@
 
 **Files:**
 - Modify: `Cargo.toml`
-- Modify: `crates/codex-plus-core/Cargo.toml`
+- Modify: `crates/codex-assistant-core/Cargo.toml`
 
 - [ ] **Step 1: 在工作区根 `Cargo.toml` 的 `[workspace.dependencies]` 表新增 getrandom**
 
@@ -42,9 +42,9 @@
 getrandom = { version = "0.2", features = ["std"] }
 ```
 
-- [ ] **Step 2: 在 codex-plus-core crate 的依赖列表声明 getrandom**
+- [ ] **Step 2: 在 codex-assistant-core crate 的依赖列表声明 getrandom**
 
-在 `crates/codex-plus-core/Cargo.toml:18` 的 `sha2.workspace = true` 之后插入：
+在 `crates/codex-assistant-core/Cargo.toml:18` 的 `sha2.workspace = true` 之后插入：
 
 ```toml
 getrandom.workspace = true
@@ -52,13 +52,13 @@ getrandom.workspace = true
 
 - [ ] **Step 3: 验证依赖能解析**
 
-Run: `cargo metadata --format-version 1 -q | jq -r '.packages[] | select(.name=="codex-plus-core") | .dependencies[].name' | grep -x getrandom`
+Run: `cargo metadata --format-version 1 -q | jq -r '.packages[] | select(.name=="codex-assistant-core") | .dependencies[].name' | grep -x getrandom`
 Expected: 输出 `getrandom`
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add Cargo.toml crates/codex-plus-core/Cargo.toml
+git add Cargo.toml crates/codex-assistant-core/Cargo.toml
 git -c commit.gpgsign=false commit -m "build: add getrandom dependency for helper token"
 ```
 
@@ -67,12 +67,12 @@ git -c commit.gpgsign=false commit -m "build: add getrandom dependency for helpe
 ## Task 2: 实现 helper_auth 模块（TDD）
 
 **Files:**
-- Create: `crates/codex-plus-core/src/helper_auth.rs`
-- Modify: `crates/codex-plus-core/src/lib.rs`
+- Create: `crates/codex-assistant-core/src/helper_auth.rs`
+- Modify: `crates/codex-assistant-core/src/lib.rs`
 
-- [ ] **Step 1: 在 `crates/codex-plus-core/src/lib.rs` 暴露新模块**
+- [ ] **Step 1: 在 `crates/codex-assistant-core/src/lib.rs` 暴露新模块**
 
-打开 `crates/codex-plus-core/src/lib.rs`，查找已有 `pub mod assets;` 这一行（或其他 `pub mod` 集合处），紧邻它新增：
+打开 `crates/codex-assistant-core/src/lib.rs`，查找已有 `pub mod assets;` 这一行（或其他 `pub mod` 集合处），紧邻它新增：
 
 ```rust
 pub mod helper_auth;
@@ -82,7 +82,7 @@ pub mod helper_auth;
 
 - [ ] **Step 2: 写失败的单元测试**
 
-创建 `crates/codex-plus-core/src/helper_auth.rs`，内容：
+创建 `crates/codex-assistant-core/src/helper_auth.rs`，内容：
 
 ```rust
 //! Process-wide helper token for the local HTTP bridge.
@@ -167,13 +167,13 @@ mod tests {
 
 - [ ] **Step 3: 运行测试验证通过**
 
-Run: `cargo test -p codex-plus-core helper_auth -- --nocapture`
+Run: `cargo test -p codex-assistant-core helper_auth -- --nocapture`
 Expected: 5 passed
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/helper_auth.rs crates/codex-plus-core/src/lib.rs
+git add crates/codex-assistant-core/src/helper_auth.rs crates/codex-assistant-core/src/lib.rs
 git -c commit.gpgsign=false commit -m "feat(core): add helper_auth module for bridge token"
 ```
 
@@ -182,12 +182,12 @@ git -c commit.gpgsign=false commit -m "feat(core): add helper_auth module for br
 ## Task 3: 修改 injection_script 签名以注入 token
 
 **Files:**
-- Modify: `crates/codex-plus-core/src/assets.rs`
-- Modify: `crates/codex-plus-core/tests/cdp_bridge.rs`
+- Modify: `crates/codex-assistant-core/src/assets.rs`
+- Modify: `crates/codex-assistant-core/tests/cdp_bridge.rs`
 
 - [ ] **Step 1: 改 `injection_script` 签名**
 
-打开 `crates/codex-plus-core/src/assets.rs`，把 `pub fn injection_script(helper_port: u16) -> String { … }` 整体替换为：
+打开 `crates/codex-assistant-core/src/assets.rs`，把 `pub fn injection_script(helper_port: u16) -> String { … }` 整体替换为：
 
 ```rust
 pub fn injection_script(helper_port: u16, helper_token: &str) -> String {
@@ -207,30 +207,30 @@ pub fn injection_script(helper_port: u16, helper_token: &str) -> String {
 
 - [ ] **Step 2: 同步测试调用点**
 
-`crates/codex-plus-core/tests/cdp_bridge.rs` 共 14 处 `assets::injection_script(57321)`。统一替换为 `assets::injection_script(57321, "test-helper-token")`：
+`crates/codex-assistant-core/tests/cdp_bridge.rs` 共 14 处 `assets::injection_script(57321)`。统一替换为 `assets::injection_script(57321, "test-helper-token")`：
 
 ```bash
-sed -i.bak 's/assets::injection_script(57321)/assets::injection_script(57321, "test-helper-token")/g' crates/codex-plus-core/tests/cdp_bridge.rs && rm crates/codex-plus-core/tests/cdp_bridge.rs.bak
+sed -i.bak 's/assets::injection_script(57321)/assets::injection_script(57321, "test-helper-token")/g' crates/codex-assistant-core/tests/cdp_bridge.rs && rm crates/codex-assistant-core/tests/cdp_bridge.rs.bak
 ```
 
 如有断言依赖脚本中的 token 字符串，按需追加；当前测试不针对 token 文本断言，直接替换即可。
 
 - [ ] **Step 3: 编译验证**
 
-Run: `cargo build -p codex-plus-core`
-Expected: 编译通过；若 `launcher.rs:1112` 和 `apps/codex-plus-launcher/src/main.rs:467` 报错，**保留这些错误到 Task 4 处理**——这是预期的：还没改调用方。
+Run: `cargo build -p codex-assistant-core`
+Expected: 编译通过；若 `launcher.rs:1112` 和 `apps/codex-assistant-launcher/src/main.rs:467` 报错，**保留这些错误到 Task 4 处理**——这是预期的：还没改调用方。
 
-如果想隔离编译，先临时让那两行用空字符串补位：在 `crates/codex-plus-core/src/launcher.rs:1112` 把 `injection_script(helper_port)` 改成 `injection_script(helper_port, crate::helper_auth::ensure_helper_token())`；在 `apps/codex-plus-launcher/src/main.rs:467` 同样改。完成后下一 Task 不再补改。
+如果想隔离编译，先临时让那两行用空字符串补位：在 `crates/codex-assistant-core/src/launcher.rs:1112` 把 `injection_script(helper_port)` 改成 `injection_script(helper_port, crate::helper_auth::ensure_helper_token())`；在 `apps/codex-assistant-launcher/src/main.rs:467` 同样改。完成后下一 Task 不再补改。
 
 - [ ] **Step 4: 重新编译并跑测试**
 
-Run: `cargo test -p codex-plus-core --test cdp_bridge`
+Run: `cargo test -p codex-assistant-core --test cdp_bridge`
 Expected: 全部通过（脚本字符串现在多了一行 token，但既有断言不关心该行）。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/assets.rs crates/codex-plus-core/src/launcher.rs apps/codex-plus-launcher/src/main.rs crates/codex-plus-core/tests/cdp_bridge.rs
+git add crates/codex-assistant-core/src/assets.rs crates/codex-assistant-core/src/launcher.rs apps/codex-assistant-launcher/src/main.rs crates/codex-assistant-core/tests/cdp_bridge.rs
 git -c commit.gpgsign=false commit -m "feat(assets): inject helper token into renderer globals"
 ```
 
@@ -239,12 +239,12 @@ git -c commit.gpgsign=false commit -m "feat(assets): inject helper token into re
 ## Task 4: handle_helper_connection 增加 token 校验（TDD）
 
 **Files:**
-- Modify: `crates/codex-plus-core/src/launcher.rs`
-- Create: `crates/codex-plus-core/tests/helper_token.rs`
+- Modify: `crates/codex-assistant-core/src/launcher.rs`
+- Create: `crates/codex-assistant-core/tests/helper_token.rs`
 
 - [ ] **Step 1: 写失败的集成测试**
 
-创建 `crates/codex-plus-core/tests/helper_token.rs`：
+创建 `crates/codex-assistant-core/tests/helper_token.rs`：
 
 ```rust
 //! Integration tests for helper bridge token enforcement.
@@ -320,7 +320,7 @@ async fn options_preflight_no_token_returns_204() {
 
 - [ ] **Step 2: 暴露测试用 helper（test_support）**
 
-在 `crates/codex-plus-core/src/launcher.rs` 末尾追加：
+在 `crates/codex-assistant-core/src/launcher.rs` 末尾追加：
 
 ```rust
 #[cfg(test)]
@@ -366,12 +366,12 @@ pub mod test_support {
 
 - [ ] **Step 3: 运行测试，确认全部失败（token 校验尚未实现）**
 
-Run: `cargo test -p codex-plus-core --test helper_token`
+Run: `cargo test -p codex-assistant-core --test helper_token`
 Expected: 4 个测试中 `missing_token_returns_401` 和 `wrong_token_returns_401` 失败（当前会返回 200），另外两个可能通过。
 
 - [ ] **Step 4: 在 handle_helper_connection 入口加 token 校验**
 
-打开 `crates/codex-plus-core/src/launcher.rs`，在 `handle_helper_connection` 函数 `let _ = crate::diagnostic_log::append_diagnostic_log("helper.request", …);` 这段日志之后（行 ~563）、`if crate::protocol_proxy::is_responses_proxy_path(path)` 之前，插入：
+打开 `crates/codex-assistant-core/src/launcher.rs`，在 `handle_helper_connection` 函数 `let _ = crate::diagnostic_log::append_diagnostic_log("helper.request", …);` 这段日志之后（行 ~563）、`if crate::protocol_proxy::is_responses_proxy_path(path)` 之前，插入：
 
 ```rust
     if method != "OPTIONS" {
@@ -425,31 +425,31 @@ fn extract_helper_token_header(request: &str) -> Option<&str> {
 执行：
 
 ```bash
-sed -i.bak 's/Access-Control-Allow-Headers: Content-Type, Authorization\\r\\n/Access-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\\r\\n/g' crates/codex-plus-core/src/launcher.rs && rm crates/codex-plus-core/src/launcher.rs.bak
+sed -i.bak 's/Access-Control-Allow-Headers: Content-Type, Authorization\\r\\n/Access-Control-Allow-Headers: Content-Type, Authorization, X-Codex-Helper-Token\\r\\n/g' crates/codex-assistant-core/src/launcher.rs && rm crates/codex-assistant-core/src/launcher.rs.bak
 ```
 
 验证 4 处全部修改：
 
 ```bash
-grep -c "X-Codex-Helper-Token" crates/codex-plus-core/src/launcher.rs
+grep -c "X-Codex-Helper-Token" crates/codex-assistant-core/src/launcher.rs
 ```
 
 Expected: ≥ 5（4 处响应头 + 401 分支中的 1 处）。
 
 - [ ] **Step 6: 重跑测试**
 
-Run: `cargo test -p codex-plus-core --test helper_token`
+Run: `cargo test -p codex-assistant-core --test helper_token`
 Expected: 4 passed
 
 - [ ] **Step 7: 跑整套核心测试确保未回归**
 
-Run: `cargo test -p codex-plus-core`
+Run: `cargo test -p codex-assistant-core`
 Expected: 全部通过；尤其 `relay_payload_does_not_expose_token_text` 保持绿。
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/launcher.rs crates/codex-plus-core/tests/helper_token.rs
+git add crates/codex-assistant-core/src/launcher.rs crates/codex-assistant-core/tests/helper_token.rs
 git -c commit.gpgsign=false commit -m "feat(launcher): enforce X-Codex-Helper-Token on bridge"
 ```
 
@@ -545,7 +545,7 @@ Expected: 无任何输出。
 
 - [ ] **Step 5: 重新构建确保 lib 测试仍过（注入脚本作为字符串 include）**
 
-Run: `cargo test -p codex-plus-core --test cdp_bridge`
+Run: `cargo test -p codex-assistant-core --test cdp_bridge`
 Expected: 通过。
 
 - [ ] **Step 6: Commit**
@@ -560,11 +560,11 @@ git -c commit.gpgsign=false commit -m "feat(inject): send X-Codex-Helper-Token f
 ## Task 6: update.rs 增加 sha256 字段与解析
 
 **Files:**
-- Modify: `crates/codex-plus-core/src/update.rs`
+- Modify: `crates/codex-assistant-core/src/update.rs`
 
 - [ ] **Step 1: 写失败的单元测试**
 
-在 `crates/codex-plus-core/src/update.rs` 文件末尾（如已有 `#[cfg(test)] mod tests` 就追加；否则新建）：
+在 `crates/codex-assistant-core/src/update.rs` 文件末尾（如已有 `#[cfg(test)] mod tests` 就追加；否则新建）：
 
 ```rust
 #[cfg(test)]
@@ -577,13 +577,13 @@ mod sha256_tests {
         let payload = json!({
             "version": "1.4.0",
             "assets": [{
-                "name": "codex-plus_1.4.0_x64-setup.exe",
+                "name": "codex-assistant_1.4.0_x64-setup.exe",
                 "url": "https://example.com/x.exe",
                 "sha256": "ab".repeat(32)
             }]
         });
         let release = release_from_latest_json_payload(&payload).expect("parse");
-        assert_eq!(release.asset_name.as_deref(), Some("codex-plus_1.4.0_x64-setup.exe"));
+        assert_eq!(release.asset_name.as_deref(), Some("codex-assistant_1.4.0_x64-setup.exe"));
         assert_eq!(release.asset_sha256.as_deref(), Some(&*"ab".repeat(32)));
     }
 
@@ -592,7 +592,7 @@ mod sha256_tests {
         let payload = json!({
             "version": "1.4.0",
             "assets": [{
-                "name": "codex-plus_1.4.0_x64-setup.exe",
+                "name": "codex-assistant_1.4.0_x64-setup.exe",
                 "url": "https://example.com/x.exe"
             }]
         });
@@ -630,12 +630,12 @@ mod sha256_tests {
 
 - [ ] **Step 2: 运行测试验证失败（类型/函数还不存在）**
 
-Run: `cargo test -p codex-plus-core sha256_tests`
+Run: `cargo test -p codex-assistant-core sha256_tests`
 Expected: 编译错误，`asset_sha256` 字段和 `verify_asset_sha256` 函数未定义。
 
 - [ ] **Step 3: 添加 sha256 字段**
 
-修改 `crates/codex-plus-core/src/update.rs:10-23` 的 `ReleaseAsset` 和 `Release` 结构：
+修改 `crates/codex-assistant-core/src/update.rs:10-23` 的 `ReleaseAsset` 和 `Release` 结构：
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -765,7 +765,7 @@ pub fn select_update_asset(assets: &[(String, String, Option<String>)]) -> Optio
 
 - [ ] **Step 5: 新增 `verify_asset_sha256`**
 
-在 `crates/codex-plus-core/src/update.rs` 末尾（`launch_installer` 之后、`#[cfg(test)] mod` 之前）追加：
+在 `crates/codex-assistant-core/src/update.rs` 末尾（`launch_installer` 之后、`#[cfg(test)] mod` 之前）追加：
 
 ```rust
 pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<()> {
@@ -789,13 +789,13 @@ pub fn verify_asset_sha256(expected_hex: &str, bytes: &[u8]) -> anyhow::Result<(
 
 - [ ] **Step 6: 运行测试**
 
-Run: `cargo test -p codex-plus-core sha256_tests`
+Run: `cargo test -p codex-assistant-core sha256_tests`
 Expected: 6 passed
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/update.rs
+git add crates/codex-assistant-core/src/update.rs
 git -c commit.gpgsign=false commit -m "feat(update): parse and verify asset sha256"
 ```
 
@@ -804,11 +804,11 @@ git -c commit.gpgsign=false commit -m "feat(update): parse and verify asset sha2
 ## Task 7: perform_update 强制校验
 
 **Files:**
-- Modify: `crates/codex-plus-core/src/update.rs`
+- Modify: `crates/codex-assistant-core/src/update.rs`
 
 - [ ] **Step 1: 写失败的集成测试**
 
-在 `crates/codex-plus-core/src/update.rs` 的 `sha256_tests` 模块末尾追加：
+在 `crates/codex-assistant-core/src/update.rs` 的 `sha256_tests` 模块末尾追加：
 
 ```rust
     use tempfile::TempDir;
@@ -818,7 +818,7 @@ git -c commit.gpgsign=false commit -m "feat(update): parse and verify asset sha2
             version: "1.4.0".into(),
             url: "https://example.com".into(),
             body: "".into(),
-            asset_name: Some("codex-plus_1.4.0_x64-setup.exe".into()),
+            asset_name: Some("codex-assistant_1.4.0_x64-setup.exe".into()),
             asset_url: Some("https://example.com/x.exe".into()),
             asset_sha256: sha.map(str::to_string),
         }
@@ -862,12 +862,12 @@ git -c commit.gpgsign=false commit -m "feat(update): parse and verify asset sha2
 
 - [ ] **Step 2: 运行测试验证失败**
 
-Run: `cargo test -p codex-plus-core sha256_tests::validate_download`
+Run: `cargo test -p codex-assistant-core sha256_tests::validate_download`
 Expected: 编译失败，`validate_downloaded_installer` 不存在。
 
 - [ ] **Step 3: 抽出 `validate_downloaded_installer`**
 
-在 `crates/codex-plus-core/src/update.rs` 的 `verify_asset_sha256` 函数后追加：
+在 `crates/codex-assistant-core/src/update.rs` 的 `verify_asset_sha256` 函数后追加：
 
 ```rust
 pub fn validate_downloaded_installer(
@@ -939,18 +939,18 @@ pub async fn perform_update(
 
 - [ ] **Step 5: 运行测试**
 
-Run: `cargo test -p codex-plus-core sha256_tests`
+Run: `cargo test -p codex-assistant-core sha256_tests`
 Expected: 9 passed（之前 6 个 + 新 3 个）
 
 - [ ] **Step 6: 运行整套核心测试**
 
-Run: `cargo test -p codex-plus-core`
+Run: `cargo test -p codex-assistant-core`
 Expected: 全部通过
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/update.rs
+git add crates/codex-assistant-core/src/update.rs
 git -c commit.gpgsign=false commit -m "feat(update): require sha256 before launching installer"
 ```
 
@@ -959,11 +959,11 @@ git -c commit.gpgsign=false commit -m "feat(update): require sha256 before launc
 ## Task 8: script_market.rs 强制 sha256
 
 **Files:**
-- Modify: `crates/codex-plus-core/src/script_market.rs`
+- Modify: `crates/codex-assistant-core/src/script_market.rs`
 
 - [ ] **Step 1: 写失败的测试**
 
-在 `crates/codex-plus-core/src/script_market.rs` 末尾追加：
+在 `crates/codex-assistant-core/src/script_market.rs` 末尾追加：
 
 ```rust
 #[cfg(test)]
@@ -1031,12 +1031,12 @@ mod hardening_tests {
 
 - [ ] **Step 2: 运行测试验证失败**
 
-Run: `cargo test -p codex-plus-core hardening_tests`
+Run: `cargo test -p codex-assistant-core hardening_tests`
 Expected: `manifest_drops_entries_without_sha256` 失败（当前 sha256 可选，两条都会保留）；`verify_sha256_rejects_empty` 失败（当前空值返回 Ok）。
 
 - [ ] **Step 3: 修改 `parse_market_script` 让 sha256 必填**
 
-修改 `crates/codex-plus-core/src/script_market.rs:113-141` 的 `parse_market_script`：
+修改 `crates/codex-assistant-core/src/script_market.rs:113-141` 的 `parse_market_script`：
 
 ```rust
 fn parse_market_script(raw: Value) -> Option<MarketScript> {
@@ -1073,7 +1073,7 @@ fn parse_market_script(raw: Value) -> Option<MarketScript> {
 
 - [ ] **Step 4: 修改 `parse_market_manifest` 记录丢弃**
 
-修改 `crates/codex-plus-core/src/script_market.rs:36-58`：
+修改 `crates/codex-assistant-core/src/script_market.rs:36-58`：
 
 ```rust
 pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest> {
@@ -1131,7 +1131,7 @@ pub fn parse_market_manifest(raw: Value) -> anyhow::Result<ScriptMarketManifest>
 
 - [ ] **Step 5: 修改 `verify_sha256` 不再容忍空值**
 
-修改 `crates/codex-plus-core/src/script_market.rs:159-171`：
+修改 `crates/codex-assistant-core/src/script_market.rs:159-171`：
 
 ```rust
 fn verify_sha256(script: &MarketScript, content: &[u8]) -> anyhow::Result<()> {
@@ -1159,7 +1159,7 @@ fn verify_sha256(script: &MarketScript, content: &[u8]) -> anyhow::Result<()> {
 
 - [ ] **Step 6: `download_script` 改走 proxied_client**
 
-修改 `crates/codex-plus-core/src/script_market.rs:72-82`：
+修改 `crates/codex-assistant-core/src/script_market.rs:72-82`：
 
 ```rust
 pub async fn download_script(url: &str) -> anyhow::Result<Vec<u8>> {
@@ -1181,22 +1181,22 @@ pub async fn download_script(url: &str) -> anyhow::Result<Vec<u8>> {
 }
 ```
 
-如果 `crate::http_client::proxied_client` 不可见，先打开 `crates/codex-plus-core/src/lib.rs` 确认 `pub mod http_client;` 已存在；如已存在保持不变。
+如果 `crate::http_client::proxied_client` 不可见，先打开 `crates/codex-assistant-core/src/lib.rs` 确认 `pub mod http_client;` 已存在；如已存在保持不变。
 
 - [ ] **Step 7: 运行测试**
 
-Run: `cargo test -p codex-plus-core hardening_tests`
+Run: `cargo test -p codex-assistant-core hardening_tests`
 Expected: 3 passed
 
 - [ ] **Step 8: 跑整套核心测试**
 
-Run: `cargo test -p codex-plus-core`
+Run: `cargo test -p codex-assistant-core`
 Expected: 全部通过
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add crates/codex-plus-core/src/script_market.rs
+git add crates/codex-assistant-core/src/script_market.rs
 git -c commit.gpgsign=false commit -m "feat(market): require sha256 on every market script"
 ```
 

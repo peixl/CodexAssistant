@@ -36,7 +36,7 @@ pub mod user_scripts;
 pub mod version;
 pub mod watcher;
 #[cfg(windows)]
-mod windows_integration;
+pub mod windows_integration;
 pub mod zed_remote;
 
 #[cfg(windows)]

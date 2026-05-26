@@ -1,5 +1,5 @@
 [package]
-name = "codex-plus-launcher"
+name = "codex-assistant-launcher"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 async-trait = "0.1"
-codex-plus-core = { path = "../../crates/codex-plus-core" }
-codex-plus-data = { path = "../../crates/codex-plus-data" }
+codex-assistant-core = { path = "../../crates/codex-assistant-core" }
+codex-assistant-data = { path = "../../crates/codex-assistant-data" }
 directories.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

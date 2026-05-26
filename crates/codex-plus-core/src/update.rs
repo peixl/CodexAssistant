@@ -387,7 +387,7 @@ mod sha256_tests {
     #[cfg(any(windows, target_os = "macos"))]
     fn platform_asset_name(version: &str) -> String {
         if cfg!(windows) {
-            format!("codex-plus_{version}_x64-setup.exe")
+            format!("codex-assistant_{version}_x64-setup.exe")
         } else {
             format!("codex-assistant_{version}_aarch64.dmg")
         }
@@ -459,7 +459,7 @@ mod sha256_tests {
             version: "1.4.0".into(),
             url: "https://example.com".into(),
             body: "".into(),
-            asset_name: Some("codex-plus_1.4.0_x64-setup.exe".into()),
+            asset_name: Some("codex-assistant_1.4.0_x64-setup.exe".into()),
             asset_url: Some("https://example.com/x.exe".into()),
             asset_sha256: sha.map(str::to_string),
         }

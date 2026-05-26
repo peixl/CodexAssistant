@@ -38,7 +38,7 @@ fn launcher_binary_embeds_codex_icon_resource() {
         .parent()
         .and_then(std::path::Path::parent)
         .unwrap()
-        .join("codex-plus-launcher/build.rs");
+        .join("codex-assistant-launcher/build.rs");
     let build_rs = std::fs::read_to_string(&launcher_build).expect("read launcher build.rs");
 
     assert!(build_rs.contains("WindowsResource"));
@@ -56,7 +56,7 @@ fn windows_binaries_run_as_invoker_without_uac_elevation() {
         .parent()
         .and_then(std::path::Path::parent)
         .unwrap()
-        .join("codex-plus-launcher/build.rs");
+        .join("codex-assistant-launcher/build.rs");
     let launcher_build = std::fs::read_to_string(&launcher_build).expect("read launcher build.rs");
     let windows_installer = manifest_dir
         .parent()

@@ -64,7 +64,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
              │ tauri commands                     │ spawn + monitor
              ▼                                    ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-core (Rust crate)           │
+   │            codex-assistant-core (Rust crate)           │
    │  · launcher / single-instance guard               │
    │  · CDP client + renderer-inject.js bootstrap      │
    │  · relay config writer & provider switcher        │
@@ -74,7 +74,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
                     │ uses
                     ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-data (Rust crate)           │
+   │            codex-assistant-data (Rust crate)           │
    │  · SQLite adapter for ~/.codex/state_5.sqlite     │
    │  · Markdown export / Provider Sync                │
    │  · transactional backup + undo                    │
@@ -163,10 +163,10 @@ registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
 
 ```bash
 # 1. 安装前端依赖
-npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-assistant-manager ci
 
 # 2. 构建前端 — tauri::generate_context! 在编译时读取 dist/
-npm --prefix apps/codex-plus-manager run vite:build
+npm --prefix apps/codex-assistant-manager run vite:build
 
 # 3. 编译两个核心二进制 (静默启动器与 Tauri 管理工具)
 cargo build --release
@@ -175,7 +175,7 @@ cargo build --release
 ### 开发模式运行管理工具
 
 ```bash
-npm --prefix apps/codex-plus-manager run dev
+npm --prefix apps/codex-assistant-manager run dev
 ```
 
 ### 本地完整校验 (与 CI 相同)
@@ -184,8 +184,8 @@ npm --prefix apps/codex-plus-manager run dev
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npm --prefix apps/codex-plus-manager run check
-npm --prefix apps/codex-plus-manager run test
+npm --prefix apps/codex-assistant-manager run check
+npm --prefix apps/codex-assistant-manager run test
 ```
 
 ### 项目结构
@@ -193,14 +193,14 @@ npm --prefix apps/codex-plus-manager run test
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/     静默启动器二进制 (codex-assistant)
-│   └── codex-plus-manager/      Tauri 管理工具
+│   ├── codex-assistant-launcher/     静默启动器二进制 (codex-assistant)
+│   └── codex-assistant-manager/      Tauri 管理工具
 │       ├── src/                 React + TypeScript UI
 │       └── src-tauri/           Tauri 命令与窗口管理
 ├── assets/inject/               注入到 Codex 渲染端的 JS
 ├── crates/
-│   ├── codex-plus-core/         启动、CDP、设置、中转、Provider、更新、bridge
-│   └── codex-plus-data/         SQLite 适配、Markdown 导出、Provider Sync
+│   ├── codex-assistant-core/         启动、CDP、设置、中转、Provider、更新、bridge
+│   └── codex-assistant-data/         SQLite 适配、Markdown 导出、Provider Sync
 ├── scripts/installer/
 │   ├── macos/package-dmg.sh     macOS DMG 打包脚本
 │   └── windows/CodexAssistant.nsi  Windows NSIS 安装脚本
@@ -249,9 +249,9 @@ xattr -dr com.apple.quarantine "/Applications/CodexAssistant 管理工具.app"
 
 ```bash
 rustup target add x86_64-apple-darwin
-npm --prefix apps/codex-plus-manager ci
-npm --prefix apps/codex-plus-manager run vite:build
-cargo build --release --target x86_64-apple-darwin -p codex-plus-launcher -p codex-assistant
+npm --prefix apps/codex-assistant-manager ci
+npm --prefix apps/codex-assistant-manager run vite:build
+cargo build --release --target x86_64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 ```
 
 ### 我能在 Linux 上跑吗？

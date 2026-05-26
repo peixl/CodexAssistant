@@ -454,7 +454,7 @@ mod tests {
         let id = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
         let mut path = std::env::temp_dir();
         path.push(format!(
-            "codex-plus-core-app-paths-{label}-{}-{}",
+            "codex-assistant-core-app-paths-{label}-{}-{}",
             std::process::id(),
             id
         ));

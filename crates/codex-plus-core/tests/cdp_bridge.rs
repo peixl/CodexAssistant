@@ -46,7 +46,7 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
     assert!(script.contains("window.__CODEX_PLUS_VERSION__"));
     assert!(script.contains(codex_plus_core::version::VERSION));
     assert!(script.contains("https://discord.gg/y96kX7A76v"));
-    assert!(script.contains("data-codex-plus-discord"));
+    assert!(script.contains("data-codex-assistant-discord"));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn injection_script_marks_diagnostic_build_and_reports_script_loaded() {
     assert!(script.contains("window.__CODEX_PLUS_BUILD__"));
     assert!(script.contains(codex_plus_core::assets::DIAGNOSTIC_BUILD_ID));
     assert!(script.contains("script_loaded"));
-    assert!(script.contains("data-codex-plus-build"));
+    assert!(script.contains("data-codex-assistant-build"));
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn injection_script_exposes_conversation_view_width_control() {
     assert!(script.contains("conversationView"));
     assert!(script.contains("conversationViewMaxWidth"));
     assert!(script.contains("对话居中宽度"));
-    assert!(script.contains("data-codex-plus-conversation-view-width"));
+    assert!(script.contains("data-codex-assistant-conversation-view-width"));
     assert!(script.contains("conversationViewWidth()"));
     assert!(script.contains("normalizeConversationViewWidth"));
 }
@@ -189,7 +189,7 @@ fn injection_script_exposes_fast_service_tier_control() {
     assert!(script.contains("setCodexThreadServiceTierMode"));
     assert!(script.contains("codexServiceTierRequestOverride"));
     assert!(script.contains("serviceTierControls: false"));
-    assert!(script.contains("data-codex-plus-setting=\"serviceTierControls\""));
+    assert!(script.contains("data-codex-assistant-setting=\"serviceTierControls\""));
     assert!(script.contains("data-codex-service-tier-controls"));
     assert!(script.contains("removeCodexServiceTierBadges"));
     assert!(script.contains("installCodexServiceTierDispatcherPatch"));
@@ -253,14 +253,14 @@ fn manager_ui_exposes_pure_api_relay_mode_button() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(std::path::Path::parent)
-        .expect("core crate should live under crates/codex-plus-core");
-    let text = std::fs::read_to_string(repo.join("apps/codex-plus-manager/src/lib/text.ts"))
+        .expect("core crate should live under crates/codex-assistant-core");
+    let text = std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src/lib/text.ts"))
         .expect("text constants file must exist");
     let drawer =
-        std::fs::read_to_string(repo.join("apps/codex-plus-manager/src/drawers/AccountDrawer.tsx"))
+        std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx"))
             .expect("AccountDrawer must exist");
     let commands =
-        std::fs::read_to_string(repo.join("apps/codex-plus-manager/src-tauri/src/lib.rs")).unwrap();
+        std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src-tauri/src/lib.rs")).unwrap();
 
     assert!(text.contains("使用我自己的 API Key"));
     assert!(drawer.contains("apply_pure_api_injection"));
@@ -417,7 +417,7 @@ fn pick_page_target_rejects_non_pages_and_pages_without_websocket() {
 #[tokio::test]
 async fn install_bridge_routes_binding_while_waiting_for_command_response() {
     let temp = tempfile::tempdir().unwrap();
-    let log_path = temp.path().join("codex-plus.log");
+    let log_path = temp.path().join("codex-assistant.log");
     codex_plus_core::diagnostic_log::set_diagnostic_log_path_for_tests(Some(log_path.clone()));
     let (url, request_rx) = spawn_cdp_server(|mut socket| async move {
         for expected_id in 1..=4 {

@@ -5,24 +5,24 @@
 ### Rust 核心库
 | 功能 | 文件路径 |
 |------|---------|
-| 启动器入口 | `apps/codex-plus-launcher/src/main.rs` |
-| CDP 客户端 | `crates/codex-plus-core/src/cdp.rs` |
-| HTTP Bridge | `crates/codex-plus-core/src/bridge.rs` |
-| 中转配置 | `crates/codex-plus-core/src/relay_config.rs` |
-| 用户脚本 | `crates/codex-plus-core/src/user_scripts.rs` |
-| 数据库操作 | `crates/codex-plus-data/src/` |
-| Tauri 命令 | `apps/codex-plus-manager/src-tauri/src/commands.rs` |
+| 启动器入口 | `apps/codex-assistant-launcher/src/main.rs` |
+| CDP 客户端 | `crates/codex-assistant-core/src/cdp.rs` |
+| HTTP Bridge | `crates/codex-assistant-core/src/bridge.rs` |
+| 中转配置 | `crates/codex-assistant-core/src/relay_config.rs` |
+| 用户脚本 | `crates/codex-assistant-core/src/user_scripts.rs` |
+| 数据库操作 | `crates/codex-assistant-data/src/` |
+| Tauri 命令 | `apps/codex-assistant-manager/src-tauri/src/commands.rs` |
 
 ### React 前端
 | 功能 | 文件路径 |
 |------|---------|
-| 应用入口 | `apps/codex-plus-manager/src/main.tsx` |
-| 主应用 | `apps/codex-plus-manager/src/App.tsx` |
-| 诊断面板 | `apps/codex-plus-manager/src/panels/DiagnosticsPanel.tsx` |
-| 中转管理 | `apps/codex-plus-manager/src/panels/RelayAdvancedPanel.tsx` |
-| 脚本管理 | `apps/codex-plus-manager/src/panels/ScriptsPanel.tsx` |
-| 状态管理 | `apps/codex-plus-manager/src/state/useBackend.ts` |
-| 启动器状态机 | `apps/codex-plus-manager/src/state/launcherMachine.ts` |
+| 应用入口 | `apps/codex-assistant-manager/src/main.tsx` |
+| 主应用 | `apps/codex-assistant-manager/src/App.tsx` |
+| 诊断面板 | `apps/codex-assistant-manager/src/panels/DiagnosticsPanel.tsx` |
+| 中转管理 | `apps/codex-assistant-manager/src/panels/RelayAdvancedPanel.tsx` |
+| 脚本管理 | `apps/codex-assistant-manager/src/panels/ScriptsPanel.tsx` |
+| 状态管理 | `apps/codex-assistant-manager/src/state/useBackend.ts` |
+| 启动器状态机 | `apps/codex-assistant-manager/src/state/launcherMachine.ts` |
 
 ### 注入脚本
 | 功能 | 文件路径 |
@@ -43,7 +43,7 @@ npm run test:watch            # 测试监听模式
 
 ### 构建
 ```bash
-npm --prefix apps/codex-plus-manager run vite:build   # 构建前端
+npm --prefix apps/codex-assistant-manager run vite:build   # 构建前端
 cargo build --release                                  # 构建 Rust (发布)
 cargo build                                            # 构建 Rust (调试)
 ```
@@ -88,7 +88,7 @@ cargo test --workspace                     # 单元测试
 ```
 Tauri 管理工具 (GUI)
   └── 调用 Tauri 命令 (commands.rs)
-      └── 调用 codex-plus-core
+      └── 调用 codex-assistant-core
           ├── 启动器逻辑
           ├── CDP 客户端
           ├── HTTP Bridge
@@ -97,8 +97,8 @@ Tauri 管理工具 (GUI)
 
 注入脚本 (renderer-inject.js)
   └── 与 HTTP Bridge (127.0.0.1:57321) 通信
-      └── codex-plus-core 处理请求
-          └── codex-plus-data 操作数据库
+      └── codex-assistant-core 处理请求
+          └── codex-assistant-data 操作数据库
 ```
 
 ---
@@ -121,9 +121,9 @@ Tauri 管理工具 (GUI)
 |------|------|------|
 | Rust 工作空间 | `Cargo.toml` | 模块定义、共享依赖 |
 | Node.js 工作空间 | `package.json` | 脚本快捷方式 |
-| TypeScript 配置 | `apps/codex-plus-manager/tsconfig.json` | 类型检查 |
-| Vite 配置 | `apps/codex-plus-manager/vite.config.ts` | 前端构建 |
-| Tauri 配置 | `apps/codex-plus-manager/src-tauri/tauri.conf.json` | 窗口/菜单/安全 |
+| TypeScript 配置 | `apps/codex-assistant-manager/tsconfig.json` | 类型检查 |
+| Vite 配置 | `apps/codex-assistant-manager/vite.config.ts` | 前端构建 |
+| Tauri 配置 | `apps/codex-assistant-manager/src-tauri/tauri.conf.json` | 窗口/菜单/安全 |
 | GitHub Actions | `.github/workflows/ci.yml` | CI 流程 |
 
 ---
@@ -137,7 +137,7 @@ Tauri 管理工具 (GUI)
 | **中转注入** | `relay_config.rs` | 修改 ~/.codex/config.toml |
 | **HTTP 通信** | `bridge.rs`, `routes.rs` | 127.0.0.1:57321 |
 | **脚本管理** | `user_scripts.rs` | 本地脚本 CRUD |
-| **数据库** | `codex-plus-data/` | SQLite 操作与导出 |
+| **数据库** | `codex-assistant-data/` | SQLite 操作与导出 |
 | **管理 UI** | `App.tsx`, `panels/` | 标签页布局 |
 | **状态管理** | `useBackend.ts`, `launcherMachine.ts` | React Hooks + XState |
 | **自动更新** | `update.rs`, `useUpdateProbe.ts` | GitHub Releases |

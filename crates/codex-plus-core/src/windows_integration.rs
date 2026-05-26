@@ -5,6 +5,8 @@ use std::iter::once;
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
+use std::os::windows::process::CommandExt;
+#[cfg(windows)]
 use std::path::PathBuf;
 
 #[cfg(windows)]
@@ -32,10 +34,11 @@ use windows::Win32::System::Threading::{
 };
 #[cfg(windows)]
 use windows::Win32::UI::Shell::{
-    FOLDERID_Desktop, IShellLinkW, KF_FLAG_DEFAULT, SHGetKnownFolderPath, ShellExecuteW, ShellLink,
+    FOLDERID_Desktop, IShellLinkW, KF_FLAG_DEFAULT, SEE_MASK_NOCLOSEPROCESS,
+    SHELLEXECUTEINFOW, SHGetKnownFolderPath, ShellExecuteExW, ShellExecuteW, ShellLink,
 };
 #[cfg(windows)]
-use windows::Win32::UI::WindowsAndMessaging::SW_SHOWMINNOACTIVE;
+use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOWMINNOACTIVE};
 #[cfg(windows)]
 use windows::core::{Interface, PCWSTR, PWSTR};
 
@@ -155,6 +158,124 @@ pub fn open_url(url: &str) -> anyhow::Result<()> {
         anyhow::bail!("ShellExecuteW returned {code}");
     }
     Ok(())
+}
+
+/// Run `cmd.exe /C <cmd>` elevated via UAC and wait for it. The shell window
+/// is hidden so the user only sees the consent prompt. Returns the child's
+/// exit code, or an error if the user declined elevation or the shell could
+/// not be started.
+#[cfg(windows)]
+pub fn run_elevated_cmd(cmd_line: &str) -> anyhow::Result<u32> {
+    use windows::Win32::Foundation::WAIT_OBJECT_0;
+    use windows::Win32::System::Threading::{GetExitCodeProcess, INFINITE, WaitForSingleObject};
+
+    let verb = wide_null("runas");
+    let file = wide_null("cmd.exe");
+    let params = wide_null(format!("/C {cmd_line}"));
+
+    let mut info = SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOCLOSEPROCESS,
+        lpVerb: PCWSTR(verb.as_ptr()),
+        lpFile: PCWSTR(file.as_ptr()),
+        lpParameters: PCWSTR(params.as_ptr()),
+        nShow: SW_HIDE.0,
+        ..Default::default()
+    };
+
+    unsafe { ShellExecuteExW(&mut info) }
+        .map_err(|e| anyhow::anyhow!("ShellExecuteExW(runas cmd.exe) failed: {e}"))?;
+
+    if info.hProcess.is_invalid() {
+        anyhow::bail!("ShellExecuteExW returned no process handle (user likely declined UAC)");
+    }
+    let _guard = HandleGuard(info.hProcess);
+
+    let wait = unsafe { WaitForSingleObject(info.hProcess, INFINITE) };
+    if wait != WAIT_OBJECT_0 {
+        anyhow::bail!("WaitForSingleObject returned {wait:?}");
+    }
+
+    let mut exit_code: u32 = 0;
+    unsafe { GetExitCodeProcess(info.hProcess, &mut exit_code) }
+        .map_err(|e| anyhow::anyhow!("GetExitCodeProcess failed: {e}"))?;
+    Ok(exit_code)
+}
+
+/// Add Inbound + Outbound `Allow` Windows Firewall rules scoped to `exe_path`,
+/// requesting UAC elevation. Existing rules with the same names are removed
+/// first so the call is idempotent. Returns `Ok(())` on success.
+///
+/// This is the recovery hook used when [`crate::launcher::preflight_loopback_reachable`]
+/// fails on Windows: a third-party HIPS/AV (Tencent QQ PC Manager observed in
+/// the field, also some endpoint-protection suites) installs WFP filters that
+/// silently drop 127.0.0.1 SYN packets for unsigned binaries that lack a
+/// per-program firewall allow rule. Adding our own ALLOW rule for the
+/// launcher / helper exe takes precedence over the generic block and lets
+/// loopback flow normally.
+#[cfg(windows)]
+pub fn ensure_loopback_firewall_allow(exe_path: &std::path::Path) -> anyhow::Result<()> {
+    let exe = exe_path
+        .canonicalize()
+        .unwrap_or_else(|_| exe_path.to_path_buf());
+    let exe_str = exe.to_string_lossy().to_string();
+    if exe_str.contains('"') {
+        anyhow::bail!("refusing to build firewall command for path containing quote: {exe_str}");
+    }
+    let stem = exe
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("CodexAssistant");
+    let in_name = format!("CodexAssistant Loopback {stem} In");
+    let out_name = format!("CodexAssistant Loopback {stem} Out");
+
+    let mut script = String::new();
+    script.push_str(&format!(
+        "netsh advfirewall firewall delete rule name=\"{in_name}\" >nul 2>&1 & "
+    ));
+    script.push_str(&format!(
+        "netsh advfirewall firewall delete rule name=\"{out_name}\" >nul 2>&1 & "
+    ));
+    script.push_str(&format!(
+        "netsh advfirewall firewall add rule name=\"{in_name}\" dir=in action=allow program=\"{exe_str}\" enable=yes profile=any && "
+    ));
+    script.push_str(&format!(
+        "netsh advfirewall firewall add rule name=\"{out_name}\" dir=out action=allow program=\"{exe_str}\" enable=yes profile=any"
+    ));
+
+    let exit = run_elevated_cmd(&script)?;
+    if exit != 0 {
+        anyhow::bail!("netsh advfirewall add rule exited with code {exit}");
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+pub fn loopback_firewall_rules_present(exe_path: &std::path::Path) -> bool {
+    let exe = exe_path
+        .canonicalize()
+        .unwrap_or_else(|_| exe_path.to_path_buf());
+    let stem = exe
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("CodexAssistant");
+    let in_name = format!("CodexAssistant Loopback {stem} In");
+    let out_name = format!("CodexAssistant Loopback {stem} Out");
+    let check = |name: &str| -> bool {
+        std::process::Command::new("netsh")
+            .args([
+                "advfirewall",
+                "firewall",
+                "show",
+                "rule",
+                &format!("name={name}"),
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map(|o| o.status.success() && !String::from_utf8_lossy(&o.stdout).contains("No rules match"))
+            .unwrap_or(false)
+    };
+    check(&in_name) && check(&out_name)
 }
 
 #[cfg(windows)]

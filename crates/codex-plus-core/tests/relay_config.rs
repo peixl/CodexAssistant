@@ -234,7 +234,7 @@ experimental_bearer_token = "sk-a"
             .unwrap()
             .file_name()
             .to_string_lossy()
-            .contains("codex-plus-backup")
+            .contains("codex-assistant-backup")
     }));
 }
 

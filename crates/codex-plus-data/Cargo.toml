@@ -1,5 +1,5 @@
 [package]
-name = "codex-plus-data"
+name = "codex-assistant-data"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 anyhow.workspace = true
 base64.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-codex-plus-core = { path = "../codex-plus-core" }
+codex-assistant-core = { path = "../codex-assistant-core" }
 rusqlite.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }

@@ -66,10 +66,10 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: apps/codex-plus-manager/package-lock.json
+          cache-dependency-path: apps/codex-assistant-manager/package-lock.json
 
       - name: Build frontend (required by tauri::generate_context!)
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: |
           npm ci
           npm run vite:build
@@ -112,10 +112,10 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: apps/codex-plus-manager/package-lock.json
+          cache-dependency-path: apps/codex-assistant-manager/package-lock.json
 
       - name: Build frontend (required by tauri::generate_context!)
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
         run: |
           npm ci
           npm run vite:build
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/codex-plus-manager
+        working-directory: apps/codex-assistant-manager
     steps:
       - uses: actions/checkout@v6
 
@@ -140,7 +140,7 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: apps/codex-plus-manager/package-lock.json
+          cache-dependency-path: apps/codex-assistant-manager/package-lock.json
 
       - name: npm ci
         run: npm ci

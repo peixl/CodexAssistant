@@ -64,7 +64,7 @@ You'll end up with two entry points:
              │ tauri commands                     │ spawn + monitor
              ▼                                    ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-core (Rust crate)           │
+   │            codex-assistant-core (Rust crate)           │
    │  · launcher / single-instance guard               │
    │  · CDP client + renderer-inject.js bootstrap      │
    │  · relay config writer & provider switcher        │
@@ -74,7 +74,7 @@ You'll end up with two entry points:
                     │ uses
                     ▼
    ┌──────────────────────────────────────────────────┐
-   │            codex-plus-data (Rust crate)           │
+   │            codex-assistant-data (Rust crate)           │
    │  · SQLite adapter for ~/.codex/state_5.sqlite     │
    │  · Markdown export / Provider Sync                │
    │  · transactional backup + undo                    │
@@ -161,10 +161,10 @@ registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
 
 ```bash
 # 1. Install frontend deps
-npm --prefix apps/codex-plus-manager ci
+npm --prefix apps/codex-assistant-manager ci
 
 # 2. Build the frontend — tauri::generate_context! reads dist/ at compile time
-npm --prefix apps/codex-plus-manager run vite:build
+npm --prefix apps/codex-assistant-manager run vite:build
 
 # 3. Build all Rust artefacts (silent launcher + manager)
 cargo build --release
@@ -173,7 +173,7 @@ cargo build --release
 ### Run the manager in dev mode
 
 ```bash
-npm --prefix apps/codex-plus-manager run dev
+npm --prefix apps/codex-assistant-manager run dev
 ```
 
 ### Full local check (same gates as CI)
@@ -182,8 +182,8 @@ npm --prefix apps/codex-plus-manager run dev
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-npm --prefix apps/codex-plus-manager run check
-npm --prefix apps/codex-plus-manager run test
+npm --prefix apps/codex-assistant-manager run check
+npm --prefix apps/codex-assistant-manager run test
 ```
 
 ### Project layout
@@ -191,14 +191,14 @@ npm --prefix apps/codex-plus-manager run test
 ```
 CodexAssistant/
 ├── apps/
-│   ├── codex-plus-launcher/     Silent launcher binary (codex-assistant)
-│   └── codex-plus-manager/      Tauri manager
+│   ├── codex-assistant-launcher/     Silent launcher binary (codex-assistant)
+│   └── codex-assistant-manager/      Tauri manager
 │       ├── src/                 React + TypeScript UI
 │       └── src-tauri/           Tauri commands & window management
 ├── assets/inject/               JS injected into the Codex renderer
 ├── crates/
-│   ├── codex-plus-core/         Launch, CDP, settings, relay, provider, update, bridge
-│   └── codex-plus-data/         SQLite adapter, Markdown export, Provider Sync
+│   ├── codex-assistant-core/         Launch, CDP, settings, relay, provider, update, bridge
+│   └── codex-assistant-data/         SQLite adapter, Markdown export, Provider Sync
 ├── scripts/installer/
 │   ├── macos/package-dmg.sh     macOS DMG packaging script
 │   └── windows/CodexAssistant.nsi  Windows NSIS installer script
@@ -247,9 +247,9 @@ Yes, but currently only Apple Silicon (`macos-arm64.dmg`) is published as a bina
 
 ```bash
 rustup target add x86_64-apple-darwin
-npm --prefix apps/codex-plus-manager ci
-npm --prefix apps/codex-plus-manager run vite:build
-cargo build --release --target x86_64-apple-darwin -p codex-plus-launcher -p codex-assistant
+npm --prefix apps/codex-assistant-manager ci
+npm --prefix apps/codex-assistant-manager run vite:build
+cargo build --release --target x86_64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 ```
 
 ### Can I run it on Linux?

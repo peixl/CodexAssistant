@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "codex-plus.theme";
+const STORAGE_KEY = "codex-assistant.theme";
 const VALID: ThemePreference[] = ["light", "dark", "auto"];
 
 function readStoredPreference(): ThemePreference {

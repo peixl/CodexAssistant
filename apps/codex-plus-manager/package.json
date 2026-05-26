@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cargo build -p codex-plus-launcher && tauri dev",
-    "build": "cargo build -p codex-plus-launcher --release && tauri build",
+    "dev": "cargo build -p codex-assistant-launcher && tauri dev",
+    "build": "cargo build -p codex-assistant-launcher --release && tauri build",
     "check": "tsc --noEmit -p tsconfig.json",
     "vite:dev": "vite --host 127.0.0.1 --port 1420",
     "vite:build": "vite build",

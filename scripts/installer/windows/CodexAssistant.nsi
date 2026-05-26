@@ -34,8 +34,8 @@ VIAddVersionKey  "LegalCopyright"  "© ${PUBLISHER}"
 VIAddVersionKey  "FileDescription" "${APP_NAME} Setup"
 VIAddVersionKey  "OriginalFilename" "${APP_NAME}-${VERSION}-windows-x64-setup.exe"
 
-!define MUI_ICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
-!define MUI_UNICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
+!define MUI_ICON "${ROOT}\apps\codex-assistant-manager\src-tauri\icons\icon.ico"
+!define MUI_UNICON "${ROOT}\apps\codex-assistant-manager\src-tauri\icons\icon.ico"
 !define MUI_ABORTWARNING
 
 ; Remember the chosen UI language across runs
