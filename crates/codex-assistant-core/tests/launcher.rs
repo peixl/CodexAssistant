@@ -9,9 +9,10 @@ use codex_assistant_core::app_paths::{
 };
 use codex_assistant_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
-    build_codex_arguments, build_codex_command, build_macos_cleanup_command,
-    build_macos_open_command, build_packaged_activation, codex_process_environment_from,
-    launch_and_inject_with_hooks, preflight_loopback_reachable, with_temporary_proxy_environment,
+    apply_protocol_proxy_fallback_config_for_launch, build_codex_arguments, build_codex_command,
+    build_macos_cleanup_command, build_macos_open_command, build_packaged_activation,
+    codex_process_environment_from, launch_and_inject_with_hooks, preflight_loopback_reachable,
+    with_temporary_proxy_environment,
 };
 #[cfg(windows)]
 use codex_assistant_core::launcher::{
@@ -754,6 +755,131 @@ async fn launch_lifecycle_degrades_instead_of_blocking_when_loopback_preflight_f
 }
 
 #[tokio::test]
+async fn launch_lifecycle_applies_direct_chat_fallback_when_proxy_loopback_fails() {
+    let temp = tempfile::tempdir().unwrap();
+    let app_dir = temp.path().join("Codex.app");
+    std::fs::create_dir_all(&app_dir).unwrap();
+    let status_store = StatusStore::new(temp.path().join("latest-status.json"));
+    let events = Arc::new(Mutex::new(Vec::<String>::new()));
+    let hooks = FakeHooks::new(events.clone())
+        .with_loopback_error("loopback blocked")
+        .with_settings(BackendSettings {
+            enhancements_enabled: false,
+            relay_profiles: vec![RelayProfile {
+                id: "relay-chat".to_string(),
+                name: "Chat".to_string(),
+                base_url: "https://chat-only.example.test/v1".to_string(),
+                api_key: "sk-test".to_string(),
+                protocol: RelayProtocol::ChatCompletions,
+                relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
+                official_mix_api_key: false,
+                test_model: String::new(),
+                config_contents: String::new(),
+                auth_contents: String::new(),
+            }],
+            active_relay_id: "relay-chat".to_string(),
+            ..BackendSettings::default()
+        });
+
+    let handle = launch_and_inject_with_hooks(
+        LaunchOptions {
+            app_dir: Some(app_dir),
+            debug_port: 9229,
+            helper_port: 58000,
+            status_store: status_store.clone(),
+        },
+        &hooks,
+    )
+    .await
+    .expect("loopback failure must not prevent opening Codex");
+    handle.wait_for_codex_exit().await.unwrap();
+
+    let observed = events.lock().unwrap().clone();
+    assert!(
+        observed.contains(&"protocol-fallback:57321".to_string()),
+        "chat relay should switch away from the local proxy when loopback is blocked: {observed:?}"
+    );
+    assert!(
+        !observed.contains(&"start-helper:57321".to_string()),
+        "helper cannot be started when loopback is known bad: {observed:?}"
+    );
+    assert!(
+        observed.contains(&"launch:9229".to_string()),
+        "Codex launch must still be attempted: {observed:?}"
+    );
+    let status = status_store.load_latest().unwrap().unwrap();
+    assert_eq!(status.status, "running_degraded");
+    assert!(status.message.contains("loopback blocked"));
+    assert!(
+        status.message.contains("direct Chat Completions wire API"),
+        "degraded status should explain the relay fallback: {}",
+        status.message
+    );
+}
+
+#[test]
+fn launch_fallback_rewrites_chat_protocol_config_to_direct_when_loopback_unavailable() {
+    let temp = tempfile::tempdir().unwrap();
+    let settings = BackendSettings {
+        relay_profiles: vec![RelayProfile {
+            id: "relay-chat".to_string(),
+            name: "Chat".to_string(),
+            base_url: "https://chat-only.example.test/v1".to_string(),
+            api_key: "sk-test".to_string(),
+            protocol: RelayProtocol::ChatCompletions,
+            relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
+            official_mix_api_key: false,
+            test_model: String::new(),
+            config_contents: String::new(),
+            auth_contents: String::new(),
+        }],
+        active_relay_id: "relay-chat".to_string(),
+        ..BackendSettings::default()
+    };
+
+    let result = apply_protocol_proxy_fallback_config_for_launch(temp.path(), &settings, 57321)
+        .unwrap()
+        .expect("chat relay with credentials should produce a direct fallback config");
+    let updated = std::fs::read_to_string(temp.path().join("config.toml")).unwrap();
+
+    assert!(result.configured);
+    assert!(updated.contains(r#"wire_api = "chat""#));
+    assert!(updated.contains(r#"base_url = "https://chat-only.example.test/v1""#));
+    assert!(!updated.contains("127.0.0.1:57321"));
+}
+
+#[test]
+fn launch_fallback_preserves_custom_relay_file_profiles() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(temp.path().join("config.toml"), "model = \"old\"\n").unwrap();
+    let settings = BackendSettings {
+        relay_profiles: vec![RelayProfile {
+            id: "relay-chat".to_string(),
+            name: "Chat".to_string(),
+            base_url: "https://chat-only.example.test/v1".to_string(),
+            api_key: "sk-test".to_string(),
+            protocol: RelayProtocol::ChatCompletions,
+            relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
+            official_mix_api_key: false,
+            test_model: String::new(),
+            config_contents: "model_provider = \"custom\"".to_string(),
+            auth_contents: String::new(),
+        }],
+        active_relay_id: "relay-chat".to_string(),
+        ..BackendSettings::default()
+    };
+
+    let result = apply_protocol_proxy_fallback_config_for_launch(temp.path(), &settings, 57321)
+        .expect("custom file profiles should skip fallback without error");
+
+    assert!(result.is_none());
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("config.toml")).unwrap(),
+        "model = \"old\"\n"
+    );
+}
+
+#[tokio::test]
 async fn launch_lifecycle_keeps_codex_running_and_marks_degraded_when_injection_fails() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
@@ -1136,6 +1262,28 @@ impl LaunchHooks for FakeHooks {
             anyhow::bail!(message.clone());
         }
         Ok(())
+    }
+
+    async fn apply_protocol_proxy_fallback(
+        &self,
+        settings: &BackendSettings,
+        helper_port: u16,
+    ) -> anyhow::Result<Option<codex_assistant_core::relay_config::RelayApplyResult>> {
+        let relay = settings.active_relay_profile();
+        if relay.protocol == RelayProtocol::ChatCompletions
+            && !relay.base_url.trim().is_empty()
+            && !relay.api_key.trim().is_empty()
+            && relay.config_contents.trim().is_empty()
+            && relay.auth_contents.trim().is_empty()
+        {
+            self.event(format!("protocol-fallback:{helper_port}"));
+            return Ok(Some(codex_assistant_core::relay_config::RelayApplyResult {
+                config_path: "fake/config.toml".to_string(),
+                backup_path: None,
+                configured: true,
+            }));
+        }
+        Ok(None)
     }
 
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()> {

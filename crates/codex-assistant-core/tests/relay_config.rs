@@ -1,7 +1,8 @@
 use codex_assistant_core::relay_config::{
     apply_pure_api_config_to_home, apply_relay_config_file_to_home, apply_relay_config_to_home,
-    apply_relay_files_to_home, chatgpt_auth_status_from_home, clear_relay_config_to_home,
-    codex_credentials_from_home, relay_config_status_from_home,
+    apply_relay_config_to_home_for_launch, apply_relay_files_to_home,
+    chatgpt_auth_status_from_home, clear_relay_config_to_home, codex_credentials_from_home,
+    relay_config_status_from_home,
 };
 use codex_assistant_core::settings::RelayProtocol;
 
@@ -165,6 +166,28 @@ fn apply_chat_protocol_relay_points_codex_to_local_responses_proxy() {
     assert!(updated.contains(r#"base_url = "http://127.0.0.1:57321/v1""#));
     assert!(updated.contains(r#"experimental_bearer_token = "sk-test-redacted""#));
     assert!(!updated.contains("https://chat-only.example.test"));
+}
+
+#[test]
+fn launch_chat_protocol_fallback_points_codex_directly_to_chat_api() {
+    let temp = tempfile::tempdir().unwrap();
+
+    let result = apply_relay_config_to_home_for_launch(
+        temp.path(),
+        "https://chat-only.example.test/v1",
+        "sk-test-redacted",
+        RelayProtocol::ChatCompletions,
+        57321,
+        false,
+    )
+    .unwrap();
+    let updated = std::fs::read_to_string(temp.path().join("config.toml")).unwrap();
+
+    assert!(result.configured);
+    assert!(updated.contains(r#"wire_api = "chat""#));
+    assert!(updated.contains(r#"base_url = "https://chat-only.example.test/v1""#));
+    assert!(updated.contains(r#"experimental_bearer_token = "sk-test-redacted""#));
+    assert!(!updated.contains("http://127.0.0.1:57321"));
 }
 
 #[test]

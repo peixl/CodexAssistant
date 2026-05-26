@@ -13,7 +13,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-use crate::settings::{BackendSettings, SettingsStore, normalize_codex_extra_args};
+use crate::settings::{BackendSettings, RelayProtocol, SettingsStore, normalize_codex_extra_args};
 use crate::status::{LaunchStatus, StatusStore};
 
 /// Number of times to retry CDP bridge injection while waiting for Codex to open its
@@ -140,6 +140,17 @@ pub trait LaunchHooks: Send + Sync {
     async fn verify_loopback_reachable(&self) -> anyhow::Result<()> {
         preflight_loopback_reachable().await
     }
+    async fn apply_protocol_proxy_fallback(
+        &self,
+        settings: &BackendSettings,
+        helper_port: u16,
+    ) -> anyhow::Result<Option<crate::relay_config::RelayApplyResult>> {
+        apply_protocol_proxy_fallback_config_for_launch(
+            &crate::relay_config::default_codex_home_dir(),
+            settings,
+            helper_port,
+        )
+    }
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()>;
     async fn launch_codex(
         &self,
@@ -254,7 +265,58 @@ where
             && let Err(error) = hooks.verify_loopback_reachable().await
         {
             loopback_available = false;
-            degraded_reason = Some(loopback_degraded_message(&error, protocol_proxy_enabled));
+            let protocol_proxy_fallback_note = if protocol_proxy_enabled {
+                match hooks
+                    .apply_protocol_proxy_fallback(&settings, helper_port)
+                    .await
+                {
+                    Ok(Some(result)) => {
+                        let note = format!(
+                            " Local API relay was switched to the direct Chat Completions wire API for this launch, so Codex can keep using the configured relay without the localhost proxy. Config: {}.",
+                            result.config_path
+                        );
+                        let _ = crate::diagnostic_log::append_diagnostic_log(
+                            "launcher.protocol_proxy_direct_fallback_applied",
+                            serde_json::json!({
+                                "helper_port": helper_port,
+                                "config_path": result.config_path,
+                                "configured": result.configured,
+                            }),
+                        );
+                        Some(note)
+                    }
+                    Ok(None) => {
+                        let note = " Local API relay could not be automatically switched away from the localhost proxy because the active profile uses custom config files or lacks direct relay credentials.".to_string();
+                        let _ = crate::diagnostic_log::append_diagnostic_log(
+                            "launcher.protocol_proxy_direct_fallback_skipped",
+                            serde_json::json!({
+                                "helper_port": helper_port,
+                            }),
+                        );
+                        Some(note)
+                    }
+                    Err(fallback_error) => {
+                        let note = format!(
+                            " Local API relay could not be automatically switched away from the localhost proxy: {fallback_error}."
+                        );
+                        let _ = crate::diagnostic_log::append_diagnostic_log(
+                            "launcher.protocol_proxy_direct_fallback_failed",
+                            serde_json::json!({
+                                "helper_port": helper_port,
+                                "message": fallback_error.to_string(),
+                            }),
+                        );
+                        Some(note)
+                    }
+                }
+            } else {
+                None
+            };
+            degraded_reason = Some(loopback_degraded_message(
+                &error,
+                protocol_proxy_enabled,
+                protocol_proxy_fallback_note.as_deref(),
+            ));
             let _ = crate::diagnostic_log::append_diagnostic_log(
                 "launcher.loopback_preflight_degraded",
                 serde_json::json!({
@@ -357,7 +419,34 @@ where
 }
 
 fn relay_protocol_proxy_enabled(settings: &BackendSettings) -> bool {
-    settings.active_relay_profile().protocol == crate::settings::RelayProtocol::ChatCompletions
+    settings.active_relay_profile().protocol == RelayProtocol::ChatCompletions
+}
+
+pub fn apply_protocol_proxy_fallback_config_for_launch(
+    home: &Path,
+    settings: &BackendSettings,
+    helper_port: u16,
+) -> anyhow::Result<Option<crate::relay_config::RelayApplyResult>> {
+    let relay = settings.active_relay_profile();
+    if relay.protocol != RelayProtocol::ChatCompletions {
+        return Ok(None);
+    }
+    if !relay.config_contents.trim().is_empty() || !relay.auth_contents.trim().is_empty() {
+        return Ok(None);
+    }
+    if relay.base_url.trim().is_empty() || relay.api_key.trim().is_empty() {
+        return Ok(None);
+    }
+
+    crate::relay_config::apply_relay_config_to_home_for_launch(
+        home,
+        &relay.base_url,
+        &relay.api_key,
+        relay.protocol,
+        helper_port,
+        false,
+    )
+    .map(Some)
 }
 
 pub trait IntoLaunchHooks {
@@ -1647,10 +1736,16 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
     }
 }
 
-fn loopback_degraded_message(error: &anyhow::Error, protocol_proxy_enabled: bool) -> String {
+fn loopback_degraded_message(
+    error: &anyhow::Error,
+    protocol_proxy_enabled: bool,
+    protocol_proxy_fallback_note: Option<&str>,
+) -> String {
     let detail = error.to_string();
     let proxy_note = if protocol_proxy_enabled {
-        " Local API relay is disabled for this launch because it also requires Windows TCP loopback."
+        protocol_proxy_fallback_note.unwrap_or(
+            " Local API relay is disabled for this launch because it also requires Windows TCP loopback.",
+        )
     } else {
         ""
     };
@@ -1659,7 +1754,9 @@ fn loopback_degraded_message(error: &anyhow::Error, protocol_proxy_enabled: bool
             "Codex launched in compatibility mode because Windows TCP loopback is still blocked after the compliant recovery attempt. Enhancements that require localhost/CDP are disabled for this launch.{proxy_note} This is commonly caused by VPN, Tencent PC Manager, or firewall WFP rules. Try non-destructive recovery: allow localhost/127.0.0.1 for CodexAssistant in the VPN, firewall, or security software settings, or enable split tunneling/local-network access. CodexAssistant never disables VPN, firewall, or security controls automatically. Diagnostic: {detail}"
         )
     } else {
-        format!("Codex launched without localhost-dependent enhancements: {detail}")
+        format!(
+            "Codex launched without localhost-dependent enhancements.{proxy_note} Diagnostic: {detail}"
+        )
     }
 }
 
