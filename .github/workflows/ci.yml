@@ -44,10 +44,13 @@ jobs:
     name: Rust (ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
         run: |
@@ -93,10 +96,13 @@ jobs:
         os: [macos-14, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
         run: |
@@ -129,10 +135,13 @@ jobs:
       run:
         working-directory: apps/codex-assistant-manager
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

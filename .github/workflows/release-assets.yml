@@ -42,10 +42,13 @@ jobs:
       ARCH: arm64
       BINARY_DIR: ${{ github.workspace }}/target/aarch64-apple-darwin/release
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
         run: |
@@ -87,10 +90,13 @@ jobs:
       TAG: ${{ needs.resolve-tag.outputs.tag }}
       TARGET: x86_64-pc-windows-msvc
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
         run: |
@@ -156,10 +162,13 @@ jobs:
     if: ${{ always() && needs.resolve-tag.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ''
-          persist-credentials: false
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Verify build artifacts are attached to release
         env:
