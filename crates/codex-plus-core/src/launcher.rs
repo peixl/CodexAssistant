@@ -242,19 +242,35 @@ where
     let mut launched = None;
 
     let result: anyhow::Result<LaunchHandle> = async {
-        if settings.enhancements_enabled {
-            hooks.verify_loopback_reachable().await?;
+        let protocol_proxy_enabled = relay_protocol_proxy_enabled(&settings);
+        if protocol_proxy_enabled {
+            helper_port = crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT;
+        }
+        let needs_loopback = settings.enhancements_enabled || protocol_proxy_enabled;
+        let mut loopback_available = true;
+        let mut degraded_reason: Option<String> = None;
+
+        if needs_loopback
+            && let Err(error) = hooks.verify_loopback_reachable().await
+        {
+            loopback_available = false;
+            degraded_reason = Some(loopback_degraded_message(&error, protocol_proxy_enabled));
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.loopback_preflight_degraded",
+                serde_json::json!({
+                    "debug_port": debug_port,
+                    "helper_port": helper_port,
+                    "protocol_proxy_enabled": protocol_proxy_enabled,
+                    "message": error.to_string(),
+                }),
+            );
         }
 
         if settings.provider_sync_enabled {
             hooks.run_provider_sync().await?;
         }
 
-        let protocol_proxy_enabled = relay_protocol_proxy_enabled(&settings);
-        if protocol_proxy_enabled {
-            helper_port = crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT;
-        }
-        if settings.enhancements_enabled || protocol_proxy_enabled {
+        if loopback_available && (settings.enhancements_enabled || protocol_proxy_enabled) {
             hooks.start_helper(helper_port).await?;
             helper_started = true;
         }
@@ -264,8 +280,7 @@ where
             .await?;
         launched = Some(launch.clone());
 
-        let mut degraded_reason: Option<String> = None;
-        if settings.enhancements_enabled {
+        if settings.enhancements_enabled && loopback_available {
             let bridge_context_result = hooks.bridge_context(debug_port).await;
             let inject_outcome = match bridge_context_result {
                 Ok(Some(ctx)) => hooks.inject_bridge(debug_port, helper_port, ctx).await,
@@ -274,9 +289,7 @@ where
             };
             match inject_outcome {
                 Ok(()) => {
-                    if let Err(error) =
-                        hooks.start_bridge_watchdog(debug_port, helper_port).await
-                    {
+                    if let Err(error) = hooks.start_bridge_watchdog(debug_port, helper_port).await {
                         degraded_reason = Some(format!(
                             "Codex launched but bridge watchdog could not start: {error}. Enhancements may stop working if Codex reloads."
                         ));
@@ -374,6 +387,35 @@ impl DefaultLaunchHooks {
     pub fn shared() -> Arc<dyn LaunchHooks> {
         Arc::new(Self::default())
     }
+
+    async fn launch_codex_process(
+        &self,
+        app_dir: &Path,
+        debug_port: u16,
+        extra_args: &[String],
+    ) -> anyhow::Result<CodexLaunch> {
+        let command = build_codex_command(app_dir, debug_port, extra_args);
+        let executable = command
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
+        let mut child_command = Command::new(executable);
+        child_command
+            .args(&command[1..])
+            .envs(codex_process_environment())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        child_command.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
+        let child = child_command
+            .spawn()
+            .with_context(|| format!("failed to launch Codex executable {executable}"))?;
+        *self.child.lock().await = Some(child);
+        Ok(CodexLaunch::Process {
+            command,
+            wait_strategy: ProcessWaitStrategy::TrackedChild,
+            macos_cleanup_policy: None,
+        })
+    }
 }
 
 #[async_trait(?Send)]
@@ -457,20 +499,60 @@ impl LaunchHooks for DefaultLaunchHooks {
                 unreachable!();
             };
             let env = codex_process_environment();
-            let process_id =
-                activate_packaged_app_with_environment(app_user_model_id, arguments, &env).await?;
-            return Ok(match activation {
-                CodexLaunch::PackagedActivation {
-                    app_user_model_id,
-                    arguments,
-                    ..
-                } => CodexLaunch::PackagedActivation {
-                    app_user_model_id,
-                    arguments,
-                    process_id: Some(process_id),
-                },
-                CodexLaunch::Process { .. } => unreachable!(),
-            });
+            match activate_packaged_app_with_environment(app_user_model_id, arguments, &env).await {
+                Ok(process_id) => {
+                    return Ok(match activation {
+                        CodexLaunch::PackagedActivation {
+                            app_user_model_id,
+                            arguments,
+                            ..
+                        } => CodexLaunch::PackagedActivation {
+                            app_user_model_id,
+                            arguments,
+                            process_id: Some(process_id),
+                        },
+                        CodexLaunch::Process { .. } => unreachable!(),
+                    });
+                }
+                Err(activation_error) => {
+                    let activation_message = activation_error.to_string();
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "launcher.packaged_activation_failed_try_direct_process",
+                        serde_json::json!({
+                            "app_user_model_id": app_user_model_id,
+                            "arguments": arguments,
+                            "message": activation_message.clone(),
+                        }),
+                    );
+                    match self
+                        .launch_codex_process(app_dir, debug_port, extra_args)
+                        .await
+                    {
+                        Ok(launch) => {
+                            let _ = crate::diagnostic_log::append_diagnostic_log(
+                                "launcher.packaged_activation_direct_process_ok",
+                                serde_json::json!({
+                                    "app_dir": app_dir.to_string_lossy().to_string(),
+                                }),
+                            );
+                            return Ok(launch);
+                        }
+                        Err(process_error) => {
+                            let process_message = process_error.to_string();
+                            let _ = crate::diagnostic_log::append_diagnostic_log(
+                                "launcher.packaged_activation_direct_process_failed",
+                                serde_json::json!({
+                                    "app_dir": app_dir.to_string_lossy().to_string(),
+                                    "message": process_message.clone(),
+                                }),
+                            );
+                            anyhow::bail!(
+                                "failed to activate packaged Codex via AppUserModelID ({activation_message}); direct executable fallback also failed ({process_message})"
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         if app_dir.extension().and_then(|value| value.to_str()) == Some("app") {
@@ -498,27 +580,8 @@ impl LaunchHooks for DefaultLaunchHooks {
             });
         }
 
-        let command = build_codex_command(app_dir, debug_port, extra_args);
-        let executable = command
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
-        let mut child_command = Command::new(executable);
-        child_command
-            .args(&command[1..])
-            .envs(codex_process_environment())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        #[cfg(windows)]
-        child_command.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
-        let child = child_command
-            .spawn()
-            .with_context(|| format!("failed to launch Codex executable {executable}"))?;
-        *self.child.lock().await = Some(child);
-        Ok(CodexLaunch::Process {
-            command,
-            wait_strategy: ProcessWaitStrategy::TrackedChild,
-            macos_cleanup_policy: None,
-        })
+        self.launch_codex_process(app_dir, debug_port, extra_args)
+            .await
     }
 
     async fn inject(&self, debug_port: u16, helper_port: u16) -> anyhow::Result<()> {
@@ -1582,73 +1645,62 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
     }
 }
 
-/// Verify TCP loopback works on this machine before we waste time launching Codex
-/// and waiting 60s for `--remote-debugging-port` to be reachable. On Windows, VPN
-/// drivers (WireGuard/Wintun, Cisco AnyConnect, Zscaler) commonly install WFP
-/// kill-switch filters that silently drop 127.0.0.1 SYN packets — `listen()` and
-/// `bind()` still succeed, so the symptom looks like Codex is broken when it isn't.
+fn loopback_degraded_message(error: &anyhow::Error, protocol_proxy_enabled: bool) -> String {
+    let detail = error.to_string();
+    let proxy_note = if protocol_proxy_enabled {
+        " Local API relay is disabled for this launch because it also requires Windows TCP loopback."
+    } else {
+        ""
+    };
+    if cfg!(target_os = "windows") {
+        format!(
+            "Codex launched in compatibility mode because Windows TCP loopback is blocked. Enhancements that require localhost/CDP are disabled for this launch.{proxy_note} This is commonly caused by VPN or firewall WFP rules. Try non-destructive recovery first: allow localhost/127.0.0.1 in the VPN, firewall, or security software settings, or enable split tunneling/local-network access. CodexAssistant does not change system network settings automatically. Diagnostic: {detail}"
+        )
+    } else {
+        format!("Codex launched without localhost-dependent enhancements: {detail}")
+    }
+}
+
+/// Verify the exact IPv4 loopback path used by CDP and the helper before we
+/// attach localhost-dependent enhancements. On Windows, VPN drivers
+/// (WireGuard/Wintun, Cisco AnyConnect, Zscaler) commonly install WFP kill-switch
+/// filters that silently drop 127.0.0.1 SYN packets — `listen()` and `bind()`
+/// still succeed, so the symptom looks like Codex is broken when it isn't.
 pub async fn preflight_loopback_reachable() -> anyhow::Result<()> {
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::net::{IpAddr, Ipv4Addr};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let addrs = vec![
-        IpAddr::V4(Ipv4Addr::LOCALHOST),
-        IpAddr::V6(Ipv6Addr::LOCALHOST),
-    ];
-    let mut any_success = false;
-    let mut last_error = None;
+    let addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+    let listener = tokio::net::TcpListener::bind((addr, 0))
+        .await
+        .map_err(|error| anyhow::anyhow!(loopback_preflight_message(&error.to_string())))?;
+    let port = listener.local_addr()?.port();
 
-    for addr in addrs {
-        let listener = match tokio::net::TcpListener::bind((addr, 0)).await {
-            Ok(l) => l,
-            Err(e) => {
-                last_error = Some(e.into());
-                continue;
-            }
-        };
-        let port = listener.local_addr()?.port();
-
-        let server_addr = addr;
-        let server = tokio::spawn(async move {
-            if let Ok((mut stream, _)) = listener.accept().await {
-                let _ = stream.write_all(b"ok").await;
-                let _ = stream.shutdown().await;
-            }
-        });
-
-        let probe = async {
-            let mut stream = tokio::net::TcpStream::connect((server_addr, port)).await?;
-            let mut buf = [0u8; 2];
-            stream.read_exact(&mut buf).await?;
-            anyhow::Ok(())
-        };
-
-        let outcome = tokio::time::timeout(std::time::Duration::from_millis(2500), probe).await;
-        server.abort();
-
-        if let Ok(Ok(())) = outcome {
-            any_success = true;
-            break;
-        } else {
-            if let Ok(Err(error)) = outcome {
-                last_error = Some(error);
-            } else {
-                last_error = Some(anyhow::anyhow!(
-                    "TCP connect to {} timed out after 2500ms",
-                    addr
-                ));
-            }
+    let server = tokio::spawn(async move {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let _ = stream.write_all(b"ok").await;
+            let _ = stream.shutdown().await;
         }
-    }
+    });
 
-    if any_success {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(loopback_preflight_message(
-            &last_error
-                .unwrap_or_else(|| anyhow::anyhow!("all loopback interfaces failed"))
-                .to_string()
-        )))
+    let probe = async {
+        let mut stream = tokio::net::TcpStream::connect((addr, port)).await?;
+        let mut buf = [0u8; 2];
+        stream.read_exact(&mut buf).await?;
+        anyhow::Ok(())
+    };
+
+    let outcome = tokio::time::timeout(std::time::Duration::from_millis(2500), probe).await;
+    server.abort();
+
+    match outcome {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(error)) => Err(anyhow::anyhow!(loopback_preflight_message(
+            &error.to_string()
+        ))),
+        Err(_) => Err(anyhow::anyhow!(loopback_preflight_message(
+            "TCP connect to 127.0.0.1 timed out after 2500ms"
+        ))),
     }
 }
 
