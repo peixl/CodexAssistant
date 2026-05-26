@@ -111,7 +111,8 @@ fn now_ms() -> u64 {
 
 async fn notify_manager_when_update_available() -> anyhow::Result<bool> {
     let update =
-        codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION).await?;
+        codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION)
+            .await?;
     if !update.update_available {
         return Ok(false);
     }
@@ -188,7 +189,9 @@ impl LaunchHooks for LauncherHooks {
         self.core.select_helper_port(requested)
     }
 
-    async fn load_settings(&self) -> anyhow::Result<codex_assistant_core::settings::BackendSettings> {
+    async fn load_settings(
+        &self,
+    ) -> anyhow::Result<codex_assistant_core::settings::BackendSettings> {
         self.core.load_settings().await
     }
 
@@ -452,15 +455,11 @@ impl BridgeRuntimeService for LauncherRuntimeService {
     }
 
     async fn resolve_zed_remote_host(&self, payload: Value) -> anyhow::Result<Value> {
-        Ok(codex_assistant_core::zed_remote::resolve_ssh_target_response(
-            &payload,
-        ))
+        Ok(codex_assistant_core::zed_remote::resolve_ssh_target_response(&payload))
     }
 
     async fn fallback_zed_remote_request(&self, payload: Value) -> anyhow::Result<Value> {
-        Ok(codex_assistant_core::zed_remote::fallback_open_request_response(
-            &payload,
-        ))
+        Ok(codex_assistant_core::zed_remote::fallback_open_request_response(&payload))
     }
 
     async fn open_zed_remote(&self, payload: Value) -> anyhow::Result<Value> {

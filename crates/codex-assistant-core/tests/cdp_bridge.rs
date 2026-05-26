@@ -40,10 +40,10 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
 
     assert!(script.contains("window.__CODEX_SESSION_DELETE_HELPER__"));
     assert!(script.contains("http://127.0.0.1:57321"));
-    assert!(script.contains("window.__CODEX_PLUS_HELPER_TOKEN__"));
+    assert!(script.contains("window.__CODEX_ASSISTANT_HELPER_TOKEN__"));
     assert!(script.contains("\"test-helper-token\""));
-    assert!(script.contains("window.__CODEX_PLUS_SPONSOR_IMAGES__"));
-    assert!(script.contains("window.__CODEX_PLUS_VERSION__"));
+    assert!(script.contains("window.__CODEX_ASSISTANT_SPONSOR_IMAGES__"));
+    assert!(script.contains("window.__CODEX_ASSISTANT_VERSION__"));
     assert!(script.contains(codex_assistant_core::version::VERSION));
     assert!(script.contains("https://discord.gg/y96kX7A76v"));
     assert!(script.contains("data-codex-assistant-discord"));
@@ -53,7 +53,7 @@ fn injection_script_prefixes_helper_url_and_sponsor_images() {
 fn injection_script_marks_diagnostic_build_and_reports_script_loaded() {
     let script = assets::injection_script(57321, "test-helper-token");
 
-    assert!(script.contains("window.__CODEX_PLUS_BUILD__"));
+    assert!(script.contains("window.__CODEX_ASSISTANT_BUILD__"));
     assert!(script.contains(codex_assistant_core::assets::DIAGNOSTIC_BUILD_ID));
     assert!(script.contains("script_loaded"));
     assert!(script.contains("data-codex-assistant-build"));
@@ -256,11 +256,13 @@ fn manager_ui_exposes_pure_api_relay_mode_button() {
         .expect("core crate should live under crates/codex-assistant-core");
     let text = std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src/lib/text.ts"))
         .expect("text constants file must exist");
-    let drawer =
-        std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx"))
-            .expect("AccountDrawer must exist");
+    let drawer = std::fs::read_to_string(
+        repo.join("apps/codex-assistant-manager/src/drawers/AccountDrawer.tsx"),
+    )
+    .expect("AccountDrawer must exist");
     let commands =
-        std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src-tauri/src/lib.rs")).unwrap();
+        std::fs::read_to_string(repo.join("apps/codex-assistant-manager/src-tauri/src/lib.rs"))
+            .unwrap();
 
     assert!(text.contains("使用我自己的 API Key"));
     assert!(drawer.contains("apply_pure_api_injection"));

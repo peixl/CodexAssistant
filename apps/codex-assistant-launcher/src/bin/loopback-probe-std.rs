@@ -1,7 +1,7 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 fn main() {
@@ -51,7 +51,9 @@ fn main() {
         Ok(mut stream) => {
             let elapsed = started.elapsed();
             println!("[std-probe] connected in {elapsed:?}");
-            stream.set_read_timeout(Some(Duration::from_millis(2000))).ok();
+            stream
+                .set_read_timeout(Some(Duration::from_millis(2000)))
+                .ok();
             let mut buf = [0u8; 2];
             match stream.read_exact(&mut buf) {
                 Ok(()) => println!(

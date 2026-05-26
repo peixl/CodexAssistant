@@ -202,7 +202,7 @@ use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("CodexAssistant launcher {}", codex_plus_core::version::VERSION);
+    println!("CodexAssistant launcher {}", codex_assistant_core::version::VERSION);
     Ok(())
 }
 ```
@@ -275,7 +275,7 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "codex_plus_manager_lib"
+name = "codex_assistant_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
@@ -294,7 +294,7 @@ Create `apps/codex-assistant-manager/src-tauri/src/lib.rs`:
 ```rust
 #[tauri::command]
 fn backend_version() -> &'static str {
-    codex_plus_core::version::VERSION
+    codex_assistant_core::version::VERSION
 }
 
 pub fn run() {
@@ -309,7 +309,7 @@ Create `apps/codex-assistant-manager/src-tauri/src/main.rs`:
 
 ```rust
 fn main() {
-    codex_plus_manager_lib::run();
+    codex_assistant_manager_lib::run();
 }
 ```
 
@@ -554,7 +554,7 @@ Test that injection prefix includes:
 
 ```text
 window.__CODEX_SESSION_DELETE_HELPER__
-window.__CODEX_PLUS_SPONSOR_IMAGES__
+window.__CODEX_ASSISTANT_SPONSOR_IMAGES__
 ```
 
 - [ ] **Step 2: Implement CDP target discovery**
@@ -747,7 +747,7 @@ Expose commands:
 ```rust
 backend_version
 load_overview
-launch_codex_plus
+launch_codex_assistant
 load_settings
 save_settings
 install_entrypoints

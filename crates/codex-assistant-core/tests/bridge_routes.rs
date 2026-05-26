@@ -4,7 +4,9 @@ use async_trait::async_trait;
 use codex_assistant_core::launcher::{
     CodexLaunch, LaunchHooks, LaunchOptions, ProcessWaitStrategy, launch_and_inject_with_hooks,
 };
-use codex_assistant_core::models::{DeleteResult, DeleteStatus, ExportResult, ExportStatus, SessionRef};
+use codex_assistant_core::models::{
+    DeleteResult, DeleteStatus, ExportResult, ExportStatus, SessionRef,
+};
 use codex_assistant_core::routes::{
     BridgeContext, BridgeDataService, BridgeRuntimeService, BridgeSettingsService,
     CoreRuntimeService, handle_bridge_request,
@@ -668,10 +670,11 @@ fn install_market_script_rejects_checksum_mismatch_without_replacing_existing_fi
         sha256: "0000".to_string(),
     };
 
-    let error =
-        codex_assistant_core::script_market::install_market_script_content(&manager, &script, b"new")
-            .unwrap_err()
-            .to_string();
+    let error = codex_assistant_core::script_market::install_market_script_content(
+        &manager, &script, b"new",
+    )
+    .unwrap_err()
+    .to_string();
 
     assert!(error.contains("sha256 mismatch"), "error was: {error}");
     assert_eq!(

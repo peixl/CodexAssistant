@@ -207,7 +207,7 @@ pub fn startup_options() -> CommandResult<StartupPayload> {
 pub fn startup_should_show_update() -> bool {
     should_show_update(
         std::env::args(),
-        std::env::var("CODEX_PLUS_SHOW_UPDATE").ok().as_deref(),
+        std::env::var("CODEX_ASSISTANT_SHOW_UPDATE").ok().as_deref(),
     )
 }
 
@@ -283,7 +283,10 @@ pub fn read_launch_status() -> CommandResult<LaunchStatusPayload> {
     ok("启动状态已读取。", LaunchStatusPayload { status, now_ms })
 }
 
-fn spawn_codex_assistant_launch(request: LaunchRequest, accepted_message: &str) -> CommandResult<Value> {
+fn spawn_codex_assistant_launch(
+    request: LaunchRequest,
+    accepted_message: &str,
+) -> CommandResult<Value> {
     let debug_port = request.debug_port;
     let helper_port = request.helper_port;
     let app_path = request.app_path_trimmed().to_string();
@@ -338,8 +341,11 @@ fn preflight_check_launch(request: &LaunchRequest) -> Result<(), String> {
     let saved_app = settings.codex_app_path.trim();
     let app_path_arg = (!requested_app.is_empty()).then(|| Path::new(requested_app));
     let saved_app_opt = (!saved_app.is_empty()).then_some(saved_app);
-    if codex_assistant_core::app_paths::resolve_codex_app_dir_with_saved(app_path_arg, saved_app_opt)
-        .is_none()
+    if codex_assistant_core::app_paths::resolve_codex_app_dir_with_saved(
+        app_path_arg,
+        saved_app_opt,
+    )
+    .is_none()
     {
         return Err("未找到 Codex App，请先在「更多设置」中指定 Codex 安装路径。".to_string());
     }
@@ -464,7 +470,8 @@ pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
         if existing_keys.iter().any(|existing| existing == &key) {
             continue;
         }
-        let profile = codex_assistant_core::ccs_import::relay_profile_from_ccs(&provider, &existing_ids);
+        let profile =
+            codex_assistant_core::ccs_import::relay_profile_from_ccs(&provider, &existing_ids);
         existing_ids.push(profile.id.clone());
         existing_keys.push(key);
         settings.relay_profiles.push(profile);
@@ -500,9 +507,9 @@ fn ccs_import_key(name: &str, base_url: &str) -> String {
 }
 
 fn normalize_settings_before_save(mut settings: BackendSettings) -> BackendSettings {
-    if let Some(path) =
-        codex_assistant_core::app_paths::normalize_codex_app_path(Path::new(&settings.codex_app_path))
-    {
+    if let Some(path) = codex_assistant_core::app_paths::normalize_codex_app_path(Path::new(
+        &settings.codex_app_path,
+    )) {
         settings.codex_app_path = path.to_string_lossy().to_string();
     }
     settings
@@ -510,9 +517,10 @@ fn normalize_settings_before_save(mut settings: BackendSettings) -> BackendSetti
 
 #[tauri::command]
 pub async fn sync_providers_now() -> CommandResult<Value> {
-    let result = tauri::async_runtime::spawn_blocking(|| codex_assistant_data::run_provider_sync(None))
-        .await
-        .map_err(|error| anyhow::anyhow!("provider sync task failed: {error}"));
+    let result =
+        tauri::async_runtime::spawn_blocking(|| codex_assistant_data::run_provider_sync(None))
+            .await
+            .map_err(|error| anyhow::anyhow!("provider sync task failed: {error}"));
     match result {
         Ok(sync) => ok(
             &format!(
@@ -690,7 +698,9 @@ pub fn repair_backend() -> CommandResult<SettingsPayload> {
 
 #[tauri::command]
 pub async fn check_update() -> CommandResult<Value> {
-    match codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION).await {
+    match codex_assistant_core::update::check_for_update(codex_assistant_core::version::VERSION)
+        .await
+    {
         Ok(update) => {
             let status = if update.update_available {
                 "ok"
@@ -777,8 +787,9 @@ pub fn load_watcher_state() -> CommandResult<WatcherPayload> {
 
 #[tauri::command]
 pub fn install_watcher() -> CommandResult<WatcherPayload> {
-    let launcher_path =
-        codex_assistant_core::install::companion_binary_path(codex_assistant_core::install::SILENT_BINARY);
+    let launcher_path = codex_assistant_core::install::companion_binary_path(
+        codex_assistant_core::install::SILENT_BINARY,
+    );
     match codex_assistant_core::watcher::install_watcher(&launcher_path, default_debug_port()) {
         Ok(()) => ok("watcher 已安装。", watcher_payload()),
         Err(error) => failed(&format!("安装 watcher 失败：{error}"), watcher_payload()),
@@ -1641,13 +1652,13 @@ mod tests {
     #[test]
     fn startup_options_honors_show_update_environment() {
         unsafe {
-            std::env::set_var("CODEX_PLUS_SHOW_UPDATE", "1");
+            std::env::set_var("CODEX_ASSISTANT_SHOW_UPDATE", "1");
         }
 
         let result = startup_options();
 
         unsafe {
-            std::env::remove_var("CODEX_PLUS_SHOW_UPDATE");
+            std::env::remove_var("CODEX_ASSISTANT_SHOW_UPDATE");
         }
 
         assert_eq!(result.status, "ok");

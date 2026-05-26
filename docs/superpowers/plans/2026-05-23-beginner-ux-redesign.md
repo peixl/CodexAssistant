@@ -26,7 +26,7 @@
 - 自动更新链路（sha256 校验）已在 PR 中实现，本计划仅做渲染层透传。
 
 **Tauri 调用形状参考**：
-- `launch_codex_plus({ request: { appPath: string|null, debugPort: number, helperPort: number } })`
+- `launch_codex_assistant({ request: { appPath: string|null, debugPort: number, helperPort: number } })`
 - `apply_relay_injection()` / `apply_pure_api_injection()` / `clear_relay_injection()` 无参
 - `save_settings({ settings: BackendSettings })`
 - `install_market_script({ id })`
@@ -44,7 +44,7 @@
 type LauncherState =
   | { kind: "preparing" }                    // 后台 install_watcher / enable_watcher / apply_*injection 中
   | { kind: "ready" }                        // 一切就绪，按钮可点
-  | { kind: "launching" }                    // launch_codex_plus 调用中
+  | { kind: "launching" }                    // launch_codex_assistant 调用中
   | { kind: "need_account" }                 // 未注入账号
   | { kind: "error"; message: string };      // 任一动作失败
 ```
@@ -659,14 +659,14 @@ export function useLauncherMachine(deps: LauncherDeps): {
 
   const launch = useCallback(async () => {
     dispatch({ type: "launch_click" });
-    let r = await callSafe<Record<string, unknown>>("launch_codex_plus", {
+    let r = await callSafe<Record<string, unknown>>("launch_codex_assistant", {
       request: deps.launchArgs,
     });
     // spec §8 端口冲突自动修复：失败时尝试一次 repair_backend 后重试
     if (!r.ok) {
       const repair = await callSafe("repair_backend");
       if (repair.ok) {
-        r = await callSafe<Record<string, unknown>>("launch_codex_plus", {
+        r = await callSafe<Record<string, unknown>>("launch_codex_assistant", {
           request: deps.launchArgs,
         });
       }

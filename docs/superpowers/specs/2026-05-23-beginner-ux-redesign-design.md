@@ -123,7 +123,7 @@
 转移规则：
 - 进入 Home 时：依据 `load_overview` / `relay_status` / `load_watcher_state` 计算初态。
 - 首次发现 `watcher.installed=false` 自动进 `preparing`，串行 `install_watcher` → `enable_watcher` → `apply_*injection`。全成功回 `ready`，任一失败进 `error`。
-- 用户点击 ready：调 `launch_codex_plus`，进 `launching`；命令完成后回 `ready`（不阻塞）。
+- 用户点击 ready：调 `launch_codex_assistant`，进 `launching`；命令完成后回 `ready`（不阻塞）。
 - 用户点击 error：清错误，重做最近一次失败动作，进 `preparing`。
 
 ## 7. 自动更新
@@ -137,7 +137,7 @@
 
 - **永不弹 alert/modal 报错**（更新模态除外），错误一律内联在动作所在的卡片/按钮下方红字。
 - **端口冲突 / 57321 被占**：报错文案为"端口被占用，正在尝试自动修复"，后台跑 `repair_backend`，3 秒未恢复才提示"请手动重启应用"。
-- **未登录 ChatGPT**：`launch_codex_plus` 返回后不强制改状态，账号抽屉的"已登录"靠 `load_overview` 推断；用户回到 Home 时若仍 `need_account`，按钮显示引导态。
+- **未登录 ChatGPT**：`launch_codex_assistant` 返回后不强制改状态，账号抽屉的"已登录"靠 `load_overview` 推断；用户回到 Home 时若仍 `need_account`，按钮显示引导态。
 - **缺少 sha256**（自动更新）：沿用 `update.rs:validate_downloaded_installer` 的错误，渲染层显示"更新校验失败，已拒绝安装" + "反馈包导出"。
 
 ## 9. 文件结构（前端重写）
@@ -186,7 +186,7 @@ src/
 
 按面板分组，已存在的全部复用：
 
-- **Launcher**：`load_overview`, `load_watcher_state`, `install_watcher`, `enable_watcher`, `launch_codex_plus`, `relay_status`, `apply_relay_injection`, `apply_pure_api_injection`, `clear_relay_injection`
+- **Launcher**：`load_overview`, `load_watcher_state`, `install_watcher`, `enable_watcher`, `launch_codex_assistant`, `relay_status`, `apply_relay_injection`, `apply_pure_api_injection`, `clear_relay_injection`
 - **Account**：`load_settings`, `save_settings`
 - **Scripts**：`refresh_script_market`, `install_market_script`, `set_user_script_enabled`, `delete_user_script`
 - **Providers**：`load_ccs_providers`, `import_ccs_providers`, `sync_providers_now`

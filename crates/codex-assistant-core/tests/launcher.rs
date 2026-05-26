@@ -14,7 +14,9 @@ use codex_assistant_core::launcher::{
     launch_and_inject_with_hooks, preflight_loopback_reachable, with_temporary_proxy_environment,
 };
 #[cfg(windows)]
-use codex_assistant_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
+use codex_assistant_core::launcher::{
+    WindowsProcessControlStrategy, windows_process_control_strategy,
+};
 use codex_assistant_core::ports::select_platform_loopback_port_with;
 use codex_assistant_core::proxy::has_proxy_environment;
 use codex_assistant_core::settings::{BackendSettings, RelayProfile, RelayProtocol};
@@ -704,6 +706,54 @@ async fn launch_lifecycle_skips_helper_and_injection_when_enhancements_disabled(
 }
 
 #[tokio::test]
+async fn launch_lifecycle_degrades_instead_of_blocking_when_loopback_preflight_fails() {
+    let temp = tempfile::tempdir().unwrap();
+    let app_dir = temp.path().join("Codex.app");
+    std::fs::create_dir_all(&app_dir).unwrap();
+    let status_store = StatusStore::new(temp.path().join("latest-status.json"));
+    let events = Arc::new(Mutex::new(Vec::<String>::new()));
+    let hooks = FakeHooks::new(events.clone()).with_loopback_error("loopback blocked");
+
+    let handle = launch_and_inject_with_hooks(
+        LaunchOptions {
+            app_dir: Some(app_dir),
+            debug_port: 9229,
+            helper_port: 57321,
+            status_store: status_store.clone(),
+        },
+        &hooks,
+    )
+    .await
+    .expect("loopback failure must not prevent opening Codex");
+    handle.wait_for_codex_exit().await.unwrap();
+
+    let observed = events.lock().unwrap().clone();
+    assert!(
+        observed.contains(&"launch:9229".to_string()),
+        "Codex launch must still be attempted: {observed:?}"
+    );
+    assert!(
+        !observed.contains(&"start-helper:57321".to_string()),
+        "helper cannot be started when loopback is known bad: {observed:?}"
+    );
+    assert!(
+        !observed.contains(&"inject:9229:57321".to_string()),
+        "CDP injection should be skipped when loopback is known bad: {observed:?}"
+    );
+    assert!(
+        observed.contains(&"status:running_degraded".to_string()),
+        "expected degraded status after loopback failure: {observed:?}"
+    );
+    let status = status_store.load_latest().unwrap().unwrap();
+    assert_eq!(status.status, "running_degraded");
+    assert!(
+        status.message.contains("loopback blocked"),
+        "degraded status should include loopback diagnostic: {}",
+        status.message
+    );
+}
+
+#[tokio::test]
 async fn launch_lifecycle_keeps_codex_running_and_marks_degraded_when_injection_fails() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
@@ -978,6 +1028,7 @@ struct FakeHooks {
     launch_result: CodexLaunch,
     launch_error: Option<String>,
     inject_error: Option<String>,
+    loopback_error: Option<String>,
     provider_sync_unsupported: bool,
 }
 
@@ -993,6 +1044,7 @@ impl FakeHooks {
             },
             launch_error: None,
             inject_error: None,
+            loopback_error: None,
             provider_sync_unsupported: false,
         }
     }
@@ -1014,6 +1066,11 @@ impl FakeHooks {
 
     fn with_launch_error(mut self, message: &str) -> Self {
         self.launch_error = Some(message.to_string());
+        self
+    }
+
+    fn with_loopback_error(mut self, message: &str) -> Self {
+        self.loopback_error = Some(message.to_string());
         self
     }
 
@@ -1075,6 +1132,9 @@ impl LaunchHooks for FakeHooks {
     }
 
     async fn verify_loopback_reachable(&self) -> anyhow::Result<()> {
+        if let Some(message) = &self.loopback_error {
+            anyhow::bail!(message.clone());
+        }
         Ok(())
     }
 

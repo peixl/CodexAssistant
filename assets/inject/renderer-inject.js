@@ -13,7 +13,7 @@
  */
 (() => {
   const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";
-  const helperToken = window.__CODEX_PLUS_HELPER_TOKEN__ || "";
+  const helperToken = window.__CODEX_ASSISTANT_HELPER_TOKEN__ || "";
   async function helperFetch(path, init = {}) {
     const headers = new Headers(init.headers || {});
     if (helperToken) headers.set("X-Codex-Helper-Token", helperToken);
@@ -68,8 +68,8 @@
   const codexThreadServiceTierVersion = "1";
   const codexServiceTierBadgeClass = "codex-service-tier-badge";
   const codexServiceTierBadgeVersion = "3";
-  let codexPlusVersion = window.__CODEX_PLUS_VERSION__ || "unknown";
-  const codexPlusBuild = window.__CODEX_PLUS_BUILD__ || "unknown";
+  let codexPlusVersion = window.__CODEX_ASSISTANT_VERSION__ || "unknown";
+  const codexPlusBuild = window.__CODEX_ASSISTANT_BUILD__ || "unknown";
   const codexPlusSettingsKey = "codexPlusSettings";
   const codexThreadScrollKey = "codexThreadScroll";
   const codexThreadServiceTierKey = "codexThreadServiceTierOverrides";

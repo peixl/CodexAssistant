@@ -4,7 +4,7 @@
 
 **Goal:** 实现 spec `docs/superpowers/specs/2026-05-23-security-hardening-design.md` 中的三项加固：本地桥 token 鉴权、自动更新 sha256 校验、脚本市场强制 sha256。
 
-**Architecture:** 在 `codex-assistant-core` 新增叶子模块 `helper_auth`，通过 CDP 把每次启动随机生成的 token 注入到渲染端 `window.__CODEX_PLUS_HELPER_TOKEN__`；本地 HTTP 桥在 `handle_helper_connection` 入口做常量时间比较。更新和市场两块在 `update.rs` / `script_market.rs` 内部增加 `verify_*_sha256` 检查并修改解析逻辑。所有安全失败路径写 `diagnostic_log` 的 `security.*` 事件。
+**Architecture:** 在 `codex-assistant-core` 新增叶子模块 `helper_auth`，通过 CDP 把每次启动随机生成的 token 注入到渲染端 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`；本地 HTTP 桥在 `handle_helper_connection` 入口做常量时间比较。更新和市场两块在 `update.rs` / `script_market.rs` 内部增加 `verify_*_sha256` 检查并修改解析逻辑。所有安全失败路径写 `diagnostic_log` 的 `security.*` 事件。
 
 **Tech Stack:** Rust 2024 edition、tokio、reqwest（rustls-tls）、sha2、base64、getrandom（新增）、Tauri 2.x、原生 JS 注入脚本。
 
@@ -194,7 +194,7 @@ pub fn injection_script(helper_port: u16, helper_token: &str) -> String {
     let helper_url = format!("http://127.0.0.1:{helper_port}");
     let sponsor_images = sponsor_image_data_uris();
     format!(
-        "window.__CODEX_SESSION_DELETE_HELPER__ = {};\nwindow.__CODEX_PLUS_HELPER_TOKEN__ = {};\nwindow.__CODEX_PLUS_SPONSOR_IMAGES__ = {};\nwindow.__CODEX_PLUS_VERSION__ = {};\nwindow.__CODEX_PLUS_BUILD__ = {};\n{}",
+        "window.__CODEX_SESSION_DELETE_HELPER__ = {};\nwindow.__CODEX_ASSISTANT_HELPER_TOKEN__ = {};\nwindow.__CODEX_ASSISTANT_SPONSOR_IMAGES__ = {};\nwindow.__CODEX_ASSISTANT_VERSION__ = {};\nwindow.__CODEX_ASSISTANT_BUILD__ = {};\n{}",
         serde_json::to_string(&helper_url).expect("helper URL should serialize"),
         serde_json::to_string(helper_token).expect("helper token should serialize"),
         serde_json::to_string(&sponsor_images).expect("sponsor images should serialize"),
@@ -251,8 +251,8 @@ git -c commit.gpgsign=false commit -m "feat(assets): inject helper token into re
 
 use std::time::Duration;
 
-use codex_plus_core::helper_auth::ensure_helper_token;
-use codex_plus_core::launcher::test_support::{
+use codex_assistant_core::helper_auth::ensure_helper_token;
+use codex_assistant_core::launcher::test_support::{
     spawn_helper_listener, shutdown_helper_listener, HelperHandle,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -362,7 +362,7 @@ pub mod test_support {
 }
 ```
 
-如果 `tests/helper_token.rs` 引用 `codex_plus_core::launcher::test_support`，需要将 `pub mod launcher` 中的 `test_support` 改成无 `#[cfg(test)]` 的 feature gate 或简单 `pub`，因为集成测试编译时无法看到 `cfg(test)` 内容。**做法**：去掉 `#[cfg(test)]` 包装，直接 `pub mod test_support` 暴露；运行时无开销（只有数据结构，没全局状态）。
+如果 `tests/helper_token.rs` 引用 `codex_assistant_core::launcher::test_support`，需要将 `pub mod launcher` 中的 `test_support` 改成无 `#[cfg(test)]` 的 feature gate 或简单 `pub`，因为集成测试编译时无法看到 `cfg(test)` 内容。**做法**：去掉 `#[cfg(test)]` 包装，直接 `pub mod test_support` 暴露；运行时无开销（只有数据结构，没全局状态）。
 
 - [ ] **Step 3: 运行测试，确认全部失败（token 校验尚未实现）**
 
@@ -465,7 +465,7 @@ git -c commit.gpgsign=false commit -m "feat(launcher): enforce X-Codex-Helper-To
 打开 `assets/inject/renderer-inject.js`，在第 2 行 `const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";` 之后插入：
 
 ```javascript
-  const helperToken = window.__CODEX_PLUS_HELPER_TOKEN__ || "";
+  const helperToken = window.__CODEX_ASSISTANT_HELPER_TOKEN__ || "";
   async function helperFetch(path, init = {}) {
     const headers = new Headers(init.headers || {});
     if (helperToken) headers.set("X-Codex-Helper-Token", helperToken);

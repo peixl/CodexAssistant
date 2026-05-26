@@ -242,19 +242,35 @@ where
     let mut launched = None;
 
     let result: anyhow::Result<LaunchHandle> = async {
-        if settings.enhancements_enabled {
-            hooks.verify_loopback_reachable().await?;
+        let protocol_proxy_enabled = relay_protocol_proxy_enabled(&settings);
+        if protocol_proxy_enabled {
+            helper_port = crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT;
+        }
+        let needs_loopback = settings.enhancements_enabled || protocol_proxy_enabled;
+        let mut loopback_available = true;
+        let mut degraded_reason: Option<String> = None;
+
+        if needs_loopback
+            && let Err(error) = hooks.verify_loopback_reachable().await
+        {
+            loopback_available = false;
+            degraded_reason = Some(loopback_degraded_message(&error, protocol_proxy_enabled));
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.loopback_preflight_degraded",
+                serde_json::json!({
+                    "debug_port": debug_port,
+                    "helper_port": helper_port,
+                    "protocol_proxy_enabled": protocol_proxy_enabled,
+                    "message": error.to_string(),
+                }),
+            );
         }
 
         if settings.provider_sync_enabled {
             hooks.run_provider_sync().await?;
         }
 
-        let protocol_proxy_enabled = relay_protocol_proxy_enabled(&settings);
-        if protocol_proxy_enabled {
-            helper_port = crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT;
-        }
-        if settings.enhancements_enabled || protocol_proxy_enabled {
+        if loopback_available && needs_loopback {
             hooks.start_helper(helper_port).await?;
             helper_started = true;
         }
@@ -264,8 +280,7 @@ where
             .await?;
         launched = Some(launch.clone());
 
-        let mut degraded_reason: Option<String> = None;
-        if settings.enhancements_enabled {
+        if settings.enhancements_enabled && loopback_available {
             let bridge_context_result = hooks.bridge_context(debug_port).await;
             let inject_outcome = match bridge_context_result {
                 Ok(Some(ctx)) => hooks.inject_bridge(debug_port, helper_port, ctx).await,
@@ -374,6 +389,35 @@ impl DefaultLaunchHooks {
     pub fn shared() -> Arc<dyn LaunchHooks> {
         Arc::new(Self::default())
     }
+
+    async fn launch_codex_process(
+        &self,
+        app_dir: &Path,
+        debug_port: u16,
+        extra_args: &[String],
+    ) -> anyhow::Result<CodexLaunch> {
+        let command = build_codex_command(app_dir, debug_port, extra_args);
+        let executable = command
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
+        let mut child_command = Command::new(executable);
+        child_command
+            .args(&command[1..])
+            .envs(codex_process_environment())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        child_command.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
+        let child = child_command
+            .spawn()
+            .with_context(|| format!("failed to launch Codex executable {executable}"))?;
+        *self.child.lock().await = Some(child);
+        Ok(CodexLaunch::Process {
+            command,
+            wait_strategy: ProcessWaitStrategy::TrackedChild,
+            macos_cleanup_policy: None,
+        })
+    }
 }
 
 #[async_trait(?Send)]
@@ -457,20 +501,60 @@ impl LaunchHooks for DefaultLaunchHooks {
                 unreachable!();
             };
             let env = codex_process_environment();
-            let process_id =
-                activate_packaged_app_with_environment(app_user_model_id, arguments, &env).await?;
-            return Ok(match activation {
-                CodexLaunch::PackagedActivation {
-                    app_user_model_id,
-                    arguments,
-                    ..
-                } => CodexLaunch::PackagedActivation {
-                    app_user_model_id,
-                    arguments,
-                    process_id: Some(process_id),
-                },
-                CodexLaunch::Process { .. } => unreachable!(),
-            });
+            match activate_packaged_app_with_environment(app_user_model_id, arguments, &env).await {
+                Ok(process_id) => {
+                    return Ok(match activation {
+                        CodexLaunch::PackagedActivation {
+                            app_user_model_id,
+                            arguments,
+                            ..
+                        } => CodexLaunch::PackagedActivation {
+                            app_user_model_id,
+                            arguments,
+                            process_id: Some(process_id),
+                        },
+                        CodexLaunch::Process { .. } => unreachable!(),
+                    });
+                }
+                Err(activation_error) => {
+                    let activation_message = activation_error.to_string();
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "launcher.packaged_activation_failed_try_direct_process",
+                        serde_json::json!({
+                            "app_user_model_id": app_user_model_id,
+                            "arguments": arguments,
+                            "message": activation_message.clone(),
+                        }),
+                    );
+                    match self
+                        .launch_codex_process(app_dir, debug_port, extra_args)
+                        .await
+                    {
+                        Ok(launch) => {
+                            let _ = crate::diagnostic_log::append_diagnostic_log(
+                                "launcher.packaged_activation_direct_process_ok",
+                                serde_json::json!({
+                                    "app_dir": app_dir.to_string_lossy().to_string(),
+                                }),
+                            );
+                            return Ok(launch);
+                        }
+                        Err(process_error) => {
+                            let process_message = process_error.to_string();
+                            let _ = crate::diagnostic_log::append_diagnostic_log(
+                                "launcher.packaged_activation_direct_process_failed",
+                                serde_json::json!({
+                                    "app_dir": app_dir.to_string_lossy().to_string(),
+                                    "message": process_message.clone(),
+                                }),
+                            );
+                            anyhow::bail!(
+                                "failed to activate packaged Codex via AppUserModelID ({activation_message}); direct executable fallback also failed ({process_message})"
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         if app_dir.extension().and_then(|value| value.to_str()) == Some("app") {
@@ -498,27 +582,8 @@ impl LaunchHooks for DefaultLaunchHooks {
             });
         }
 
-        let command = build_codex_command(app_dir, debug_port, extra_args);
-        let executable = command
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
-        let mut child_command = Command::new(executable);
-        child_command
-            .args(&command[1..])
-            .envs(codex_process_environment())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        #[cfg(windows)]
-        child_command.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
-        let child = child_command
-            .spawn()
-            .with_context(|| format!("failed to launch Codex executable {executable}"))?;
-        *self.child.lock().await = Some(child);
-        Ok(CodexLaunch::Process {
-            command,
-            wait_strategy: ProcessWaitStrategy::TrackedChild,
-            macos_cleanup_policy: None,
-        })
+        self.launch_codex_process(app_dir, debug_port, extra_args)
+            .await
     }
 
     async fn inject(&self, debug_port: u16, helper_port: u16) -> anyhow::Result<()> {
@@ -1573,12 +1638,28 @@ fn injection_failure_message(error: &anyhow::Error) -> String {
     let detail = error.to_string();
     if cfg!(target_os = "windows") {
         format!(
-            "Codex launched, but the CodexAssistant enhancement bridge could not attach to the DevTools Protocol port. This often means a VPN or firewall WFP rule is blocking Windows TCP loopback. First try non-destructive checks: pause or quit the VPN client, allow localhost/127.0.0.1 traffic in the VPN or firewall settings, or enable split tunneling/local-network access. CodexAssistant does not change system network settings automatically. Diagnostic: {detail}"
+            "Codex launched, but the CodexAssistant enhancement bridge could not attach to the DevTools Protocol port. This often means a VPN or firewall WFP rule is blocking Windows TCP loopback. First try non-destructive checks: pause or quit the VPN client, allow localhost/127.0.0.1 traffic in the VPN or firewall settings, or enable split tunneling/local-network access. CodexAssistant never disables VPN, firewall, or security controls automatically. Diagnostic: {detail}"
         )
     } else {
         format!(
             "Codex launched, but the CodexAssistant enhancement bridge could not attach. Diagnostic: {detail}"
         )
+    }
+}
+
+fn loopback_degraded_message(error: &anyhow::Error, protocol_proxy_enabled: bool) -> String {
+    let detail = error.to_string();
+    let proxy_note = if protocol_proxy_enabled {
+        " Local API relay is disabled for this launch because it also requires Windows TCP loopback."
+    } else {
+        ""
+    };
+    if cfg!(target_os = "windows") {
+        format!(
+            "Codex launched in compatibility mode because Windows TCP loopback is still blocked after the compliant recovery attempt. Enhancements that require localhost/CDP are disabled for this launch.{proxy_note} This is commonly caused by VPN, Tencent PC Manager, or firewall WFP rules. Try non-destructive recovery: allow localhost/127.0.0.1 for CodexAssistant in the VPN, firewall, or security software settings, or enable split tunneling/local-network access. CodexAssistant never disables VPN, firewall, or security controls automatically. Diagnostic: {detail}"
+        )
+    } else {
+        format!("Codex launched without localhost-dependent enhancements: {detail}")
     }
 }
 
@@ -1643,8 +1724,7 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
     static ALREADY_TRIED: OnceLock<std::sync::Mutex<std::collections::HashSet<PathBuf>>> =
         OnceLock::new();
 
-    let exe = std::env::current_exe()
-        .context("self_heal: std::env::current_exe failed")?;
+    let exe = std::env::current_exe().context("self_heal: std::env::current_exe failed")?;
     let canonical = exe.canonicalize().unwrap_or(exe);
 
     let tried = ALREADY_TRIED.get_or_init(Default::default);
@@ -1742,7 +1822,7 @@ const PREFLIGHT_LOOPBACK_RETRY_INTERVAL: std::time::Duration =
 fn loopback_preflight_message(detail: &str) -> String {
     if cfg!(target_os = "windows") {
         format!(
-            "Windows TCP loopback (127.0.0.1) is unreachable on this machine, so the CodexAssistant launcher cannot talk to Codex's DevTools Protocol port. This is commonly caused by VPN or firewall WFP rules dropping localhost traffic. Try non-destructive recovery first: pause or quit the VPN client, allow localhost/127.0.0.1 in the VPN or firewall settings, or enable split tunneling/local-network access. CodexAssistant does not change system network settings automatically. Diagnostic: {detail}"
+            "Windows TCP loopback (127.0.0.1) is unreachable on this machine, so CodexAssistant cannot attach localhost-dependent enhancements. This is commonly caused by VPN, Tencent PC Manager, or firewall WFP rules dropping localhost traffic. CodexAssistant may ask Windows for an elevated, program-scoped firewall allow rule for its own executable, but it never disables VPN, firewall, or security controls automatically. Diagnostic: {detail}"
         )
     } else {
         format!("TCP loopback pre-flight failed: {detail}")
@@ -1759,10 +1839,9 @@ mod tests {
     fn windows_loopback_message_prefers_non_destructive_network_guidance() {
         let message = loopback_preflight_message("timeout");
 
-        assert!(message.contains("non-destructive"));
-        assert!(message.contains("does not change system network settings automatically"));
+        assert!(message.contains("program-scoped firewall allow rule"));
+        assert!(message.contains("never disables VPN, firewall, or security controls"));
         assert!(!message.contains("Disable-NetAdapter"));
-        assert!(!message.contains("netsh"));
     }
 
     #[cfg(windows)]
@@ -1771,7 +1850,7 @@ mod tests {
         let message = injection_failure_message(&anyhow::anyhow!("timeout"));
 
         assert!(message.contains("localhost/127.0.0.1"));
-        assert!(message.contains("does not change system network settings automatically"));
+        assert!(message.contains("never disables VPN, firewall, or security controls"));
         assert!(!message.contains("Disable-NetAdapter"));
         assert!(!message.contains("netsh"));
     }

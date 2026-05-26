@@ -234,6 +234,12 @@ curl -X POST http://127.0.0.1:57321/backend/status -d '{}' -H 'Content-Type: app
 
 如果该接口正常响应，但注入脚本仍然报失败，通常是 CDP bridge 重连或脚本缓存问题；重启 CodexAssistant，或在管理工具中清除注入缓存。
 
+### Windows 上 Codex 打开了但增强不可用
+
+CodexAssistant 会优先打开 Codex 本体；如果 VPN、腾讯电脑管家、企业防火墙或 WFP 规则阻断 `127.0.0.1` 本机环回连接，本次启动会自动降级为“只打开 Codex，不附加本地增强”，避免因为诊断通道不可用而完全打不开。此时请在 VPN/防火墙/安全软件中允许 `localhost` / `127.0.0.1`，或启用分流/本地网络访问后重新启动。
+
+CodexAssistant 不会自动修改系统网络、防火墙或安全软件配置；所有恢复动作都需要用户在对应软件中确认。
+
 ### macOS 提示「无法打开」「已损坏」
 
 当前 Release 未做 Developer ID 签名/公证。请到「系统设置 → 隐私与安全性」放行。也可以执行：

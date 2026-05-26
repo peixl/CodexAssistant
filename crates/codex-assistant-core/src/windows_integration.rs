@@ -34,8 +34,8 @@ use windows::Win32::System::Threading::{
 };
 #[cfg(windows)]
 use windows::Win32::UI::Shell::{
-    FOLDERID_Desktop, IShellLinkW, KF_FLAG_DEFAULT, SEE_MASK_NOCLOSEPROCESS,
-    SHELLEXECUTEINFOW, SHGetKnownFolderPath, ShellExecuteExW, ShellExecuteW, ShellLink,
+    FOLDERID_Desktop, IShellLinkW, KF_FLAG_DEFAULT, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+    SHGetKnownFolderPath, ShellExecuteExW, ShellExecuteW, ShellLink,
 };
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOWMINNOACTIVE};
@@ -272,7 +272,9 @@ pub fn loopback_firewall_rules_present(exe_path: &std::path::Path) -> bool {
             ])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
-            .map(|o| o.status.success() && !String::from_utf8_lossy(&o.stdout).contains("No rules match"))
+            .map(|o| {
+                o.status.success() && !String::from_utf8_lossy(&o.stdout).contains("No rules match")
+            })
             .unwrap_or(false)
     };
     check(&in_name) && check(&out_name)

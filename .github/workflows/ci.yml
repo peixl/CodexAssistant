@@ -44,17 +44,19 @@ jobs:
     name: Rust (ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ci-ubuntu-latest
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy --component rustfmt
+          rustup default stable
 
       - name: Install Linux build dependencies
         run: |
@@ -95,17 +97,18 @@ jobs:
         os: [macos-14, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ci-${{ matrix.os }}
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy
+          rustup default stable
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -133,7 +136,14 @@ jobs:
       run:
         working-directory: apps/codex-assistant-manager
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
+          git checkout --force refs/remotes/ci-ref
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
