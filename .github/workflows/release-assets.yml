@@ -17,7 +17,7 @@ permissions:
 jobs:
   resolve-tag:
     name: Resolve release tag
-    runs-on: ubuntu-latest
+    runs-on: macos-14
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
@@ -38,7 +38,7 @@ jobs:
   ensure-release:
     name: Ensure GitHub release exists
     needs: resolve-tag
-    runs-on: ubuntu-latest
+    runs-on: macos-14
     steps:
       - name: Create release if needed
         env:
@@ -181,7 +181,7 @@ jobs:
     name: Publish latest.json
     needs: [resolve-tag, macos, windows]
     if: ${{ needs.resolve-tag.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: macos-14
     steps:
       - name: Checkout repository
         shell: bash
@@ -224,8 +224,8 @@ jobs:
             --pattern "CodexAssistant-${VERSION}-macos-arm64.dmg" \
             --dir release-assets \
             --clobber
-          WIN_SHA="$(sha256sum "release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe" | awk '{print $1}')"
-          MAC_SHA="$(sha256sum "release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg" | awk '{print $1}')"
+          WIN_SHA="$(shasum -a 256 "release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe" | awk '{print $1}')"
+          MAC_SHA="$(shasum -a 256 "release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg" | awk '{print $1}')"
           cat > latest.json <<EOF
           {
             "version": "$VERSION",

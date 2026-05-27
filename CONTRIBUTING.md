@@ -18,9 +18,9 @@ Thank you for your interest in contributing to CodexAssistant!
      rustc --version  # should be >= 1.85
      ```
    - Node.js 20+ and npm — required by the Tauri manager frontend.
-   - On Linux, install Tauri's system dependencies (`libwebkit2gtk-4.1-dev`,
-     `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`,
-     `libsoup-3.0-dev`). macOS and Windows have everything in the OS SDK.
+   - A supported desktop SDK: Windows 10/11 or macOS 12+ with Xcode Command
+     Line Tools. Linux / Ubuntu is not a supported development or runtime
+     target for this project.
 
 3. **Install frontend dependencies**
    ```bash
@@ -114,24 +114,22 @@ CodexAssistant/
 5. Submit a pull request — the PR template asks for platform impact and
    a verification checklist; please fill both out
 
-### CI tiers
+### CI
 
-CI is tuned to stay within free-tier GitHub Actions minutes. By default,
-PRs and pushes only run Linux jobs. To opt a PR into the full
-macOS + Windows matrix before merging, apply the `ci:full` label, or run
-`gh workflow run ci.yml` against the branch. The full matrix also runs
-automatically on tag pushes (`v*`).
+CI runs the frontend gate plus Rust checks on the supported desktop platforms:
+macOS and Windows. There is no Linux / Ubuntu CI tier because CodexAssistant
+does not support Linux as a runtime, development, or release target.
 
 ### Cutting a release
 
 1. Bump the workspace version in `Cargo.toml` and run `cargo update -w`.
-2. Commit and push to `main`. Wait for Linux CI to go green.
+2. Commit and push to `main`. Wait for CI to go green.
 3. Tag and push:
    ```bash
    git tag v$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)
    git push origin --tags
    ```
-   The tag push runs the full macOS + Windows matrix.
+   The tag push runs the macOS + Windows matrix.
 4. Create the GitHub Release (`gh release create vX.Y.Z --generate-notes`).
    `release-assets.yml` builds the macOS DMG + Windows NSIS installer
    and attaches them automatically.
@@ -153,4 +151,3 @@ Do **not** open public issues for security vulnerabilities. See
 
 By contributing, you agree that your contributions will be licensed
 under the [MIT License](LICENSE).
-

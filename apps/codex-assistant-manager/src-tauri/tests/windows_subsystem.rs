@@ -165,13 +165,12 @@ fn github_release_workflow_uploads_static_latest_json() {
     assert!(workflow.contains("needs.windows.result == 'success'"));
     assert!(workflow.contains("latest.json"));
     assert!(workflow.contains("gh release download \"$TAG\""));
+    assert!(workflow.contains(
+        "shasum -a 256 \"release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe\""
+    ));
     assert!(
-        workflow.contains(
-            "sha256sum \"release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe\""
-        )
-    );
-    assert!(
-        workflow.contains("sha256sum \"release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg\"")
+        workflow
+            .contains("shasum -a 256 \"release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg\"")
     );
     assert!(workflow.contains("\"sha256\": \"$WIN_SHA\""));
     assert!(workflow.contains("\"sha256\": \"$MAC_SHA\""));

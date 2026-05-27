@@ -12,6 +12,7 @@ beforeEach(() => {
 
 afterEach(() => {
   invokeMock.mockReset();
+  delete (globalThis as { window?: unknown }).window;
 });
 
 import {
@@ -111,6 +112,17 @@ describe("callSafe", () => {
     invokeMock.mockResolvedValueOnce({ status: "accepted", message: "queued" });
     const r = await callSafe("launch_codex_assistant");
     expect(r.ok).toBe(true);
+  });
+
+  it("returns a friendly error outside the Tauri runtime", async () => {
+    (globalThis as unknown as { window?: Record<string, unknown> }).window = {};
+    const r = await callSafe("noop");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.code).toBe("tauri_unavailable");
+      expect(r.error.message).toContain("浏览器预览模式");
+    }
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });
 

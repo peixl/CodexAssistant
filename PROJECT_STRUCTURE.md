@@ -3,7 +3,7 @@
 ## 📋 项目基本信息
 
 **项目名称**: CodexAssistant  
-**版本**: 1.1.3  
+**版本**: 1.2.0
 **开源协议**: MIT  
 **主要语言**: Rust (后端) + TypeScript/React (前端)  
 **框架**: Tauri 2.x  
@@ -62,7 +62,7 @@ CodexAssistant/
 │   ├── PULL_REQUEST_TEMPLATE.md              # PR 模板
 │   ├── dependabot.yml                        # 自动依赖更新
 │   └── workflows/
-│       ├── ci.yml                            # CI: fmt, clippy, test, build
+│       ├── ci.yml                            # CI: macOS / Windows fmt, clippy, test, build
 │       └── release-assets.yml                # Release 自动签发
 │
 ├── 📂 apps/
@@ -262,4 +262,4 @@ npm --prefix apps/codex-assistant-manager run test
 ---
 
 **文档生成时间**: 2026-05-26  
-**项目版本**: 1.1.3
+**项目版本**: 1.2.0

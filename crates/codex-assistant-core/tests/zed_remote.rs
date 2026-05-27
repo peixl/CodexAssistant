@@ -462,7 +462,6 @@ fn windows_candidates_empty_when_no_env_provided() {
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[test]
 fn non_mac_non_windows_live_candidates_are_empty() {
-    // Linux relies on the `zed` CLI on PATH; no app-bundle discovery applies.
     let candidates = zed_remote::candidate_zed_app_paths();
     assert!(
         candidates.is_empty(),

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-assistant.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
+<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / IFQ.AI" width="128">
 
 # CodexAssistant
 
@@ -23,7 +23,9 @@
 
 CodexAssistant is an **external enhancement tool** for the [Codex App](https://chatgpt.com/codex). It never modifies the Codex installation (`app.asar`, binaries, …); instead, it attaches over the Chromium DevTools Protocol (CDP) and injects scripts into the Codex renderer on demand to unlock plugin entries, enable session deletion and Markdown export, route requests through custom relays, run user scripts, and more.
 
-The system is built from three pieces — a **Rust silent launcher**, a **Tauri (Rust + React) manager**, and the **renderer injection script** — and ships for Windows and macOS (Apple Silicon).
+IFQ.AI's product manifesto is simple: **turn high-frequency AI work into dependable desktop tools**. CodexAssistant therefore focuses its experience, installers, and CI on Windows and macOS only.
+
+The system is built from three pieces — a **Rust silent launcher**, a **Tauri (Rust + React) manager**, and the **renderer injection script** — and targets Windows and macOS (Intel / Apple Silicon).
 
 ## ✨ Features
 
@@ -36,7 +38,7 @@ The system is built from three pieces — a **Rust silent launcher**, a **Tauri 
 - 🔄 **Provider Sync** — Rewrites provider metadata in the local SQLite DB when switching between relays / official accounts, keeping old sessions visible.
 - 🌐 **Zed Remote integration** — Detects remote SSH context and opens the corresponding file in Zed Remote Development directly from Codex.
 - 🔁 **Automatic updates** — Both the manager and the silent launcher check GitHub Releases and prompt when a newer version is available.
-- 📦 **First-class installers** — Windows NSIS installer and macOS DMG for Apple Silicon, all built by GitHub Actions.
+- 📦 **First-class installers** — Windows NSIS installer and macOS Apple Silicon DMG, all built by GitHub Actions.
 
 ## 📥 Install
 
@@ -95,7 +97,7 @@ You'll end up with two entry points:
 | **Silent launcher split from the manager** | Starting Codex doesn't drag in the WebView runtime; the manager only opens on demand. |
 | **Rust workspace + Tauri** | A single core crate is reused by both binaries; the GUI talks to Rust through Tauri commands with no double serialization layer. |
 | **Local HTTP bridge on `127.0.0.1:57321`** | Decouples the injection script from the Rust backend; the manager and the renderer script share one API. |
-| **Every enhancement is cfg-gated per platform** | Windows / macOS specific code paths never leak into the other build; Linux still passes `cargo check` for development purposes. |
+| **Platform boundary is Windows / macOS only** | Installers, CI, and runtime paths stay aligned with the supported desktop platforms instead of presenting unsupported systems as viable targets. |
 
 ## 🔌 Relay Injection
 
@@ -137,7 +139,7 @@ Click **Clear API mode** to remove the relay provider and revert to the official
 
 - Rust 1.85+ (the workspace uses `edition = "2024"`)
 - Node.js 20+ and npm
-- macOS and Windows ship the required system SDKs; on Linux install Tauri's deps (`libwebkit2gtk-4.1-dev`, …)
+- Windows 10/11 or macOS 12+ with the required OS SDK / Xcode Command Line Tools
 
 ### Remote Mirrors (China Mainland)
 
@@ -212,9 +214,8 @@ CodexAssistant/
 | Windows x64 | ✅ | ✅ | NSIS `.exe` | ✅ |
 | macOS arm64 (Apple Silicon) | ✅ | ✅ | `.dmg` | ✅ |
 | macOS x64 (Intel) | ✅ | ✅ | source build | ✅ |
-| Linux | — | — | — | ✅ (lint & test) |
 
-> Apple Silicon is the official binary target. Intel Macs can build from source (`cargo build --release --target x86_64-apple-darwin`); CI keeps running clippy/test on macOS. Linux is not a distribution target, but the workspace stays buildable and CI runs lint + tests there as the canonical dev / CI environment.
+> Apple Silicon is the official macOS binary target. Intel Macs can build from source (`cargo build --release --target x86_64-apple-darwin`). CI covers Windows and macOS only; Linux / Ubuntu is not a runtime, development, or release target.
 
 ## ❓ FAQ
 
@@ -252,9 +253,9 @@ npm --prefix apps/codex-assistant-manager run vite:build
 cargo build --release --target x86_64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 ```
 
-### Can I run it on Linux?
+### Is Linux supported?
 
-The repo builds and passes lint / tests on Linux, but the Codex App itself has no Linux release — there is **nothing to inject into**. Linux is a development / CI platform only.
+No. CodexAssistant currently focuses on Windows and macOS. It does not publish Linux installers, and Linux / Ubuntu is not a supported CI or development target.
 
 ## 🤝 Contributing
 

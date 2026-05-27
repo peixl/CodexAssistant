@@ -19,6 +19,16 @@ export function normalizeInvokeError(error: unknown): NormalizedError {
 }
 
 type BackendEnvelope = { status?: unknown; message?: unknown };
+const TAURI_UNAVAILABLE_CODE = "tauri_unavailable";
+
+function tauriUnavailableError(): NormalizedError {
+  return { code: TAURI_UNAVAILABLE_CODE, message: TEXT.errors.tauriUnavailable };
+}
+
+function isTauriRuntimeAvailable(): boolean {
+  if (typeof window === "undefined") return true;
+  return "__TAURI_INTERNALS__" in window;
+}
 
 export function isBackendFailure(value: unknown): value is BackendEnvelope {
   if (!value || typeof value !== "object") return false;
@@ -36,6 +46,10 @@ export function extractBackendError(value: unknown): NormalizedError {
 }
 
 export async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauriRuntimeAvailable()) {
+    const error = tauriUnavailableError();
+    throw Object.assign(new Error(error.message), { code: error.code });
+  }
   const data = await tauriInvoke<T>(command, args);
   if (isBackendFailure(data)) {
     const error = extractBackendError(data);
@@ -48,6 +62,9 @@ export async function callSafe<T>(
   command: string,
   args?: Record<string, unknown>,
 ): Promise<{ ok: true; data: T } | { ok: false; error: NormalizedError }> {
+  if (!isTauriRuntimeAvailable()) {
+    return { ok: false, error: tauriUnavailableError() };
+  }
   try {
     const data = await tauriInvoke<T>(command, args);
     if (isBackendFailure(data)) {

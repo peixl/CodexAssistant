@@ -1,5 +1,10 @@
 export const TEXT = {
   appName: "Codex Assistant",
+  brand: {
+    mark: "IFQ.AI",
+    manifesto: "把高频 AI 工作做成可信赖的桌面工具",
+    platformFocus: "专注 Windows 与 macOS 主流平台",
+  },
   launcher: {
     ready: "唤起 Codex",
     readyHint: "已为你增强",
@@ -70,6 +75,7 @@ export const TEXT = {
     diagnosticsCta: "导出反馈包",
   },
   errors: {
+    tauriUnavailable: "当前是浏览器预览模式，系统设置请在 CodexAssistant 管理工具窗口中使用。",
     portBusy: "端口被占用，正在尝试自动修复",
     portBusyFinal: "请手动重启应用",
     networkFailed: "网络不通，请检查代理",

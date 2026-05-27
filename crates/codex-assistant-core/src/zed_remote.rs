@@ -109,8 +109,7 @@ pub fn find_zed_cli_path() -> String {
 pub fn zed_remote_status() -> Value {
     let app_path = find_zed_app_path();
     let cli_path = find_zed_cli_path();
-    let platform_supported =
-        cfg!(target_os = "macos") || cfg!(target_os = "windows") || cfg!(target_os = "linux");
+    let platform_supported = cfg!(target_os = "macos") || cfg!(target_os = "windows");
     json!({
         "status": if platform_supported { "ok" } else { "failed" },
         "platformSupported": platform_supported,

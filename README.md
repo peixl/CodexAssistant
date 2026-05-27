@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/codex-assistant.svg" alt="CodexAssistant — hand-drawn by peixl / ifq.ai" width="128">
+<img src="docs/images/codex-plus-plus.svg" alt="CodexAssistant — hand-drawn by peixl / IFQ.AI" width="128">
 
 # CodexAssistant
 
@@ -23,7 +23,9 @@
 
 CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部增强工具**：它不会修改 Codex 的安装文件 (`app.asar`、可执行文件等)，而是通过 Chromium DevTools Protocol (CDP) 在 Codex 渲染进程中按需注入脚本，实现插件入口解锁、会话删除、Markdown 导出、自定义中转、用户脚本等能力。
 
-整体由 **Rust 静默启动器 + Tauri (Rust + React) 管理工具 + 注入脚本** 三部分组成，跨 Windows 与 macOS (Intel / Apple Silicon)。
+IFQ.AI 的产品宣言很简单：**把高频 AI 工作做成可信赖的桌面工具**。CodexAssistant 因此只面向 Windows 与 macOS 主流桌面环境打磨体验、安装包和 CI。
+
+整体由 **Rust 静默启动器 + Tauri (Rust + React) 管理工具 + 注入脚本** 三部分组成，面向 Windows 与 macOS (Intel / Apple Silicon)。
 
 ## ✨ 特性
 
@@ -36,7 +38,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
 - 🔄 **Provider Sync** — 切换中转/官方账号时，重写本地 SQLite 中的 provider 元数据，保证旧会话仍可见。
 - 🌐 **Zed Remote 集成** — 识别远程 SSH 上下文，从 Codex 中直接打开远程文件到 Zed Remote Development。
 - 🔁 **自动更新** — 管理工具与静默启动器均接入 GitHub Releases，发现新版本时引导更新。
-- 📦 **官方打包** — Windows NSIS 安装程序，macOS 双架构 DMG (x64 / arm64)，全部通过 GitHub Actions 自动签发。
+- 📦 **官方打包** — Windows NSIS 安装程序，macOS Apple Silicon DMG，全部通过 GitHub Actions 自动签发。
 
 ## 📥 安装
 
@@ -95,7 +97,7 @@ CodexAssistant 是一个对 [Codex App](https://chatgpt.com/codex) 的**外部�
 | **静默启动器与管理工具拆为两个二进制** | 启动 Codex 时不需要 React/WebView 运行时；管理工具按需打开。 |
 | **Rust workspace + Tauri** | 一套核心 crate 同时被两个二进制复用；GUI 通过 Tauri 命令调用，无双语言序列化层。 |
 | **本地 HTTP bridge (`127.0.0.1:57321`)** | 注入脚本与 Rust 后端解耦；管理工具与渲染脚本可共用相同 API。 |
-| **每个增强用 cfg gate 锁定平台** | Windows / macOS 特有路径不会污染另一方的编译产物；Linux 上 `cargo check` 仍能通过用于开发。 |
+| **平台边界收紧到 Windows / macOS** | 安装包、CI 与运行路径只围绕主流桌面平台维护，避免把未支持系统误写成可用目标。 |
 
 ## 🔌 中转注入
 
@@ -137,7 +139,7 @@ experimental_bearer_token = "sk-..."
 
 - Rust 1.85+ (workspace 使用 `edition = "2024"`)
 - Node.js 20+ 与 npm
-- macOS 与 Windows 上的官方 SDK；Linux 上需要 Tauri 系统依赖 (`libwebkit2gtk-4.1-dev` 等)
+- Windows 10/11 或 macOS 12+ 的官方 SDK / Xcode Command Line Tools
 
 ### 中国大陆网络环境构建
 
@@ -214,9 +216,8 @@ CodexAssistant/
 | Windows x64 | ✅ | ✅ | NSIS `.exe` | ✅ |
 | macOS arm64 (Apple Silicon) | ✅ | ✅ | `.dmg` | ✅ |
 | macOS x64 (Intel) | ✅ | ✅ | 源码构建 | ✅ |
-| Linux | — | — | — | ✅ (lint & test) |
 
-> Apple Silicon 是当前的官方分发架构。Intel Mac 可以从源码构建（`cargo build --release` 加 `--target x86_64-apple-darwin`），CI 也持续在 macOS 跑 clippy/test。Linux 不在分发目标内，但作为开发环境与 CI lint 平台一直保持构建通过。
+> Apple Silicon 是当前的官方 macOS 分发架构。Intel Mac 可以从源码构建（`cargo build --release` 加 `--target x86_64-apple-darwin`）。CI 只覆盖 Windows 与 macOS；Linux / Ubuntu 不作为运行、开发或发布目标。
 
 ## ❓ 常见问题
 
@@ -260,9 +261,9 @@ npm --prefix apps/codex-assistant-manager run vite:build
 cargo build --release --target x86_64-apple-darwin -p codex-assistant-launcher -p codex-assistant
 ```
 
-### 我能在 Linux 上跑吗？
+### 支持 Linux 吗？
 
-仓库本身在 Linux 上能构建并通过 lint / 测试，但 Codex App 本身不发布 Linux 版本，所以**没有可注入的目标**。Linux 仅作为开发与 CI 平台。
+不支持。CodexAssistant 当前专注 Windows 与 macOS，不发布 Linux 安装包，也不把 Linux / Ubuntu 作为 CI 或开发环境目标。
 
 ## 🤝 贡献
 
