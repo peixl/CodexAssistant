@@ -202,6 +202,27 @@ pub fn run_elevated_cmd(cmd_line: &str) -> anyhow::Result<u32> {
     Ok(exit_code)
 }
 
+/// Strip the Windows verbatim path prefix (`\\?\` or `\\?\UNC\`) so the path is
+/// safe to hand to legacy Win32 tools that don't accept extended-length paths.
+/// `std::env::current_exe().canonicalize()` returns `\\?\C:\...` on Windows,
+/// and `netsh advfirewall firewall add rule program=...` refuses such inputs
+/// with exit code 1, which is the symptom that drove this helper.
+#[cfg(windows)]
+pub fn simplify_windows_path(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{rest}");
+    }
+    if let Some(rest) = path.strip_prefix(r"\\?\") {
+        // Only strip when the remainder looks like a drive-letter path; leave
+        // device-namespace paths (e.g. `\\?\Volume{...}`) untouched.
+        if rest.len() >= 2 && rest.as_bytes()[0].is_ascii_alphabetic() && rest.as_bytes()[1] == b':'
+        {
+            return rest.to_string();
+        }
+    }
+    path.to_string()
+}
+
 /// Add Inbound + Outbound `Allow` Windows Firewall rules scoped to `exe_path`,
 /// requesting UAC elevation. Existing rules with the same names are removed
 /// first so the call is idempotent. Returns `Ok(())` on success.
@@ -218,7 +239,8 @@ pub fn ensure_loopback_firewall_allow(exe_path: &std::path::Path) -> anyhow::Res
     let exe = exe_path
         .canonicalize()
         .unwrap_or_else(|_| exe_path.to_path_buf());
-    let exe_str = exe.to_string_lossy().to_string();
+    let raw = exe.to_string_lossy().to_string();
+    let exe_str = simplify_windows_path(&raw);
     if exe_str.contains('"') {
         anyhow::bail!("refusing to build firewall command for path containing quote: {exe_str}");
     }
@@ -229,24 +251,45 @@ pub fn ensure_loopback_firewall_allow(exe_path: &std::path::Path) -> anyhow::Res
     let in_name = format!("CodexAssistant Loopback {stem} In");
     let out_name = format!("CodexAssistant Loopback {stem} Out");
 
-    let mut script = String::new();
+    // Capture netsh stdout/stderr to a temp log so callers can see *why*
+    // netsh refused the rule (path rejected, profile invalid, etc.) instead
+    // of just an opaque exit code.
+    let log_path = std::env::temp_dir().join("codex-assistant-loopback-self-heal.log");
+    let log_str = log_path.to_string_lossy().to_string();
+    if log_str.contains('"') {
+        anyhow::bail!("refusing to build firewall command for log path containing quote");
+    }
+    // Best-effort: clear any prior log so we only surface the current run's output.
+    let _ = std::fs::remove_file(&log_path);
+
+    let mut script = String::from("(");
     script.push_str(&format!(
-        "netsh advfirewall firewall delete rule name=\"{in_name}\" >nul 2>&1 & "
+        "netsh advfirewall firewall delete rule name=\"{in_name}\" 2>&1 & "
     ));
     script.push_str(&format!(
-        "netsh advfirewall firewall delete rule name=\"{out_name}\" >nul 2>&1 & "
+        "netsh advfirewall firewall delete rule name=\"{out_name}\" 2>&1 & "
     ));
     script.push_str(&format!(
-        "netsh advfirewall firewall add rule name=\"{in_name}\" dir=in action=allow program=\"{exe_str}\" enable=yes profile=any && "
+        "netsh advfirewall firewall add rule name=\"{in_name}\" dir=in action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1 && "
     ));
     script.push_str(&format!(
-        "netsh advfirewall firewall add rule name=\"{out_name}\" dir=out action=allow program=\"{exe_str}\" enable=yes profile=any"
+        "netsh advfirewall firewall add rule name=\"{out_name}\" dir=out action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1"
     ));
+    script.push_str(&format!(") > \"{log_str}\" 2>&1"));
 
     let exit = run_elevated_cmd(&script)?;
     if exit != 0 {
-        anyhow::bail!("netsh advfirewall add rule exited with code {exit}");
+        let detail = std::fs::read_to_string(&log_path).unwrap_or_default();
+        let detail = detail.trim();
+        if detail.is_empty() {
+            anyhow::bail!("netsh advfirewall add rule exited with code {exit}");
+        } else {
+            anyhow::bail!(
+                "netsh advfirewall add rule exited with code {exit}; netsh said: {detail}"
+            );
+        }
     }
+    let _ = std::fs::remove_file(&log_path);
     Ok(())
 }
 
@@ -278,6 +321,49 @@ pub fn loopback_firewall_rules_present(exe_path: &std::path::Path) -> bool {
             .unwrap_or(false)
     };
     check(&in_name) && check(&out_name)
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::simplify_windows_path;
+
+    #[test]
+    fn simplify_strips_drive_letter_verbatim_prefix() {
+        assert_eq!(
+            simplify_windows_path(r"\\?\C:\Program Files\CodexAssistant\app.exe"),
+            r"C:\Program Files\CodexAssistant\app.exe"
+        );
+    }
+
+    #[test]
+    fn simplify_rewrites_unc_verbatim_prefix() {
+        assert_eq!(
+            simplify_windows_path(r"\\?\UNC\server\share\path\app.exe"),
+            r"\\server\share\path\app.exe"
+        );
+    }
+
+    #[test]
+    fn simplify_leaves_non_verbatim_paths_alone() {
+        assert_eq!(
+            simplify_windows_path(r"C:\Program Files\CodexAssistant\app.exe"),
+            r"C:\Program Files\CodexAssistant\app.exe"
+        );
+        assert_eq!(
+            simplify_windows_path(r"\\server\share\path\app.exe"),
+            r"\\server\share\path\app.exe"
+        );
+    }
+
+    #[test]
+    fn simplify_leaves_device_namespace_paths_alone() {
+        // `\\?\Volume{...}` and similar are not drive-letter paths; leave
+        // them untouched rather than producing an invalid simplification.
+        assert_eq!(
+            simplify_windows_path(r"\\?\Volume{12345678-1234-1234-1234-123456789abc}\app.exe"),
+            r"\\?\Volume{12345678-1234-1234-1234-123456789abc}\app.exe"
+        );
+    }
 }
 
 #[cfg(windows)]

@@ -1826,16 +1826,20 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
 
     let tried = ALREADY_TRIED.get_or_init(Default::default);
     {
-        let mut guard = tried.lock().expect("loopback self-heal mutex poisoned");
+        let guard = tried.lock().expect("loopback self-heal mutex poisoned");
         if guard.contains(&canonical) {
             return Ok(false);
         }
-        guard.insert(canonical.clone());
     }
 
     if crate::windows_integration::loopback_firewall_rules_present(&canonical) {
         // Rules exist; QQPC may be filtering at a layer the rule doesn't cover.
-        // Skip re-prompting for UAC.
+        // Skip re-prompting for UAC, but record so we don't probe netsh again
+        // this session.
+        tried
+            .lock()
+            .expect("loopback self-heal mutex poisoned")
+            .insert(canonical);
         return Ok(false);
     }
 
@@ -1846,6 +1850,14 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
     .await
     .map_err(|e| anyhow::anyhow!("self_heal: spawn_blocking join failed: {e}"))?;
     blocking?;
+    // Only mark this binary as "already tried" after the elevated call
+    // succeeded. If the UAC prompt was declined or netsh reported an error we
+    // leave the cache untouched, so a subsequent launch (after the user fixed
+    // their security software) can attempt self-heal again.
+    tried
+        .lock()
+        .expect("loopback self-heal mutex poisoned")
+        .insert(canonical);
     Ok(true)
 }
 
