@@ -5,6 +5,8 @@ export const TEXT = {
     readyHint: "已为你增强",
     launching: "正在唤起 Codex…",
     launchingHint: "Windows 冷启动可能需要一点时间",
+    degraded: "兼容模式运行",
+    degradedHint: "Codex 已打开，本机环回连接被拦截，增强能力暂时不可用",
     needAccount: "先登录 ChatGPT",
     needAccountHint: "点击配置账号",
     preparing: "准备增强…",

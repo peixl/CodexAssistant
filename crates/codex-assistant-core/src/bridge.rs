@@ -13,7 +13,7 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
 pub const BRIDGE_BINDING_NAME: &str = "codexSessionDeleteV2";
-const CDP_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const CDP_CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
 const CDP_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub type BridgeHandler = Arc<

@@ -1,6 +1,8 @@
 name: Release Assets
 
 on:
+  push:
+    tags: ['v*']
   release:
     types: [published]
   workflow_dispatch:
@@ -24,6 +26,8 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
             TAG="${{ github.event.release.tag_name }}"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
           else
             TAG="${{ github.event.inputs.tag }}"
           fi
@@ -31,9 +35,25 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+  ensure-release:
+    name: Ensure GitHub release exists
+    needs: resolve-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release if needed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists"
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "Automated release for $TAG"
+          fi
+
   macos:
     name: Build macOS DMG (arm64)
-    needs: resolve-tag
+    needs: [resolve-tag, ensure-release]
     runs-on: macos-14
     env:
       VERSION: ${{ needs.resolve-tag.outputs.version }}
@@ -83,7 +103,7 @@ jobs:
 
   windows:
     name: Build Windows installer (x64)
-    needs: resolve-tag
+    needs: [resolve-tag, ensure-release]
     runs-on: windows-latest
     env:
       VERSION: ${{ needs.resolve-tag.outputs.version }}
@@ -191,19 +211,28 @@ jobs:
 
       - name: Generate latest.json
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.resolve-tag.outputs.version }}
           TAG: ${{ needs.resolve-tag.outputs.tag }}
           REPO: ${{ github.repository }}
         run: |
           BASE="https://github.com/$REPO/releases/download/$TAG"
+          mkdir -p release-assets
+          gh release download "$TAG" \
+            --pattern "CodexAssistant-${VERSION}-windows-x64-setup.exe" \
+            --pattern "CodexAssistant-${VERSION}-macos-arm64.dmg" \
+            --dir release-assets \
+            --clobber
+          WIN_SHA="$(sha256sum "release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe" | awk '{print $1}')"
+          MAC_SHA="$(sha256sum "release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg" | awk '{print $1}')"
           cat > latest.json <<EOF
           {
             "version": "$VERSION",
             "tag_name": "$TAG",
             "url": "https://github.com/$REPO/releases/tag/$TAG",
             "assets": [
-              { "name": "CodexAssistant-${VERSION}-windows-x64-setup.exe", "url": "$BASE/CodexAssistant-${VERSION}-windows-x64-setup.exe" },
-              { "name": "CodexAssistant-${VERSION}-macos-arm64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-arm64.dmg" }
+              { "name": "CodexAssistant-${VERSION}-windows-x64-setup.exe", "url": "$BASE/CodexAssistant-${VERSION}-windows-x64-setup.exe", "sha256": "$WIN_SHA" },
+              { "name": "CodexAssistant-${VERSION}-macos-arm64.dmg", "url": "$BASE/CodexAssistant-${VERSION}-macos-arm64.dmg", "sha256": "$MAC_SHA" }
             ]
           }
           EOF

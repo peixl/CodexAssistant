@@ -165,8 +165,13 @@ export function useLauncherMachine(deps: LauncherDeps): {
       await defaultSleep(LAUNCH_MIN_SPINNER_MS - elapsed);
     }
 
-    if (terminal.kind === "failed" || terminal.kind === "running_degraded") {
+    if (terminal.kind === "failed") {
       dispatch({ type: "launch_failed", message: terminal.message });
+      await deps.onAfterLaunch();
+      return;
+    }
+    if (terminal.kind === "running_degraded") {
+      dispatch({ type: "launch_degraded", message: terminal.message });
       await deps.onAfterLaunch();
       return;
     }

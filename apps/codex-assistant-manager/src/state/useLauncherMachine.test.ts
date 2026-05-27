@@ -89,6 +89,29 @@ describe("waitForLaunchTerminal", () => {
     expect(result).toEqual({ kind: "failed", message: "未找到 Codex App" });
   });
 
+  it("returns running_degraded instead of failure when Codex launched in compatibility mode", async () => {
+    const launchAt = 2_500_000;
+    invokeMock.mockResolvedValueOnce({
+      status: {
+        status: "running_degraded",
+        message: "Codex launched in compatibility mode because Windows TCP loopback is blocked.",
+        started_at_ms: launchAt + 5,
+      },
+      now_ms: launchAt + 10,
+    } satisfies LaunchStatusEnvelope);
+
+    const clock = makeClock(launchAt);
+    const result = await waitForLaunchTerminal(launchAt, {
+      sleep: clock.sleep,
+      now: clock.now,
+    });
+
+    expect(result).toEqual({
+      kind: "running_degraded",
+      message: "Codex launched in compatibility mode because Windows TCP loopback is blocked.",
+    });
+  });
+
   it("falls back to timeout text when failed status carries no message", async () => {
     const launchAt = 3_000_000;
     invokeMock.mockResolvedValueOnce({

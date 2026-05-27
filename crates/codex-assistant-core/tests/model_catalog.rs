@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::TcpListener;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::Path;
 use std::thread;
+use std::time::Duration;
 
 use codex_assistant_core::model_catalog::read_codex_model_catalog_from_home;
 use serde_json::json;
 
 #[tokio::test]
 async fn model_catalog_fetches_models_from_codex_config_provider() {
+    if !loopback_tcp_available() {
+        eprintln!("skipping model catalog HTTP test because 127.0.0.1 TCP is unavailable");
+        return;
+    }
+
     let temp = tempfile::tempdir().unwrap();
     let server = spawn_models_server(json!({
         "data": [
@@ -32,12 +38,9 @@ experimental_bearer_token = "relay-key"
         ),
     );
 
-    let result = read_codex_model_catalog_from_home(
-        temp.path(),
-        &HashMap::new(),
-        reqwest::Client::builder().no_proxy().build().unwrap(),
-    )
-    .await;
+    let result =
+        read_codex_model_catalog_from_home(temp.path(), &HashMap::new(), loopback_reqwest_client())
+            .await;
 
     assert_eq!(result["status"], "ok");
     assert_eq!(result["model_provider"], "relay");
@@ -64,6 +67,11 @@ experimental_bearer_token = "relay-key"
 
 #[tokio::test]
 async fn model_catalog_uses_single_provider_when_root_model_provider_is_absent() {
+    if !loopback_tcp_available() {
+        eprintln!("skipping model catalog HTTP test because 127.0.0.1 TCP is unavailable");
+        return;
+    }
+
     let temp = tempfile::tempdir().unwrap();
     let server = spawn_models_server(json!({
         "models": ["moonshot-v1", "mimo-v2.5-pro"]
@@ -80,12 +88,9 @@ base_url = "{}/v1"
         ),
     );
 
-    let result = read_codex_model_catalog_from_home(
-        temp.path(),
-        &HashMap::new(),
-        reqwest::Client::builder().no_proxy().build().unwrap(),
-    )
-    .await;
+    let result =
+        read_codex_model_catalog_from_home(temp.path(), &HashMap::new(), loopback_reqwest_client())
+            .await;
 
     assert_eq!(result["status"], "ok");
     assert_eq!(result["model_provider"], "only");
@@ -97,6 +102,11 @@ base_url = "{}/v1"
 
 #[tokio::test]
 async fn model_catalog_leaves_responses_api_unknown_without_probe() {
+    if !loopback_tcp_available() {
+        eprintln!("skipping model catalog HTTP test because 127.0.0.1 TCP is unavailable");
+        return;
+    }
+
     let temp = tempfile::tempdir().unwrap();
     let server = spawn_models_server(json!({
         "data": [
@@ -117,12 +127,9 @@ base_url = "{}"
         ),
     );
 
-    let result = read_codex_model_catalog_from_home(
-        temp.path(),
-        &HashMap::new(),
-        reqwest::Client::builder().no_proxy().build().unwrap(),
-    )
-    .await;
+    let result =
+        read_codex_model_catalog_from_home(temp.path(), &HashMap::new(), loopback_reqwest_client())
+            .await;
 
     assert_eq!(result["status"], "ok");
     assert_eq!(result["responses_api"]["status"], "unknown");
@@ -134,6 +141,49 @@ base_url = "{}"
 
 fn write_config(home: &Path, contents: &str) {
     std::fs::write(home.join("config.toml"), contents.trim_start()).unwrap();
+}
+
+fn loopback_reqwest_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_millis(500))
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap()
+}
+
+fn loopback_tcp_available() -> bool {
+    let Ok(listener) = TcpListener::bind("127.0.0.1:0") else {
+        return false;
+    };
+    if listener.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let Ok(address) = listener.local_addr() else {
+        return false;
+    };
+    let thread = thread::spawn(move || {
+        let started = std::time::Instant::now();
+        while started.elapsed() < Duration::from_millis(500) {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let _ = stream.write_all(b"ok");
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+    });
+    let available = can_read_loopback_probe(address);
+    let _ = thread.join();
+    available
+}
+
+fn can_read_loopback_probe(address: SocketAddr) -> bool {
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(250)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(250)));
+    let mut buffer = [0u8; 2];
+    stream.read_exact(&mut buffer).is_ok() && buffer == *b"ok"
 }
 
 struct ModelsServer {

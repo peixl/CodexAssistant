@@ -42,6 +42,16 @@ where
     S: AsRef<str>,
 {
     let client = crate::http_client::proxied_client("CodexAssistant")?;
+    fetch_ad_list_from_urls_with_client(&client, urls).await
+}
+
+pub async fn fetch_ad_list_from_urls_with_client<S>(
+    client: &reqwest::Client,
+    urls: &[S],
+) -> anyhow::Result<Value>
+where
+    S: AsRef<str>,
+{
     let cache_bust = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())

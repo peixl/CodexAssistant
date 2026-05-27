@@ -155,8 +155,23 @@ fn github_release_workflow_uploads_static_latest_json() {
         .join(".github/workflows/release-assets.yml");
     let workflow = std::fs::read_to_string(&workflow).expect("read release assets workflow");
 
+    assert!(workflow.contains("tags: ['v*']"));
+    assert!(workflow.contains("TAG=\"${GITHUB_REF_NAME}\""));
+    assert!(workflow.contains("ensure-release:"));
+    assert!(workflow.contains("gh release create \"$TAG\" --verify-tag"));
     assert!(workflow.contains("latest-json:"));
     assert!(workflow.contains("latest.json"));
+    assert!(workflow.contains("gh release download \"$TAG\""));
+    assert!(
+        workflow.contains(
+            "sha256sum \"release-assets/CodexAssistant-${VERSION}-windows-x64-setup.exe\""
+        )
+    );
+    assert!(
+        workflow.contains("sha256sum \"release-assets/CodexAssistant-${VERSION}-macos-arm64.dmg\"")
+    );
+    assert!(workflow.contains("\"sha256\": \"$WIN_SHA\""));
+    assert!(workflow.contains("\"sha256\": \"$MAC_SHA\""));
     assert!(workflow.contains("gh release upload \"$TAG\" latest.json --clobber"));
 }
 

@@ -59,6 +59,12 @@ describe("launcherReducer", () => {
     ).toEqual({ kind: "launching" });
   });
 
+  it("allows launch_click from degraded so compatibility mode can be retried", () => {
+    expect(
+      launcherReducer({ kind: "degraded", message: "loopback" }, { type: "launch_click" }),
+    ).toEqual({ kind: "launching" });
+  });
+
   it("launching -> ready on launch_done", () => {
     expect(launcherReducer({ kind: "launching" }, { type: "launch_done" })).toEqual({
       kind: "ready",
@@ -69,6 +75,12 @@ describe("launcherReducer", () => {
     expect(
       launcherReducer({ kind: "launching" }, { type: "launch_failed", message: "boom" }),
     ).toEqual({ kind: "error", message: "boom" });
+  });
+
+  it("launch_degraded keeps Codex as a non-fatal compatibility state", () => {
+    expect(
+      launcherReducer({ kind: "launching" }, { type: "launch_degraded", message: "loopback" }),
+    ).toEqual({ kind: "degraded", message: "loopback" });
   });
 
   it("error -> preparing on retry", () => {
@@ -93,5 +105,14 @@ describe("launcherReducer", () => {
     expect(
       launcherReducer({ kind: "launching" }, { type: "probe_done", result: fullProbe }),
     ).toEqual({ kind: "launching" });
+  });
+
+  it("probe_done preserves degraded state while account remains available", () => {
+    expect(
+      launcherReducer(
+        { kind: "degraded", message: "loopback" },
+        { type: "probe_done", result: fullProbe },
+      ),
+    ).toEqual({ kind: "degraded", message: "loopback" });
   });
 });

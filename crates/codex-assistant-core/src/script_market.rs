@@ -148,7 +148,11 @@ pub async fn install_market_script(
     script: &MarketScript,
 ) -> anyhow::Result<()> {
     let content = download_script(&script.script_url).await?;
-    install_market_script_content(manager, script, &content)
+    let manager = manager.clone();
+    let script = script.clone();
+    tokio::task::spawn_blocking(move || install_market_script_content(&manager, &script, &content))
+        .await
+        .map_err(|error| anyhow::anyhow!("script install write task failed: {error}"))?
 }
 
 fn parse_market_script(raw: Value) -> Option<MarketScript> {

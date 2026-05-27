@@ -2,6 +2,13 @@ import { Loader2, Rocket, AlertTriangle, ArrowRight } from "lucide-react";
 import type { LauncherState } from "@/state/launcherMachine";
 import { TEXT } from "@/lib/text";
 
+function compactLaunchMessage(message: string) {
+  if (/loopback|localhost|127\.0\.0\.1|CDP/i.test(message)) {
+    return TEXT.launcher.degradedHint;
+  }
+  return message;
+}
+
 export function LauncherButton({
   state,
   onLaunch,
@@ -40,6 +47,17 @@ export function LauncherButton({
         <button onClick={onOpenAccount} className={`${base} border border-border bg-background hover:bg-muted`}>
           <span className="launcher-button-label"><ArrowRight className="size-6" /> {TEXT.launcher.needAccount}</span>
           <span className="text-sm font-normal opacity-80">{TEXT.launcher.needAccountHint}</span>
+        </button>
+      );
+    case "degraded":
+      return (
+        <button
+          onClick={onRetry}
+          className={`${base} border border-amber-500/70 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:text-amber-300 dark:bg-amber-950/20 dark:hover:bg-amber-950/35`}
+          title={state.message}
+        >
+          <span className="launcher-button-label"><AlertTriangle className="size-6" /> {TEXT.launcher.degraded}</span>
+          <span className="launcher-message text-sm font-normal opacity-90">{compactLaunchMessage(state.message)}</span>
         </button>
       );
     case "error":

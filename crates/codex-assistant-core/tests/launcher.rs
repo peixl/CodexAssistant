@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use codex_assistant_core::app_paths::{
     build_codex_executable, codex_app_version, find_latest_codex_app_dir,
@@ -11,8 +14,7 @@ use codex_assistant_core::launcher::{
     CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
     apply_protocol_proxy_fallback_config_for_launch, build_codex_arguments, build_codex_command,
     build_macos_cleanup_command, build_macos_open_command, build_packaged_activation,
-    codex_process_environment_from, launch_and_inject_with_hooks, preflight_loopback_reachable,
-    with_temporary_proxy_environment,
+    codex_process_environment_from, launch_and_inject_with_hooks, with_temporary_proxy_environment,
 };
 #[cfg(windows)]
 use codex_assistant_core::launcher::{
@@ -456,7 +458,7 @@ async fn default_helper_serves_backend_status_over_http() {
 
     hooks.start_helper(port).await.unwrap();
     let token = codex_assistant_core::helper_auth::ensure_helper_token();
-    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let client = loopback_reqwest_client();
     let response = client
         .post(format!("http://127.0.0.1:{port}/backend/status"))
         .header("X-Codex-Helper-Token", token)
@@ -500,10 +502,7 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
 
     hooks.start_helper(port).await.unwrap();
     let token = codex_assistant_core::helper_auth::ensure_helper_token();
-    let response = reqwest::Client::builder()
-        .no_proxy()
-        .build()
-        .unwrap()
+    let response = loopback_reqwest_client()
         .post(format!("http://127.0.0.1:{port}/diagnostics/log"))
         .header("X-Codex-Helper-Token", token)
         .json(&serde_json::json!({
@@ -527,13 +526,54 @@ async fn default_helper_accepts_diagnostic_log_events_over_http() {
 }
 
 async fn loopback_available_for_test() -> bool {
-    match preflight_loopback_reachable().await {
-        Ok(()) => true,
-        Err(error) => {
-            eprintln!("skipping loopback-dependent helper test: {error}");
-            false
-        }
+    if loopback_tcp_available() {
+        return true;
     }
+    eprintln!("skipping loopback-dependent helper test because 127.0.0.1 TCP is unavailable");
+    false
+}
+
+fn loopback_reqwest_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_millis(500))
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap()
+}
+
+fn loopback_tcp_available() -> bool {
+    let Ok(listener) = TcpListener::bind("127.0.0.1:0") else {
+        return false;
+    };
+    if listener.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let Ok(address) = listener.local_addr() else {
+        return false;
+    };
+    let thread = std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        while started.elapsed() < Duration::from_millis(500) {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let _ = stream.write_all(b"ok");
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    });
+    let available = can_read_loopback_probe(address);
+    let _ = thread.join();
+    available
+}
+
+fn can_read_loopback_probe(address: SocketAddr) -> bool {
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(250)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(250)));
+    let mut buffer = [0u8; 2];
+    stream.read_exact(&mut buffer).is_ok() && buffer == *b"ok"
 }
 
 #[tokio::test]

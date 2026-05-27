@@ -265,19 +265,62 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 }
 
 #[tauri::command]
-pub fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
-    spawn_codex_assistant_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
+pub async fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
+    let debug_port = request.debug_port;
+    let helper_port = request.helper_port;
+    run_blocking_command(
+        move || spawn_codex_assistant_launch(request, "启动任务已在后台开始，可稍后查看概览状态。"),
+        move |error| {
+            failed(
+                &format!("启动任务后台失败：{error}"),
+                json!({
+                    "debugPort": debug_port,
+                    "helperPort": helper_port
+                }),
+            )
+        },
+    )
+    .await
 }
 
 #[tauri::command]
-pub fn restart_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
-    codex_assistant_core::watcher::stop_launcher_processes();
-    codex_assistant_core::watcher::stop_codex_processes();
-    spawn_codex_assistant_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
+pub async fn restart_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
+    let debug_port = request.debug_port;
+    let helper_port = request.helper_port;
+    run_blocking_command(
+        move || {
+            codex_assistant_core::watcher::stop_launcher_processes();
+            codex_assistant_core::watcher::stop_codex_processes();
+            spawn_codex_assistant_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
+        },
+        move |error| {
+            failed(
+                &format!("重启任务后台失败：{error}"),
+                json!({
+                    "debugPort": debug_port,
+                    "helperPort": helper_port
+                }),
+            )
+        },
+    )
+    .await
 }
 
 #[tauri::command]
-pub fn read_launch_status() -> CommandResult<LaunchStatusPayload> {
+pub async fn read_launch_status() -> CommandResult<LaunchStatusPayload> {
+    run_blocking_command(read_launch_status_blocking, |error| {
+        failed(
+            &format!("读取启动状态后台任务失败：{error}"),
+            LaunchStatusPayload {
+                status: None,
+                now_ms: system_time_now_ms(),
+            },
+        )
+    })
+    .await
+}
+
+fn read_launch_status_blocking() -> CommandResult<LaunchStatusPayload> {
     let status = StatusStore::default().load_latest().unwrap_or(None);
     let now_ms = system_time_now_ms();
     ok("启动状态已读取。", LaunchStatusPayload { status, now_ms })
@@ -391,13 +434,47 @@ fn system_time_now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-#[tauri::command]
-pub fn load_settings() -> CommandResult<SettingsPayload> {
-    settings_payload("设置已加载。", "设置读取失败")
+async fn run_blocking_command<T, F, B>(task: F, on_join_error: B) -> CommandResult<T>
+where
+    T: Serialize + Send + 'static,
+    F: FnOnce() -> CommandResult<T> + Send + 'static,
+    B: FnOnce(String) -> CommandResult<T> + Send + 'static,
+{
+    match tauri::async_runtime::spawn_blocking(task).await {
+        Ok(result) => result,
+        Err(error) => on_join_error(error.to_string()),
+    }
 }
 
 #[tauri::command]
-pub fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload> {
+pub async fn load_settings() -> CommandResult<SettingsPayload> {
+    run_blocking_command(
+        || settings_payload("设置已加载。", "设置读取失败"),
+        |error| {
+            failed(
+                &format!("读取设置后台任务失败：{error}"),
+                fallback_settings_payload(),
+            )
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload> {
+    run_blocking_command(
+        move || save_settings_blocking(settings),
+        |error| {
+            failed(
+                &format!("保存设置后台任务失败：{error}"),
+                fallback_settings_payload(),
+            )
+        },
+    )
+    .await
+}
+
+fn save_settings_blocking(settings: BackendSettings) -> CommandResult<SettingsPayload> {
     let settings = normalize_settings_before_save(settings);
     match SettingsStore::default().save(&settings) {
         Ok(()) => {
@@ -421,7 +498,22 @@ pub fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload
 }
 
 #[tauri::command]
-pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
+pub async fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
+    run_blocking_command(load_ccs_providers_blocking, |error| {
+        failed(
+            &format!("读取 CCS 供应商后台任务失败：{error}"),
+            CcsProvidersPayload {
+                db_path: codex_assistant_core::ccs_import::default_ccs_db_path()
+                    .to_string_lossy()
+                    .to_string(),
+                providers: Vec::new(),
+            },
+        )
+    })
+    .await
+}
+
+fn load_ccs_providers_blocking() -> CommandResult<CcsProvidersPayload> {
     let db_path = codex_assistant_core::ccs_import::default_ccs_db_path();
     match codex_assistant_core::ccs_import::list_codex_providers_from_db(&db_path) {
         Ok(providers) => ok(
@@ -442,7 +534,17 @@ pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
 }
 
 #[tauri::command]
-pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
+pub async fn import_ccs_providers() -> CommandResult<SettingsPayload> {
+    run_blocking_command(import_ccs_providers_blocking, |error| {
+        failed(
+            &format!("导入 CCS 供应商后台任务失败：{error}"),
+            fallback_settings_payload(),
+        )
+    })
+    .await
+}
+
+fn import_ccs_providers_blocking() -> CommandResult<SettingsPayload> {
     let providers = match codex_assistant_core::ccs_import::list_codex_providers_from_default_db() {
         Ok(providers) => providers,
         Err(error) => {
@@ -611,7 +713,20 @@ pub async fn install_market_script(id: String) -> CommandResult<ScriptMarketPayl
 }
 
 #[tauri::command]
-pub fn set_user_script_enabled(key: String, enabled: bool) -> CommandResult<SettingsPayload> {
+pub async fn set_user_script_enabled(key: String, enabled: bool) -> CommandResult<SettingsPayload> {
+    run_blocking_command(
+        move || set_user_script_enabled_blocking(key, enabled),
+        |error| {
+            failed(
+                &format!("脚本启停后台任务失败：{error}"),
+                fallback_settings_payload(),
+            )
+        },
+    )
+    .await
+}
+
+fn set_user_script_enabled_blocking(key: String, enabled: bool) -> CommandResult<SettingsPayload> {
     let trimmed = key.trim();
     if trimmed.is_empty() {
         return failed("脚本 key 不能为空。", fallback_settings_payload());
@@ -634,7 +749,20 @@ pub fn set_user_script_enabled(key: String, enabled: bool) -> CommandResult<Sett
 }
 
 #[tauri::command]
-pub fn delete_user_script(key: String) -> CommandResult<SettingsPayload> {
+pub async fn delete_user_script(key: String) -> CommandResult<SettingsPayload> {
+    run_blocking_command(
+        move || delete_user_script_blocking(key),
+        |error| {
+            failed(
+                &format!("脚本删除后台任务失败：{error}"),
+                fallback_settings_payload(),
+            )
+        },
+    )
+    .await
+}
+
+fn delete_user_script_blocking(key: String) -> CommandResult<SettingsPayload> {
     let trimmed = key.trim();
     if trimmed.is_empty() {
         return failed("脚本 key 不能为空。", fallback_settings_payload());
@@ -683,7 +811,17 @@ pub async fn repair_shortcuts() -> InstallActionResult {
 }
 
 #[tauri::command]
-pub fn repair_backend() -> CommandResult<SettingsPayload> {
+pub async fn repair_backend() -> CommandResult<SettingsPayload> {
+    run_blocking_command(repair_backend_blocking, |error| {
+        failed(
+            &format!("修复后台任务失败：{error}"),
+            fallback_settings_payload(),
+        )
+    })
+    .await
+}
+
+fn repair_backend_blocking() -> CommandResult<SettingsPayload> {
     let settings = SettingsStore::default().load().unwrap_or_default();
     let message = match codex_assistant_core::cli_wrapper::ensure_cli_wrapper(&settings) {
         Ok(Some(install)) => format!(
@@ -781,12 +919,65 @@ pub async fn perform_update(
 }
 
 #[tauri::command]
-pub fn load_watcher_state() -> CommandResult<WatcherPayload> {
-    ok("watcher 状态已加载。", watcher_payload())
+pub async fn load_watcher_state() -> CommandResult<WatcherPayload> {
+    run_blocking_command(load_watcher_state_blocking, |error| {
+        failed(
+            &format!("读取 watcher 状态后台任务失败：{error}"),
+            watcher_payload(),
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn install_watcher() -> CommandResult<WatcherPayload> {
+pub async fn install_watcher() -> CommandResult<WatcherPayload> {
+    run_blocking_command(install_watcher_blocking, |error| {
+        failed(
+            &format!("安装 watcher 后台任务失败：{error}"),
+            watcher_payload(),
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn uninstall_watcher() -> CommandResult<WatcherPayload> {
+    run_blocking_command(uninstall_watcher_blocking, |error| {
+        failed(
+            &format!("移除 watcher 后台任务失败：{error}"),
+            watcher_payload(),
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn enable_watcher() -> CommandResult<WatcherPayload> {
+    run_blocking_command(enable_watcher_blocking, |error| {
+        failed(
+            &format!("启用 watcher 后台任务失败：{error}"),
+            watcher_payload(),
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn disable_watcher() -> CommandResult<WatcherPayload> {
+    run_blocking_command(disable_watcher_blocking, |error| {
+        failed(
+            &format!("禁用 watcher 后台任务失败：{error}"),
+            watcher_payload(),
+        )
+    })
+    .await
+}
+
+fn load_watcher_state_blocking() -> CommandResult<WatcherPayload> {
+    ok("watcher 状态已加载。", watcher_payload())
+}
+
+fn install_watcher_blocking() -> CommandResult<WatcherPayload> {
     let launcher_path = codex_assistant_core::install::companion_binary_path(
         codex_assistant_core::install::SILENT_BINARY,
     );
@@ -796,24 +987,21 @@ pub fn install_watcher() -> CommandResult<WatcherPayload> {
     }
 }
 
-#[tauri::command]
-pub fn uninstall_watcher() -> CommandResult<WatcherPayload> {
+fn uninstall_watcher_blocking() -> CommandResult<WatcherPayload> {
     match codex_assistant_core::watcher::uninstall_watcher() {
         Ok(()) => ok("watcher 已移除。", watcher_payload()),
         Err(error) => failed(&format!("移除 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
-#[tauri::command]
-pub fn enable_watcher() -> CommandResult<WatcherPayload> {
+fn enable_watcher_blocking() -> CommandResult<WatcherPayload> {
     match codex_assistant_core::watcher::enable_watcher() {
         Ok(()) => ok("watcher 已启用。", watcher_payload()),
         Err(error) => failed(&format!("启用 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
-#[tauri::command]
-pub fn disable_watcher() -> CommandResult<WatcherPayload> {
+fn disable_watcher_blocking() -> CommandResult<WatcherPayload> {
     match codex_assistant_core::watcher::disable_watcher() {
         Ok(()) => ok("watcher 已禁用。", watcher_payload()),
         Err(error) => failed(&format!("禁用 watcher 失败：{error}"), watcher_payload()),
@@ -821,7 +1009,25 @@ pub fn disable_watcher() -> CommandResult<WatcherPayload> {
 }
 
 #[tauri::command]
-pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
+pub async fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
+    run_blocking_command(
+        move || read_latest_logs_blocking(request),
+        |error| {
+            let path = codex_assistant_core::diagnostic_log::diagnostic_log_path();
+            failed(
+                &format!("读取日志后台任务失败：{error}"),
+                LogsPayload {
+                    path: path.to_string_lossy().to_string(),
+                    text: String::new(),
+                    lines: 0,
+                },
+            )
+        },
+    )
+    .await
+}
+
+fn read_latest_logs_blocking(request: LogRequest) -> CommandResult<LogsPayload> {
     let path = codex_assistant_core::diagnostic_log::diagnostic_log_path();
     read_latest_logs_from_path(&path, request)
 }
@@ -848,7 +1054,19 @@ fn read_latest_logs_from_path(path: &Path, request: LogRequest) -> CommandResult
 }
 
 #[tauri::command]
-pub fn copy_diagnostics() -> CommandResult<DiagnosticsPayload> {
+pub async fn copy_diagnostics() -> CommandResult<DiagnosticsPayload> {
+    run_blocking_command(copy_diagnostics_blocking, |error| {
+        failed(
+            &format!("生成诊断报告后台任务失败：{error}"),
+            DiagnosticsPayload {
+                report: String::new(),
+            },
+        )
+    })
+    .await
+}
+
+fn copy_diagnostics_blocking() -> CommandResult<DiagnosticsPayload> {
     ok(
         "诊断报告已生成。",
         DiagnosticsPayload {
@@ -858,7 +1076,17 @@ pub fn copy_diagnostics() -> CommandResult<DiagnosticsPayload> {
 }
 
 #[tauri::command]
-pub fn reset_settings() -> CommandResult<SettingsPayload> {
+pub async fn reset_settings() -> CommandResult<SettingsPayload> {
+    run_blocking_command(reset_settings_blocking, |error| {
+        failed(
+            &format!("重置设置后台任务失败：{error}"),
+            fallback_settings_payload(),
+        )
+    })
+    .await
+}
+
+fn reset_settings_blocking() -> CommandResult<SettingsPayload> {
     let settings = BackendSettings::default();
     match SettingsStore::default().save(&settings) {
         Ok(()) => settings_payload("设置已重置为默认值。", "设置重置后重新读取失败"),
@@ -876,7 +1104,17 @@ pub fn reset_settings() -> CommandResult<SettingsPayload> {
 }
 
 #[tauri::command]
-pub fn relay_status() -> CommandResult<RelayPayload> {
+pub async fn relay_status() -> CommandResult<RelayPayload> {
+    run_blocking_command(relay_status_blocking, |error| {
+        failed(
+            &format!("读取中转状态后台任务失败：{error}"),
+            fallback_relay_payload(),
+        )
+    })
+    .await
+}
+
+fn relay_status_blocking() -> CommandResult<RelayPayload> {
     let status = codex_assistant_core::relay_config::default_relay_status();
     let message = if status.authenticated {
         "已检测到 ChatGPT 登录状态。"
@@ -887,7 +1125,23 @@ pub fn relay_status() -> CommandResult<RelayPayload> {
 }
 
 #[tauri::command]
-pub fn read_relay_files() -> CommandResult<RelayFilesPayload> {
+pub async fn read_relay_files() -> CommandResult<RelayFilesPayload> {
+    run_blocking_command(read_relay_files_blocking, |error| {
+        let home = codex_assistant_core::relay_config::default_codex_home_dir();
+        failed(
+            &format!("读取配置文件后台任务失败：{error}"),
+            RelayFilesPayload {
+                config_path: home.join("config.toml").to_string_lossy().to_string(),
+                auth_path: home.join("auth.json").to_string_lossy().to_string(),
+                config_contents: String::new(),
+                auth_contents: String::new(),
+            },
+        )
+    })
+    .await
+}
+
+fn read_relay_files_blocking() -> CommandResult<RelayFilesPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     match relay_files_payload_from_home(&home) {
         Ok(payload) => ok("配置文件内容已读取。", payload),
@@ -904,7 +1158,26 @@ pub fn read_relay_files() -> CommandResult<RelayFilesPayload> {
 }
 
 #[tauri::command]
-pub fn save_relay_file(request: SaveRelayFileRequest) -> CommandResult<RelayFilesPayload> {
+pub async fn save_relay_file(request: SaveRelayFileRequest) -> CommandResult<RelayFilesPayload> {
+    run_blocking_command(
+        move || save_relay_file_blocking(request),
+        |error| {
+            let home = codex_assistant_core::relay_config::default_codex_home_dir();
+            failed(
+                &format!("保存配置文件后台任务失败：{error}"),
+                RelayFilesPayload {
+                    config_path: home.join("config.toml").to_string_lossy().to_string(),
+                    auth_path: home.join("auth.json").to_string_lossy().to_string(),
+                    config_contents: String::new(),
+                    auth_contents: String::new(),
+                },
+            )
+        },
+    )
+    .await
+}
+
+fn save_relay_file_blocking(request: SaveRelayFileRequest) -> CommandResult<RelayFilesPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     match save_relay_file_in_home(&home, &request.kind, &request.contents)
         .and_then(|_| relay_files_payload_from_home(&home))
@@ -973,7 +1246,17 @@ pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayPro
 }
 
 #[tauri::command]
-pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
+pub async fn apply_relay_injection() -> CommandResult<RelayPayload> {
+    run_blocking_command(apply_relay_injection_blocking, |error| {
+        failed(
+            &format!("写入中转配置后台任务失败：{error}"),
+            fallback_relay_payload(),
+        )
+    })
+    .await
+}
+
+fn apply_relay_injection_blocking() -> CommandResult<RelayPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     let settings = SettingsStore::default().load().unwrap_or_default();
     let relay = settings.active_relay_profile();
@@ -1035,7 +1318,17 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
 }
 
 #[tauri::command]
-pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
+pub async fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
+    run_blocking_command(apply_pure_api_injection_blocking, |error| {
+        failed(
+            &format!("写入纯 API 配置后台任务失败：{error}"),
+            fallback_relay_payload(),
+        )
+    })
+    .await
+}
+
+fn apply_pure_api_injection_blocking() -> CommandResult<RelayPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     let settings = SettingsStore::default().load().unwrap_or_default();
     let relay = settings.active_relay_profile();
@@ -1088,7 +1381,17 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
 }
 
 #[tauri::command]
-pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
+pub async fn clear_relay_injection() -> CommandResult<RelayPayload> {
+    run_blocking_command(clear_relay_injection_blocking, |error| {
+        failed(
+            &format!("清除中转配置后台任务失败：{error}"),
+            fallback_relay_payload(),
+        )
+    })
+    .await
+}
+
+fn clear_relay_injection_blocking() -> CommandResult<RelayPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     match codex_assistant_core::relay_config::clear_relay_config_to_home(&home) {
         Ok(result) => {
@@ -1200,7 +1503,24 @@ pub async fn pick_codex_app_path(app: tauri::AppHandle) -> CommandResult<CodexAp
 }
 
 #[tauri::command]
-pub fn read_codex_credentials() -> CommandResult<CodexCredentialsPayload> {
+pub async fn read_codex_credentials() -> CommandResult<CodexCredentialsPayload> {
+    run_blocking_command(read_codex_credentials_blocking, |error| {
+        let home = codex_assistant_core::relay_config::default_codex_home_dir();
+        failed(
+            &format!("读取 Codex 凭据后台任务失败：{error}"),
+            CodexCredentialsPayload {
+                api_key: String::new(),
+                base_url: String::new(),
+                api_key_source: String::new(),
+                base_url_source: String::new(),
+                codex_home: home.to_string_lossy().to_string(),
+            },
+        )
+    })
+    .await
+}
+
+fn read_codex_credentials_blocking() -> CommandResult<CodexCredentialsPayload> {
     let home = codex_assistant_core::relay_config::default_codex_home_dir();
     let creds = codex_assistant_core::relay_config::codex_credentials_from_home(&home);
     let message = if creds.api_key.is_empty() && creds.base_url.is_empty() {
@@ -1270,6 +1590,22 @@ fn relay_payload(
         has_bearer_token: status.has_bearer_token,
         backup_path,
     }
+}
+
+fn fallback_relay_payload() -> RelayPayload {
+    let home = codex_assistant_core::relay_config::default_codex_home_dir();
+    relay_payload(
+        codex_assistant_core::relay_config::RelayStatus {
+            authenticated: false,
+            auth_source: String::new(),
+            account_label: None,
+            config_path: home.join("config.toml").to_string_lossy().to_string(),
+            configured: false,
+            requires_openai_auth: false,
+            has_bearer_token: false,
+        },
+        None,
+    )
 }
 
 fn relay_files_payload_from_home(home: &std::path::Path) -> anyhow::Result<RelayFilesPayload> {
@@ -1711,7 +2047,7 @@ mod tests {
 
     #[test]
     fn watcher_state_returns_disabled_flag_path() {
-        let result = load_watcher_state();
+        let result = tauri::async_runtime::block_on(load_watcher_state());
 
         assert_eq!(result.status, "ok");
         assert!(result.payload.disabled_flag.contains("watcher.disabled"));
@@ -1812,7 +2148,7 @@ mod tests {
 
     #[test]
     fn read_launch_status_returns_serialized_payload_with_now_ms() {
-        let result = read_launch_status();
+        let result = tauri::async_runtime::block_on(read_launch_status());
 
         assert_eq!(result.status, "ok");
         assert!(result.payload.now_ms > 0);
@@ -1820,7 +2156,7 @@ mod tests {
         if let Some(status) = result.payload.status {
             assert!(matches!(
                 status.status.as_str(),
-                "running" | "failed" | "stopped" | "starting"
+                "running" | "running_degraded" | "failed" | "stopped" | "starting"
             ));
         }
     }
@@ -1854,7 +2190,7 @@ mod tests {
             helper_port: 57321,
         };
 
-        let result = launch_codex_assistant(request);
+        let result = tauri::async_runtime::block_on(launch_codex_assistant(request));
 
         // Either preflight catches it (failed envelope) or, if a local Codex is found via
         // saved settings, the spawn path is exercised. Both are valid; we only assert
