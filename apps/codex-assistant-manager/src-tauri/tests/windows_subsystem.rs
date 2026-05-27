@@ -46,7 +46,7 @@ fn launcher_binary_embeds_codex_icon_resource() {
 }
 
 #[test]
-fn windows_binaries_run_as_invoker_without_uac_elevation() {
+fn windows_binaries_request_administrator_for_firewall_self_heal() {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let manager_build =
         std::fs::read_to_string(manifest_dir.join("build.rs")).expect("read manager build.rs");
@@ -71,16 +71,16 @@ fn windows_binaries_run_as_invoker_without_uac_elevation() {
     assert!(launcher_build.contains("windows-app-manifest.xml"));
     assert!(windows_manifest.contains("Microsoft.Windows.Common-Controls"));
     assert!(
-        windows_manifest.contains("level=\"asInvoker\""),
-        "manifest must keep asInvoker so the manager launches without a UAC prompt"
+        windows_manifest.contains("level=\"requireAdministrator\""),
+        "manifest must request administrator so netsh firewall self-heal succeeds without an extra UAC shell-out per launch"
     );
     assert!(
-        !windows_manifest.contains("requireAdministrator"),
-        "manifest must not request administrator privileges (UAC blocks per-user launch)"
+        !windows_manifest.contains("level=\"asInvoker\""),
+        "manifest must not declare asInvoker — Codex.exe firewall rules require admin to add"
     );
     assert!(
         windows_installer.contains("RequestExecutionLevel user"),
-        "installer must install per-user so the manager does not require elevation at runtime"
+        "installer itself stays per-user (writes to %LOCALAPPDATA%) — runtime elevation is the manifest's job"
     );
 }
 
