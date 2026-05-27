@@ -158,8 +158,11 @@ fn github_release_workflow_uploads_static_latest_json() {
     assert!(workflow.contains("tags: ['v*']"));
     assert!(workflow.contains("TAG=\"${GITHUB_REF_NAME}\""));
     assert!(workflow.contains("ensure-release:"));
+    assert!(workflow.contains("GH_REPO: ${{ github.repository }}"));
     assert!(workflow.contains("gh release create \"$TAG\" --verify-tag"));
     assert!(workflow.contains("latest-json:"));
+    assert!(workflow.contains("needs.macos.result == 'success'"));
+    assert!(workflow.contains("needs.windows.result == 'success'"));
     assert!(workflow.contains("latest.json"));
     assert!(workflow.contains("gh release download \"$TAG\""));
     assert!(
