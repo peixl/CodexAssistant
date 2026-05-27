@@ -337,6 +337,18 @@ where
             helper_started = true;
         }
 
+        #[cfg(target_os = "windows")]
+        {
+            // Only run the Windows pre-launch prep when enhancements need
+            // loopback. If the user disabled enhancements AND the protocol
+            // proxy fallback isn't requested, we have no reason to terminate
+            // their existing Codex window or modify firewall rules — Codex
+            // can run as-is and we should not interfere with it.
+            if needs_loopback {
+                prepare_windows_codex_launch(&app_dir, debug_port).await;
+            }
+        }
+
         let launch = hooks
             .launch_codex(&app_dir, debug_port, &settings.codex_extra_args)
             .await?;
@@ -589,56 +601,75 @@ impl LaunchHooks for DefaultLaunchHooks {
             else {
                 unreachable!();
             };
-            let env = codex_process_environment();
-            match activate_packaged_app_with_environment(app_user_model_id, arguments, &env).await {
-                Ok(process_id) => {
-                    return Ok(match activation {
-                        CodexLaunch::PackagedActivation {
-                            app_user_model_id,
-                            arguments,
-                            ..
-                        } => CodexLaunch::PackagedActivation {
-                            app_user_model_id,
-                            arguments,
-                            process_id: Some(process_id),
-                        },
-                        CodexLaunch::Process { .. } => unreachable!(),
-                    });
-                }
-                Err(activation_error) => {
-                    let activation_message = activation_error.to_string();
+            // Direct CreateProcess spawns the same Codex.exe outside the MSIX
+            // AppContainer token, which is required because
+            // `IApplicationActivationManager::ActivateApplication` propagates
+            // the AppContainer SID and Windows Firewall blocks loopback-
+            // inbound traffic to AppContainer processes. We try direct spawn
+            // first; fall back to shell activation only if Codex.exe is not
+            // accessible (e.g. an in-progress Store update has moved the
+            // package payload).
+            match self
+                .launch_codex_process(app_dir, debug_port, extra_args)
+                .await
+            {
+                Ok(launch) => {
                     let _ = crate::diagnostic_log::append_diagnostic_log(
-                        "launcher.packaged_activation_failed_try_direct_process",
+                        "launcher.packaged_direct_process_ok",
                         serde_json::json!({
+                            "app_dir": app_dir.to_string_lossy().to_string(),
                             "app_user_model_id": app_user_model_id,
-                            "arguments": arguments,
-                            "message": activation_message.clone(),
                         }),
                     );
-                    match self
-                        .launch_codex_process(app_dir, debug_port, extra_args)
+                    return Ok(launch);
+                }
+                Err(process_error) => {
+                    let process_message = process_error.to_string();
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "launcher.packaged_direct_process_failed_try_activation",
+                        serde_json::json!({
+                            "app_dir": app_dir.to_string_lossy().to_string(),
+                            "app_user_model_id": app_user_model_id,
+                            "message": process_message.clone(),
+                        }),
+                    );
+                    let env = codex_process_environment();
+                    match activate_packaged_app_with_environment(app_user_model_id, arguments, &env)
                         .await
                     {
-                        Ok(launch) => {
+                        Ok(process_id) => {
                             let _ = crate::diagnostic_log::append_diagnostic_log(
-                                "launcher.packaged_activation_direct_process_ok",
+                                "launcher.packaged_activation_fallback_ok",
                                 serde_json::json!({
-                                    "app_dir": app_dir.to_string_lossy().to_string(),
+                                    "app_user_model_id": app_user_model_id,
+                                    "arguments": arguments,
                                 }),
                             );
-                            return Ok(launch);
+                            return Ok(match activation {
+                                CodexLaunch::PackagedActivation {
+                                    app_user_model_id,
+                                    arguments,
+                                    ..
+                                } => CodexLaunch::PackagedActivation {
+                                    app_user_model_id,
+                                    arguments,
+                                    process_id: Some(process_id),
+                                },
+                                CodexLaunch::Process { .. } => unreachable!(),
+                            });
                         }
-                        Err(process_error) => {
-                            let process_message = process_error.to_string();
+                        Err(activation_error) => {
+                            let activation_message = activation_error.to_string();
                             let _ = crate::diagnostic_log::append_diagnostic_log(
-                                "launcher.packaged_activation_direct_process_failed",
+                                "launcher.packaged_activation_fallback_failed",
                                 serde_json::json!({
-                                    "app_dir": app_dir.to_string_lossy().to_string(),
-                                    "message": process_message.clone(),
+                                    "app_user_model_id": app_user_model_id,
+                                    "arguments": arguments,
+                                    "message": activation_message.clone(),
                                 }),
                             );
                             anyhow::bail!(
-                                "failed to activate packaged Codex via AppUserModelID ({activation_message}); direct executable fallback also failed ({process_message})"
+                                "failed to direct-spawn Codex.exe ({process_message}); AppUserModelID activation fallback also failed ({activation_message})"
                             );
                         }
                     }
@@ -1859,6 +1890,155 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
         .expect("loopback self-heal mutex poisoned")
         .insert(canonical);
     Ok(true)
+}
+
+/// Windows-only pre-launch routine. Run BEFORE `LaunchHooks::launch_codex` so
+/// that:
+///   1. Any Codex.exe already running under `app_dir` is terminated, freeing
+///      the CDP port `debug_port`. Otherwise our launch is a no-op (Codex
+///      single-instance, just refocuses) and the new `--remote-debugging-port`
+///      flag never takes effect — the existing window has no CDP listener and
+///      the bridge can never attach.
+///   2. Per-program Windows Firewall allow rules exist for both the launcher
+///      itself AND the resolved Codex.exe. The firewall checks both endpoints
+///      of a TCP connection: an inbound allow on the launcher alone is not
+///      enough — Codex.exe (the listener on 127.0.0.1:9229) also needs an
+///      inbound rule.
+///
+/// All steps are best-effort; failures are logged but never abort the launch.
+/// The launcher manifest already runs as `requireAdministrator`, so netsh
+/// invocations succeed without an extra UAC prompt.
+#[cfg(target_os = "windows")]
+async fn prepare_windows_codex_launch(app_dir: &Path, debug_port: u16) {
+    let codex_exe = crate::app_paths::build_codex_executable(app_dir);
+
+    // If the resolved Codex.exe isn't on disk, the rest of this prep is
+    // meaningless: terminating processes by path would never match, and the
+    // firewall allow rule would point at a phantom path. Skip and let
+    // `launch_codex` fail with a clear error instead of silently doing
+    // half-work here.
+    if !codex_exe.exists() {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.codex_prep_skipped_missing_binary",
+            serde_json::json!({
+                "app_dir": app_dir.to_string_lossy().to_string(),
+                "expected_codex": codex_exe.to_string_lossy().to_string(),
+            }),
+        );
+        return;
+    }
+
+    let app_dir_owned = app_dir.to_path_buf();
+    let codex_exe_owned = codex_exe.clone();
+    let terminated = tokio::task::spawn_blocking(move || {
+        let mut roots: Vec<&std::path::Path> = Vec::new();
+        roots.push(app_dir_owned.as_path());
+        let parent = app_dir_owned.parent();
+        if let Some(p) = parent.as_ref() {
+            roots.push(p);
+        }
+        if let Some(codex_dir) = codex_exe_owned.parent()
+            && !roots.contains(&codex_dir)
+        {
+            roots.push(codex_dir);
+        }
+        crate::windows_integration::terminate_codex_processes_by_path(&roots)
+    })
+    .await
+    .unwrap_or_default();
+
+    if !terminated.is_empty() {
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.codex_existing_terminated",
+            serde_json::json!({
+                "pids": terminated,
+                "app_dir": app_dir.to_string_lossy().to_string(),
+                "debug_port": debug_port,
+            }),
+        );
+        wait_for_port_release(debug_port).await;
+    }
+
+    let launcher_exe = std::env::current_exe().ok();
+    let launcher_canonical = launcher_exe
+        .as_ref()
+        .and_then(|e| e.canonicalize().ok())
+        .or_else(|| launcher_exe.clone());
+
+    let codex_canonical = codex_exe.canonicalize().ok().unwrap_or(codex_exe.clone());
+
+    let mut targets: Vec<PathBuf> = Vec::new();
+    if let Some(p) = launcher_canonical
+        && !crate::windows_integration::loopback_firewall_rules_present(&p)
+    {
+        targets.push(p);
+    }
+    if !crate::windows_integration::loopback_firewall_rules_present(&codex_canonical) {
+        targets.push(codex_canonical);
+    }
+
+    if targets.is_empty() {
+        return;
+    }
+
+    let targets_for_blocking = targets.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        let refs: Vec<&std::path::Path> =
+            targets_for_blocking.iter().map(|p| p.as_path()).collect();
+        crate::windows_integration::ensure_loopback_firewall_allow_many(&refs)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.codex_firewall_allow_ok",
+                serde_json::json!({
+                    "paths": targets
+                        .iter()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect::<Vec<_>>(),
+                }),
+            );
+        }
+        Ok(Err(error)) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.codex_firewall_allow_failed",
+                serde_json::json!({
+                    "paths": targets
+                        .iter()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect::<Vec<_>>(),
+                    "message": error.to_string(),
+                }),
+            );
+        }
+        Err(join_err) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.codex_firewall_allow_join_failed",
+                serde_json::json!({ "message": join_err.to_string() }),
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn wait_for_port_release(port: u16) {
+    use std::net::Ipv4Addr;
+    // Codex Desktop is an Electron app with multiple processes; after we
+    // TerminateProcess the main one, the kernel still has to tear down the
+    // socket handle. On a busy box this can take a couple of seconds. We poll
+    // up to 5s — beyond that the launch proceeds anyway and we'll get a clear
+    // bind error from Codex itself if the port is still held.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(5_000);
+    while std::time::Instant::now() < deadline {
+        match tokio::net::TcpStream::connect((Ipv4Addr::LOCALHOST, port)).await {
+            Ok(_) => {
+                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+            }
+            Err(_) => return,
+        }
+    }
 }
 
 async fn run_loopback_probe_rounds() -> anyhow::Result<()> {

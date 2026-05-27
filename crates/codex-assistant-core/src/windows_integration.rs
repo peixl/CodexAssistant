@@ -236,48 +236,59 @@ pub fn simplify_windows_path(path: &str) -> String {
 /// loopback flow normally.
 #[cfg(windows)]
 pub fn ensure_loopback_firewall_allow(exe_path: &std::path::Path) -> anyhow::Result<()> {
-    let exe = exe_path
-        .canonicalize()
-        .unwrap_or_else(|_| exe_path.to_path_buf());
-    let raw = exe.to_string_lossy().to_string();
-    let exe_str = simplify_windows_path(&raw);
-    if exe_str.contains('"') {
-        anyhow::bail!("refusing to build firewall command for path containing quote: {exe_str}");
-    }
-    let stem = exe
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("CodexAssistant");
-    let in_name = format!("CodexAssistant Loopback {stem} In");
-    let out_name = format!("CodexAssistant Loopback {stem} Out");
+    ensure_loopback_firewall_allow_many(&[exe_path])
+}
 
-    // Capture netsh stdout/stderr to a temp log so callers can see *why*
-    // netsh refused the rule (path rejected, profile invalid, etc.) instead
-    // of just an opaque exit code.
+/// Same as [`ensure_loopback_firewall_allow`] but adds rules for every path in
+/// one elevated `cmd.exe /C` invocation, so the user only sees one UAC prompt
+/// even when multiple binaries (the launcher *and* the Codex.exe that holds
+/// the CDP listener) need allow rules. Required because the Windows firewall
+/// inspects both endpoints of a TCP connection: an inbound allow on the
+/// launcher alone is not enough — Codex.exe also needs an inbound allow rule
+/// for 127.0.0.1:9229 to be reachable.
+#[cfg(windows)]
+pub fn ensure_loopback_firewall_allow_many(exe_paths: &[&std::path::Path]) -> anyhow::Result<()> {
+    if exe_paths.is_empty() {
+        return Ok(());
+    }
+    let mut canonical_paths = Vec::with_capacity(exe_paths.len());
+    for path in exe_paths {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let raw = canonical.to_string_lossy().to_string();
+        let exe_str = simplify_windows_path(&raw);
+        if exe_str.contains('"') {
+            anyhow::bail!(
+                "refusing to build firewall command for path containing quote: {exe_str}"
+            );
+        }
+        canonical_paths.push((canonical, exe_str));
+    }
+
     let log_path = std::env::temp_dir().join("codex-assistant-loopback-self-heal.log");
     let log_str = log_path.to_string_lossy().to_string();
     if log_str.contains('"') {
         anyhow::bail!("refusing to build firewall command for log path containing quote");
     }
-    // Best-effort: clear any prior log so we only surface the current run's output.
     let _ = std::fs::remove_file(&log_path);
 
-    let mut script = String::from("(");
-    script.push_str(&format!(
-        "netsh advfirewall firewall delete rule name=\"{in_name}\" 2>&1 & "
-    ));
-    script.push_str(&format!(
-        "netsh advfirewall firewall delete rule name=\"{out_name}\" 2>&1 & "
-    ));
-    script.push_str(&format!(
-        "netsh advfirewall firewall add rule name=\"{in_name}\" dir=in action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1 && "
-    ));
-    script.push_str(&format!(
-        "netsh advfirewall firewall add rule name=\"{out_name}\" dir=out action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1"
-    ));
-    script.push_str(&format!(") > \"{log_str}\" 2>&1"));
+    let entries: Vec<(String, String)> = canonical_paths
+        .iter()
+        .map(|(canonical, exe_str)| {
+            let stem = canonical
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("CodexAssistant")
+                .to_string();
+            (stem, exe_str.clone())
+        })
+        .collect();
+    let script = build_firewall_allow_script(&entries, &log_str);
 
-    let exit = run_elevated_cmd(&script)?;
+    let exit = if is_process_elevated() {
+        run_cmd_inline(&script)?
+    } else {
+        run_elevated_cmd(&script)?
+    };
     if exit != 0 {
         let detail = std::fs::read_to_string(&log_path).unwrap_or_default();
         let detail = detail.trim();
@@ -291,6 +302,81 @@ pub fn ensure_loopback_firewall_allow(exe_path: &std::path::Path) -> anyhow::Res
     }
     let _ = std::fs::remove_file(&log_path);
     Ok(())
+}
+
+/// Build the `cmd.exe /C` script that adds inbound + outbound loopback ALLOW
+/// firewall rules for every `(stem, exe_path)` entry. The script first deletes
+/// any existing rule of the same name so re-runs stay idempotent, then adds
+/// the rule. All netsh output is redirected to `log_path` so the caller can
+/// surface failures. Extracted as a pure function so it can be unit-tested
+/// without invoking netsh.
+#[cfg(windows)]
+fn build_firewall_allow_script(entries: &[(String, String)], log_path: &str) -> String {
+    let mut script = String::from("(");
+    let mut first = true;
+    for (stem, exe_str) in entries {
+        let in_name = format!("CodexAssistant Loopback {stem} In");
+        let out_name = format!("CodexAssistant Loopback {stem} Out");
+        let prefix = if first { "" } else { " & " };
+        first = false;
+        script.push_str(&format!(
+            "{prefix}netsh advfirewall firewall delete rule name=\"{in_name}\" 2>&1 & "
+        ));
+        script.push_str(&format!(
+            "netsh advfirewall firewall delete rule name=\"{out_name}\" 2>&1 & "
+        ));
+        script.push_str(&format!(
+            "netsh advfirewall firewall add rule name=\"{in_name}\" dir=in action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1 && "
+        ));
+        script.push_str(&format!(
+            "netsh advfirewall firewall add rule name=\"{out_name}\" dir=out action=allow program=\"{exe_str}\" enable=yes profile=any 2>&1"
+        ));
+    }
+    script.push_str(&format!(") > \"{log_path}\" 2>&1"));
+    script
+}
+
+/// Run `cmd.exe /C <cmd>` synchronously without spawning a UAC prompt. Used
+/// when the calling process is already elevated, so the firewall rule add
+/// inherits admin and avoids a redundant "Are you sure?" dialog every launch.
+#[cfg(windows)]
+fn run_cmd_inline(cmd_line: &str) -> anyhow::Result<u32> {
+    let output = std::process::Command::new("cmd.exe")
+        .args(["/C", cmd_line])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| anyhow::anyhow!("failed to spawn cmd.exe: {e}"))?;
+    Ok(output.status.code().unwrap_or(0) as u32)
+}
+
+/// Returns `true` if the current process token has elevated (admin) privileges.
+/// Used so the launcher — which is built with `requireAdministrator` — can call
+/// netsh directly without a redundant UAC prompt for every rule add.
+#[cfg(windows)]
+pub fn is_process_elevated() -> bool {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::Security::{
+        GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
+    };
+    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+
+    unsafe {
+        let mut token = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+            return false;
+        }
+        let _guard = HandleGuard(token);
+        let mut elevation = TOKEN_ELEVATION::default();
+        let mut returned: u32 = 0;
+        let result = GetTokenInformation(
+            token,
+            TokenElevation,
+            Some(&mut elevation as *mut _ as *mut _),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut returned,
+        );
+        result.is_ok() && elevation.TokenIsElevated != 0
+    }
 }
 
 #[cfg(windows)]
@@ -325,7 +411,9 @@ pub fn loopback_firewall_rules_present(exe_path: &std::path::Path) -> bool {
 
 #[cfg(all(test, windows))]
 mod tests {
-    use super::simplify_windows_path;
+    use super::{
+        build_firewall_allow_script, simplify_windows_path, terminate_codex_processes_by_path,
+    };
 
     #[test]
     fn simplify_strips_drive_letter_verbatim_prefix() {
@@ -363,6 +451,89 @@ mod tests {
             simplify_windows_path(r"\\?\Volume{12345678-1234-1234-1234-123456789abc}\app.exe"),
             r"\\?\Volume{12345678-1234-1234-1234-123456789abc}\app.exe"
         );
+    }
+
+    #[test]
+    fn firewall_script_single_entry_emits_in_and_out_allow_rules() {
+        let entries = vec![(
+            "codex-assistant".to_string(),
+            r"C:\Program Files\CodexAssistant\codex-assistant.exe".to_string(),
+        )];
+        let script = build_firewall_allow_script(&entries, r"C:\tmp\heal.log");
+
+        // Both rule names follow the canonical naming scheme so the
+        // idempotency probe in `loopback_firewall_rules_present` keeps
+        // matching.
+        assert!(script.contains("name=\"CodexAssistant Loopback codex-assistant In\""));
+        assert!(script.contains("name=\"CodexAssistant Loopback codex-assistant Out\""));
+        // Both directions must be allow rules (the inbound rule is the one
+        // that matters for the listening Codex.exe — see ifq.ai/CodexAssistant
+        // root-cause notes).
+        assert!(script.contains("dir=in action=allow"));
+        assert!(script.contains("dir=out action=allow"));
+        // The exe path must be quoted so paths with spaces (Program Files)
+        // don't break the netsh rule.
+        assert!(
+            script.contains(r#"program="C:\Program Files\CodexAssistant\codex-assistant.exe""#)
+        );
+        // We always delete any pre-existing rule with the same name first so
+        // re-running on an already-healed machine is idempotent.
+        assert!(script.contains("netsh advfirewall firewall delete rule"));
+        // All output redirected to the heal log so the caller can surface
+        // failure detail.
+        assert!(script.ends_with("\"C:\\tmp\\heal.log\" 2>&1"));
+    }
+
+    #[test]
+    fn firewall_script_multi_entry_chains_with_ampersand_and_unique_names() {
+        let entries = vec![
+            (
+                "codex-assistant".to_string(),
+                r"C:\App\codex-assistant.exe".to_string(),
+            ),
+            (
+                "Codex".to_string(),
+                r"C:\Program Files\WindowsApps\OpenAI.Codex\app\Codex.exe".to_string(),
+            ),
+        ];
+        let script = build_firewall_allow_script(&entries, r"C:\tmp\heal.log");
+
+        // Both stems must produce their own rule pair so the firewall has
+        // allow rules for the launcher AND the listener (Codex.exe).
+        assert!(script.contains("name=\"CodexAssistant Loopback codex-assistant In\""));
+        assert!(script.contains("name=\"CodexAssistant Loopback Codex In\""));
+        assert!(script.contains("name=\"CodexAssistant Loopback Codex Out\""));
+        // Multiple entries get chained with cmd.exe `&` so a single elevated
+        // shell invocation handles every rule, keeping UAC prompts to one.
+        assert!(
+            script
+                .matches(" & netsh advfirewall firewall delete rule")
+                .count()
+                >= 1
+        );
+        // The Codex.exe path must appear verbatim in its own program= clause.
+        assert!(
+            script.contains(r#"program="C:\Program Files\WindowsApps\OpenAI.Codex\app\Codex.exe""#)
+        );
+    }
+
+    #[test]
+    fn firewall_script_empty_entries_still_redirects_log() {
+        let script = build_firewall_allow_script(&[], r"C:\tmp\heal.log");
+        // No rules to add but the wrapper still writes a (possibly empty) log
+        // so callers can detect the run happened at all.
+        assert!(script.starts_with("("));
+        assert!(script.ends_with("\"C:\\tmp\\heal.log\" 2>&1"));
+        assert!(!script.contains("netsh advfirewall firewall add rule"));
+    }
+
+    #[test]
+    fn terminate_codex_processes_by_path_with_empty_roots_returns_empty() {
+        // No roots = nothing to match against = no PIDs touched. Guards
+        // against a regression where the early-return is dropped and the
+        // function ends up terminating every Codex.exe regardless of path.
+        let pids = terminate_codex_processes_by_path(&[]);
+        assert!(pids.is_empty());
     }
 }
 
@@ -465,6 +636,47 @@ pub fn terminate_process(process_id: u32) -> bool {
     }
     let _guard = HandleGuard(handle);
     unsafe { TerminateProcess(handle, 0) }.is_ok()
+}
+
+/// Terminates every running process whose executable path lives under any of
+/// the given roots and whose file name matches `codex.exe` (case-insensitive).
+/// Used before relaunching Codex Desktop so the new process can re-bind the
+/// CDP `--remote-debugging-port`. Returns the list of terminated process IDs.
+#[cfg(windows)]
+pub fn terminate_codex_processes_by_path(roots: &[&std::path::Path]) -> Vec<u32> {
+    let canonical_roots: Vec<PathBuf> = roots
+        .iter()
+        .filter_map(|root| {
+            let canonical = root.canonicalize().ok()?;
+            Some(canonical)
+        })
+        .collect();
+    if canonical_roots.is_empty() {
+        return Vec::new();
+    }
+    let mut terminated = Vec::new();
+    for proc_info in enumerate_processes() {
+        if !proc_info.exe_file.eq_ignore_ascii_case("codex.exe") {
+            continue;
+        }
+        let Some(exe_path) = proc_info.executable_path.as_ref() else {
+            continue;
+        };
+        let canonical_exe = match exe_path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => exe_path.clone(),
+        };
+        let matches_root = canonical_roots
+            .iter()
+            .any(|root| canonical_exe.starts_with(root));
+        if !matches_root {
+            continue;
+        }
+        if terminate_process(proc_info.process_id) {
+            terminated.push(proc_info.process_id);
+        }
+    }
+    terminated
 }
 
 #[cfg(windows)]
