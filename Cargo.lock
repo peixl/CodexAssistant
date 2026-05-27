@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant"
-version = "1.1.9"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-core"
-version = "1.1.9"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-data"
-version = "1.1.9"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-launcher"
-version = "1.1.9"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -941,7 +941,7 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "flate2"
-version = "1.1.9"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
