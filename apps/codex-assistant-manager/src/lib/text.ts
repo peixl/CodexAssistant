@@ -2,8 +2,8 @@ export const TEXT = {
   appName: "Codex Assistant",
   brand: {
     mark: "IFQ.AI",
-    manifesto: "把高频 AI 工作做成可信赖的桌面工具",
-    platformFocus: "专注 Windows 与 macOS 主流平台",
+    manifesto: "解锁 插件，释放更多可能",
+    platformFocus: "您的 Codex 助手管理工具",
   },
   launcher: {
     ready: "唤起 Codex",
