@@ -38,13 +38,7 @@ jobs:
         working-directory: apps/codex-assistant-manager
     steps:
       - name: Checkout repository
-        working-directory: ${{ github.workspace }}
-        shell: bash
-        run: |
-          git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
-          git checkout --force refs/remotes/ci-ref
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -74,17 +68,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        shell: bash
-        run: |
-          git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
-          git checkout --force refs/remotes/ci-ref
+        uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --component clippy --component rustfmt
           rustup default stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

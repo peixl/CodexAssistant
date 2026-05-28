@@ -360,6 +360,50 @@ where
             .await?;
         launched = Some(launch.clone());
 
+        // The launcher's self-loopback preflight binds 127.0.0.1:0 inside the
+        // launcher process and connects back to itself. On Windows boxes
+        // running QQPCRTP / qmbsrv (Tencent PC Manager), that self-connect is
+        // dropped at the WFP layer for any binary not on QQPC's allow list —
+        // even after we add per-program Windows Firewall rules. The real
+        // ground truth is whether *Codex's* CDP endpoint is reachable, since
+        // Codex usually IS allow-listed (the user runs it daily). If Codex
+        // came up and we can read its CDP target list, the local stack is
+        // working for the only connection that actually matters: launcher →
+        // Codex. Promote `loopback_available` back to true in that case so
+        // injection runs and the user gets full enhancements instead of
+        // staring at a "兼容模型" downgrade.
+        if !loopback_available
+            && needs_loopback
+            && settings.enhancements_enabled
+            && cdp_endpoint_reachable(debug_port).await
+        {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.loopback_recovered_via_cdp_probe",
+                serde_json::json!({
+                    "debug_port": debug_port,
+                    "helper_port": helper_port,
+                }),
+            );
+            loopback_available = true;
+            degraded_reason = None;
+            if !helper_started {
+                if let Err(error) = hooks.start_helper(helper_port).await {
+                    let _ = crate::diagnostic_log::append_diagnostic_log(
+                        "launcher.helper_late_start_failed",
+                        serde_json::json!({
+                            "helper_port": helper_port,
+                            "message": error.to_string(),
+                        }),
+                    );
+                    // Keep loopback_available true so injection still runs;
+                    // some user-script paths don't need the helper, and the
+                    // bridge will surface a precise error if one does.
+                } else {
+                    helper_started = true;
+                }
+            }
+        }
+
         if settings.enhancements_enabled && loopback_available {
             let bridge_context_result = hooks.bridge_context(debug_port).await;
             let inject_outcome = match bridge_context_result {
@@ -1500,7 +1544,10 @@ pub async fn check_and_reinject_bridge(debug_port: u16, helper_port: u16) -> boo
     }
 }
 
-async fn bridge_health_ok(debug_port: u16) -> anyhow::Result<bool> {
+/// Public probe: is the existing Codex CDP target already wired up to our
+/// bridge? Used by the manager to skip an expensive re-launch when the user
+/// clicks "唤起 Codex" on an already-injected Codex window.
+pub async fn bridge_health_ok(debug_port: u16) -> anyhow::Result<bool> {
     let targets = crate::cdp::list_targets(debug_port).await?;
     let target = crate::cdp::pick_page_target(&targets)?;
     let websocket_url = target
@@ -1514,6 +1561,52 @@ async fn bridge_health_ok(debug_port: u16) -> anyhow::Result<bool> {
     )
     .await?;
     Ok(runtime_evaluate_result_is_true(&result))
+}
+
+/// Polls Codex's `--remote-debugging-port` for up to ~10s waiting for it to
+/// publish at least one CDP target. Used as a ground-truth fallback when our
+/// in-process self-loopback preflight is dropped by Tencent PC Manager
+/// (QQPCRTP) — `bind+connect` against the launcher itself can be filtered
+/// while connections to a separately allow-listed binary like Codex.exe go
+/// through. Returns true the moment Codex answers; returns false on
+/// persistent failure so the caller can keep the degraded label honest.
+async fn cdp_endpoint_reachable(debug_port: u16) -> bool {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(10_000);
+    let mut attempt = 0u32;
+    while std::time::Instant::now() < deadline {
+        attempt += 1;
+        match crate::cdp::list_targets(debug_port).await {
+            Ok(targets) if !targets.is_empty() => {
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "launcher.cdp_endpoint_probe_ok",
+                    serde_json::json!({
+                        "debug_port": debug_port,
+                        "attempt": attempt,
+                        "target_count": targets.len(),
+                    }),
+                );
+                return true;
+            }
+            Ok(_) => {
+                // CDP responded but with no pages yet — Codex still
+                // initialising. Keep polling.
+            }
+            Err(_) => {
+                // Connection refused / timeout — Codex's CDP listener is
+                // still warming up, or it really is unreachable. Either way,
+                // retry until the deadline.
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+    let _ = crate::diagnostic_log::append_diagnostic_log(
+        "launcher.cdp_endpoint_probe_unreachable",
+        serde_json::json!({
+            "debug_port": debug_port,
+            "attempts": attempt,
+        }),
+    );
+    false
 }
 
 fn runtime_evaluate_result_is_true(result: &Value) -> bool {
@@ -1903,7 +1996,7 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
 
     let tried = ALREADY_TRIED.get_or_init(Default::default);
     {
-        let guard = tried.lock().expect("loopback self-heal mutex poisoned");
+        let guard = tried.lock().unwrap_or_else(|e| e.into_inner());
         if guard.contains(&canonical) {
             return Ok(false);
         }
@@ -1915,7 +2008,7 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
         // this session.
         tried
             .lock()
-            .expect("loopback self-heal mutex poisoned")
+            .unwrap_or_else(|e| e.into_inner())
             .insert(canonical);
         return Ok(false);
     }
@@ -1933,7 +2026,7 @@ async fn try_loopback_self_heal_windows() -> anyhow::Result<bool> {
     // their security software) can attempt self-heal again.
     tried
         .lock()
-        .expect("loopback self-heal mutex poisoned")
+        .unwrap_or_else(|e| e.into_inner())
         .insert(canonical);
     Ok(true)
 }

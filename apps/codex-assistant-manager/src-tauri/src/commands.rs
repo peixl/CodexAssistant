@@ -268,6 +268,30 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 pub async fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
     let debug_port = request.debug_port;
     let helper_port = request.helper_port;
+    // Fast path: Codex is already running AND our bridge is already injected.
+    // Skip the (re)launch entirely so the user keeps their session — matches
+    // the "如果已经解锁，不要重启" UX requirement. Falls through whenever
+    // the probe says "no bridge here," at which point we let the launcher's
+    // own pre-launch routine do the right thing (kill stale Codex, free the
+    // CDP port, retry self-heal). We deliberately do NOT pre-kill from the
+    // manager side: the launcher already terminates the stale Codex when
+    // necessary, and double-killing risks a UX regression where a user's
+    // manually-started Codex window vanishes the instant they click 唤起.
+    if codex_pair_is_healthy(debug_port).await {
+        let _ = codex_assistant_core::diagnostic_log::append_diagnostic_log(
+            "manager.launch_skipped_already_healthy",
+            json!({ "debug_port": debug_port, "helper_port": helper_port }),
+        );
+        return CommandResult {
+            status: "ok".to_string(),
+            message: "Codex 已运行且插件已解锁，无需重启。".to_string(),
+            payload: json!({
+                "debugPort": debug_port,
+                "helperPort": helper_port,
+                "alreadyHealthy": true
+            }),
+        };
+    }
     run_blocking_command(
         move || spawn_codex_assistant_launch(request, "启动任务已在后台开始，可稍后查看概览状态。"),
         move |error| {
@@ -281,6 +305,18 @@ pub async fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Val
         },
     )
     .await
+}
+
+async fn codex_pair_is_healthy(debug_port: u16) -> bool {
+    // Short timeout: if the bridge probe doesn't answer fast, treat the
+    // session as stale and let the caller (re)launch. We don't want users
+    // staring at a "checking…" spinner because Codex's CDP server is hung.
+    let probe = tokio::time::timeout(
+        std::time::Duration::from_millis(800),
+        codex_assistant_core::launcher::bridge_health_ok(debug_port),
+    )
+    .await;
+    matches!(probe, Ok(Ok(true)))
 }
 
 #[tauri::command]

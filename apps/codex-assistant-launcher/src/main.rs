@@ -360,11 +360,12 @@ impl LauncherRuntimeService {
     }
 
     fn set_debug_port(&self, debug_port: u16) {
-        *self.debug_port.lock().unwrap() = debug_port;
+        *self.debug_port.lock().unwrap_or_else(|e| e.into_inner()) = debug_port;
     }
 
     fn set_websocket_url(&self, websocket_url: &str) {
-        *self.websocket_url.lock().unwrap() = Some(websocket_url.to_string());
+        *self.websocket_url.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some(websocket_url.to_string());
     }
 }
 
@@ -391,7 +392,11 @@ impl BridgeRuntimeService for LauncherRuntimeService {
 
     async fn reload_user_scripts(&self) -> anyhow::Result<Value> {
         let bundle = self.user_scripts.build_enabled_bundle()?;
-        let websocket_url = self.websocket_url.lock().unwrap().clone();
+        let websocket_url = self
+            .websocket_url
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         if let Some(websocket_url) = websocket_url.filter(|_| !bundle.trim().is_empty()) {
             codex_assistant_core::bridge::evaluate_script(&websocket_url, &bundle).await?;
         }
@@ -399,7 +404,7 @@ impl BridgeRuntimeService for LauncherRuntimeService {
     }
 
     async fn open_devtools(&self) -> anyhow::Result<Value> {
-        let debug_port = *self.debug_port.lock().unwrap();
+        let debug_port = *self.debug_port.lock().unwrap_or_else(|e| e.into_inner());
         let targets = codex_assistant_core::cdp::list_targets(debug_port).await?;
         let target = codex_assistant_core::cdp::pick_page_target(&targets)?;
         let url = codex_assistant_core::routes::devtools_url(debug_port, &target.id);

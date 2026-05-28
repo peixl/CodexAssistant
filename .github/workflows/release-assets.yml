@@ -65,22 +65,22 @@ jobs:
       HAS_MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' }}
     steps:
       - name: Checkout repository
-        shell: bash
-        run: |
-          git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
-          git checkout --force refs/remotes/ci-ref
+        uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --target aarch64-apple-darwin
           rustup default stable
 
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/codex-assistant-manager/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: apps/codex-assistant-manager
@@ -140,17 +140,15 @@ jobs:
       TARGET: x86_64-pc-windows-msvc
     steps:
       - name: Checkout repository
-        shell: bash
-        run: |
-          git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
-          git checkout --force refs/remotes/ci-ref
+        uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
         run: |
           rustup toolchain install stable --profile minimal --target x86_64-pc-windows-msvc
           rustup default stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Disable Windows Defender on build dirs
         shell: pwsh
@@ -168,6 +166,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/codex-assistant-manager/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: apps/codex-assistant-manager
@@ -212,12 +212,7 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout repository
-        shell: bash
-        run: |
-          git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/ci-ref"
-          git checkout --force refs/remotes/ci-ref
+        uses: actions/checkout@v4
 
       - name: Verify build artifacts are attached to release
         env:
