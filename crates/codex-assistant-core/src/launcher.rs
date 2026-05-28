@@ -151,6 +151,9 @@ pub trait LaunchHooks: Send + Sync {
             helper_port,
         )
     }
+    fn codex_home_dir(&self) -> PathBuf {
+        crate::relay_config::default_codex_home_dir()
+    }
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()>;
     async fn launch_codex(
         &self,
@@ -253,7 +256,10 @@ where
     let mut launched = None;
 
     let result: anyhow::Result<LaunchHandle> = async {
-        let protocol_proxy_enabled = relay_protocol_proxy_enabled(&settings);
+        let direct_chat_relay_applied =
+            prepare_direct_chat_relay_config(&settings, &hooks).await;
+        let protocol_proxy_enabled =
+            !direct_chat_relay_applied && relay_protocol_proxy_enabled(&settings, &hooks);
         if protocol_proxy_enabled {
             helper_port = crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT;
         }
@@ -430,8 +436,48 @@ where
     }
 }
 
-fn relay_protocol_proxy_enabled(settings: &BackendSettings) -> bool {
+async fn prepare_direct_chat_relay_config(
+    settings: &BackendSettings,
+    hooks: &Arc<dyn LaunchHooks>,
+) -> bool {
+    let relay = settings.active_relay_profile();
+    if relay.protocol != RelayProtocol::ChatCompletions {
+        return false;
+    }
+
+    match hooks
+        .apply_protocol_proxy_fallback(settings, crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT)
+        .await
+    {
+        Ok(Some(result)) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.chat_relay_direct_config_applied",
+                serde_json::json!({
+                    "config_path": result.config_path,
+                    "configured": result.configured,
+                }),
+            );
+            true
+        }
+        Ok(None) => false,
+        Err(error) => {
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.chat_relay_direct_config_failed",
+                serde_json::json!({
+                    "message": error.to_string(),
+                }),
+            );
+            false
+        }
+    }
+}
+
+fn relay_protocol_proxy_enabled(settings: &BackendSettings, hooks: &Arc<dyn LaunchHooks>) -> bool {
     settings.active_relay_profile().protocol == RelayProtocol::ChatCompletions
+        && crate::relay_config::codex_config_uses_local_responses_proxy(
+            &hooks.codex_home_dir(),
+            crate::protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT,
+        )
 }
 
 pub fn apply_protocol_proxy_fallback_config_for_launch(

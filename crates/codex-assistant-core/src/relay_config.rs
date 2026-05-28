@@ -227,6 +227,21 @@ pub fn relay_config_status_from_home(home: &Path) -> RelayConfigStatus {
     }
 }
 
+pub fn codex_config_uses_local_responses_proxy(home: &Path, proxy_port: u16) -> bool {
+    let (base_url, _) = read_base_url(&home.join("config.toml"));
+    base_url_uses_loopback_proxy(&base_url, proxy_port)
+}
+
+fn base_url_uses_loopback_proxy(base_url: &str, proxy_port: u16) -> bool {
+    let Ok(url) = reqwest::Url::parse(base_url.trim()) else {
+        return false;
+    };
+    let host = url.host_str().unwrap_or_default();
+    let loopback_host =
+        host.eq_ignore_ascii_case("localhost") || matches!(host, "127.0.0.1" | "::1");
+    loopback_host && url.port() == Some(proxy_port)
+}
+
 pub fn apply_relay_config_to_home(
     home: &Path,
     base_url: &str,
@@ -254,7 +269,7 @@ pub fn apply_relay_config_to_home_with_protocol(
         bearer_token,
         protocol,
         proxy_port,
-        true,
+        false,
     )
 }
 
@@ -396,7 +411,7 @@ pub fn apply_pure_api_config_to_home_with_protocol(
 
     let config_path = home.join("config.toml");
     let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
-    let provider = codex_provider_config_for_protocol(base_url, protocol, proxy_port, true);
+    let provider = codex_provider_config_for_protocol(base_url, protocol, proxy_port, false);
     let updated = upsert_model_provider_config(
         &existing,
         &provider.base_url,

@@ -795,31 +795,29 @@ async fn launch_lifecycle_degrades_instead_of_blocking_when_loopback_preflight_f
 }
 
 #[tokio::test]
-async fn launch_lifecycle_applies_direct_chat_fallback_when_proxy_loopback_fails() {
+async fn launch_lifecycle_applies_direct_chat_without_local_proxy_loopback() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
     std::fs::create_dir_all(&app_dir).unwrap();
     let status_store = StatusStore::new(temp.path().join("latest-status.json"));
     let events = Arc::new(Mutex::new(Vec::<String>::new()));
-    let hooks = FakeHooks::new(events.clone())
-        .with_loopback_error("loopback blocked")
-        .with_settings(BackendSettings {
-            enhancements_enabled: false,
-            relay_profiles: vec![RelayProfile {
-                id: "relay-chat".to_string(),
-                name: "Chat".to_string(),
-                base_url: "https://chat-only.example.test/v1".to_string(),
-                api_key: "sk-test".to_string(),
-                protocol: RelayProtocol::ChatCompletions,
-                relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
-                official_mix_api_key: false,
-                test_model: String::new(),
-                config_contents: String::new(),
-                auth_contents: String::new(),
-            }],
-            active_relay_id: "relay-chat".to_string(),
-            ..BackendSettings::default()
-        });
+    let hooks = FakeHooks::new(events.clone()).with_settings(BackendSettings {
+        enhancements_enabled: false,
+        relay_profiles: vec![RelayProfile {
+            id: "relay-chat".to_string(),
+            name: "Chat".to_string(),
+            base_url: "https://chat-only.example.test/v1".to_string(),
+            api_key: "sk-test".to_string(),
+            protocol: RelayProtocol::ChatCompletions,
+            relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
+            official_mix_api_key: false,
+            test_model: String::new(),
+            config_contents: String::new(),
+            auth_contents: String::new(),
+        }],
+        active_relay_id: "relay-chat".to_string(),
+        ..BackendSettings::default()
+    });
 
     let handle = launch_and_inject_with_hooks(
         LaunchOptions {
@@ -837,24 +835,18 @@ async fn launch_lifecycle_applies_direct_chat_fallback_when_proxy_loopback_fails
     let observed = events.lock().unwrap().clone();
     assert!(
         observed.contains(&"protocol-fallback:57321".to_string()),
-        "chat relay should switch away from the local proxy when loopback is blocked: {observed:?}"
+        "chat relay should be written directly instead of using a localhost protocol proxy: {observed:?}"
     );
     assert!(
         !observed.contains(&"start-helper:57321".to_string()),
-        "helper cannot be started when loopback is known bad: {observed:?}"
+        "helper is not needed when Chat Completions can use Codex wire_api=chat: {observed:?}"
     );
     assert!(
         observed.contains(&"launch:9229".to_string()),
         "Codex launch must still be attempted: {observed:?}"
     );
     let status = status_store.load_latest().unwrap().unwrap();
-    assert_eq!(status.status, "running_degraded");
-    assert!(status.message.contains("loopback blocked"));
-    assert!(
-        status.message.contains("direct Chat Completions wire API"),
-        "degraded status should explain the relay fallback: {}",
-        status.message
-    );
+    assert_eq!(status.status, "running");
 }
 
 #[test]
@@ -1000,10 +992,26 @@ async fn launch_lifecycle_cleans_helper_when_launch_fails_after_helper_started()
 }
 
 #[tokio::test]
-async fn launch_starts_helper_when_chat_protocol_proxy_is_enabled() {
+async fn launch_starts_helper_for_legacy_local_chat_protocol_proxy_config() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join("Codex.app");
+    let codex_home = temp.path().join("codex-home");
     std::fs::create_dir_all(&app_dir).unwrap();
+    std::fs::create_dir_all(&codex_home).unwrap();
+    std::fs::write(
+        codex_home.join("config.toml"),
+        r#"
+model_provider = "CodexAssistant"
+
+[model_providers.CodexAssistant]
+name = "CodexAssistant"
+wire_api = "responses"
+requires_openai_auth = true
+base_url = "http://127.0.0.1:57321/v1"
+experimental_bearer_token = "sk-test"
+"#,
+    )
+    .unwrap();
     let status_store = StatusStore::new(temp.path().join("latest-status.json"));
     let events = Arc::new(Mutex::new(Vec::<String>::new()));
     let settings = BackendSettings {
@@ -1017,13 +1025,15 @@ async fn launch_starts_helper_when_chat_protocol_proxy_is_enabled() {
             relay_mode: codex_assistant_core::settings::RelayMode::MixedApi,
             official_mix_api_key: false,
             test_model: String::new(),
-            config_contents: String::new(),
+            config_contents: "custom config keeps legacy proxy mode".to_string(),
             auth_contents: String::new(),
         }],
         active_relay_id: "relay-chat".to_string(),
         ..BackendSettings::default()
     };
-    let hooks = FakeHooks::new(events.clone()).with_settings(settings);
+    let hooks = FakeHooks::new(events.clone())
+        .with_settings(settings)
+        .with_codex_home(codex_home);
 
     let handle = launch_and_inject_with_hooks(
         LaunchOptions {
@@ -1196,6 +1206,7 @@ struct FakeHooks {
     inject_error: Option<String>,
     loopback_error: Option<String>,
     provider_sync_unsupported: bool,
+    codex_home: Option<PathBuf>,
 }
 
 impl FakeHooks {
@@ -1212,11 +1223,17 @@ impl FakeHooks {
             inject_error: None,
             loopback_error: None,
             provider_sync_unsupported: false,
+            codex_home: None,
         }
     }
 
     fn with_settings(mut self, settings: BackendSettings) -> Self {
         self.settings = settings;
+        self
+    }
+
+    fn with_codex_home(mut self, codex_home: PathBuf) -> Self {
+        self.codex_home = Some(codex_home);
         self
     }
 
@@ -1324,6 +1341,12 @@ impl LaunchHooks for FakeHooks {
             }));
         }
         Ok(None)
+    }
+
+    fn codex_home_dir(&self) -> PathBuf {
+        self.codex_home
+            .clone()
+            .unwrap_or_else(codex_assistant_core::relay_config::default_codex_home_dir)
     }
 
     async fn start_helper(&self, helper_port: u16) -> anyhow::Result<()> {

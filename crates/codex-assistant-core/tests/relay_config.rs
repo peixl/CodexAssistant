@@ -148,7 +148,7 @@ model = "gpt-5-mini"
 }
 
 #[test]
-fn apply_chat_protocol_relay_points_codex_to_local_responses_proxy() {
+fn apply_chat_protocol_relay_points_codex_directly_to_chat_api() {
     let temp = tempfile::tempdir().unwrap();
 
     let result = codex_assistant_core::relay_config::apply_relay_config_to_home_with_protocol(
@@ -162,10 +162,10 @@ fn apply_chat_protocol_relay_points_codex_to_local_responses_proxy() {
     let updated = std::fs::read_to_string(temp.path().join("config.toml")).unwrap();
 
     assert!(result.configured);
-    assert!(updated.contains(r#"wire_api = "responses""#));
-    assert!(updated.contains(r#"base_url = "http://127.0.0.1:57321/v1""#));
+    assert!(updated.contains(r#"wire_api = "chat""#));
+    assert!(updated.contains(r#"base_url = "https://chat-only.example.test/v1""#));
     assert!(updated.contains(r#"experimental_bearer_token = "sk-test-redacted""#));
-    assert!(!updated.contains("https://chat-only.example.test"));
+    assert!(!updated.contains("http://127.0.0.1:57321"));
 }
 
 #[test]
@@ -188,6 +188,38 @@ fn launch_chat_protocol_fallback_points_codex_directly_to_chat_api() {
     assert!(updated.contains(r#"base_url = "https://chat-only.example.test/v1""#));
     assert!(updated.contains(r#"experimental_bearer_token = "sk-test-redacted""#));
     assert!(!updated.contains("http://127.0.0.1:57321"));
+}
+
+#[test]
+fn detects_legacy_local_responses_proxy_config() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("config.toml"),
+        r#"
+model_provider = "CodexAssistant"
+
+[model_providers.CodexAssistant]
+name = "CodexAssistant"
+wire_api = "responses"
+requires_openai_auth = true
+base_url = "http://127.0.0.1:57321/v1"
+experimental_bearer_token = "sk-test"
+"#,
+    )
+    .unwrap();
+
+    assert!(
+        codex_assistant_core::relay_config::codex_config_uses_local_responses_proxy(
+            temp.path(),
+            57321
+        )
+    );
+    assert!(
+        !codex_assistant_core::relay_config::codex_config_uses_local_responses_proxy(
+            temp.path(),
+            58000
+        )
+    );
 }
 
 #[test]

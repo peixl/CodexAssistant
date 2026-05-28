@@ -11,9 +11,24 @@ DMG="$DIST/CodexAssistant-${VERSION}-macos-${ARCH}.dmg"
 ICON_SOURCE="$ROOT/apps/codex-assistant-manager/src-tauri/icons/icon.png"
 ICON_NAME="codex-assistant.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
+SIGNING_IDENTITY="${MACOS_SIGNING_IDENTITY:-${APPLE_SIGNING_IDENTITY:-}}"
 
 rm -rf "$DIST"
 mkdir -p "$STAGE"
+
+resolve_signing_identity() {
+  if [[ -n "$SIGNING_IDENTITY" ]]; then
+    return
+  fi
+
+  local detected
+  detected="$(
+    security find-identity -v -p codesigning 2>/dev/null \
+      | awk -F '"' '/Developer ID Application/ { print $2; exit }' \
+      || true
+  )"
+  SIGNING_IDENTITY="${detected:-"-"}"
+}
 
 prepare_icon() {
   local iconset="$DIST/codex-assistant.iconset"
@@ -76,9 +91,71 @@ create_app() {
 PLIST
 }
 
+sign_app() {
+  local app_dir="$1"
+  plutil -lint "$app_dir/Contents/Info.plist" >/dev/null
+
+  if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    echo "Ad-hoc signing $app_dir"
+    codesign --force --deep --sign - "$app_dir"
+  else
+    echo "Developer ID signing $app_dir with $SIGNING_IDENTITY"
+    codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$app_dir"
+  fi
+
+  codesign --verify --deep --strict --verbose=4 "$app_dir"
+}
+
+sign_dmg() {
+  if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    echo "Ad-hoc signing $DMG"
+    codesign --force --sign - "$DMG"
+  else
+    echo "Developer ID signing $DMG with $SIGNING_IDENTITY"
+    codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$DMG"
+  fi
+
+  codesign --verify --verbose=4 "$DMG"
+}
+
+notarize_dmg_if_configured() {
+  if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    if [[ "${MACOS_REQUIRE_NOTARIZATION:-0}" == "1" ]]; then
+      echo "MACOS_REQUIRE_NOTARIZATION=1 but no Developer ID signing identity is available" >&2
+      exit 1
+    fi
+    echo "Skipping notarization because the package is ad-hoc signed."
+    return
+  fi
+
+  local notary_args=()
+  if [[ -n "${MACOS_NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
+    notary_args=(--keychain-profile "$MACOS_NOTARY_KEYCHAIN_PROFILE")
+  elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+    notary_args=(--apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID")
+  else
+    if [[ "${MACOS_REQUIRE_NOTARIZATION:-0}" == "1" ]]; then
+      echo "MACOS_REQUIRE_NOTARIZATION=1 but notarization credentials are not configured" >&2
+      exit 1
+    fi
+    echo "Skipping notarization because notarization credentials are not configured."
+    return
+  fi
+
+  xcrun notarytool submit "$DMG" --wait "${notary_args[@]}"
+  xcrun stapler staple "$DMG"
+  spctl -a -vv -t open --context context:primary-signature "$DMG"
+}
+
+resolve_signing_identity
 prepare_icon
 create_app "CodexAssistant" "CodexAssistant" "$BINARY_DIR/codex-assistant" "ai.ifq.codexassistant" "true"
 create_app "CodexAssistant 管理工具" "CodexAssistantManager" "$BINARY_DIR/codex-assistant-manager" "ai.ifq.codexassistant.manager" "false"
+sign_app "$STAGE/CodexAssistant.app"
+sign_app "$STAGE/CodexAssistant 管理工具.app"
 
 hdiutil create -volname "CodexAssistant" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+hdiutil verify "$DMG"
+sign_dmg
+notarize_dmg_if_configured
 echo "$DMG"

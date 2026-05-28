@@ -30,7 +30,7 @@ IFQ.AI 的产品宣言很简单：**把高频 AI 工作做成可信赖的桌面�
 ## ✨ 特性
 
 - 🚀 **零侵入注入** — 通过 CDP 向已启动的 Codex 注入增强脚本，不动 Codex 的原始安装文件，不写 DLL 到 Codex 目录。
-- 🔌 **中转 (Relay) 注入** — 在 `~/.codex/config.toml` 中以独立 provider 写入兼容 OpenAI Responses API 的中转配置，多套配置一键切换，支持随时清除并退回官方 ChatGPT 登录态。
+- 🔌 **中转 (Relay) 注入** — 在 `~/.codex/config.toml` 中以独立 provider 写入 OpenAI Responses 或 Chat Completions 中转配置；Chat 协议默认直连，避免不必要的本地回环代理。
 - ⚡ **静默启动器** — 独立的 `codex-assistant` 二进制以最小开销启动 Codex，Windows 无控制台黑框，macOS 隐藏 Dock 图标，提供单实例守卫。
 - 🎛️ **Tauri 管理工具** — React 19 + TypeScript (strict) 前端 + Rust 后端，含诊断、日志、设置、中转管理、用户脚本、Provider Sync 等面板，支持深浅主题切换。
 - 🧩 **增强能力** — 插件入口解锁、强制安装特殊插件、会话删除、Markdown 导出、项目移动、Timeline、推荐内容。
@@ -54,7 +54,7 @@ IFQ.AI 的产品宣言很简单：**把高频 AI 工作做成可信赖的桌面�
 - **`CodexAssistant`** — 静默启动入口。点击直接启动 Codex 并完成注入，**不会弹出任何窗口**。
 - **`CodexAssistant 管理工具`** — Tauri 控制面板。用于检查注入状态、查看日志、配置中转、管理用户脚本与开关增强功能。
 
-> macOS 当前未做 Apple Developer ID 签名/公证，首次启动若被 Gatekeeper 拦截，请到「系统设置 → 隐私与安全性」放行。
+> macOS 安装包会在 `.app` 和 `.dmg` 完成后签名并校验；如果 Release 环境未配置 Apple Developer ID 公证，首次启动仍可能需要到「系统设置 → 隐私与安全性」放行。
 
 ## 🏗️ 架构
 
@@ -96,7 +96,7 @@ IFQ.AI 的产品宣言很简单：**把高频 AI 工作做成可信赖的桌面�
 | **外部 CDP 注入而非 `app.asar` 改写** | 升级 Codex 不破坏注入；不在 Codex 安装目录写文件；Windows 上无需提权。 |
 | **静默启动器与管理工具拆为两个二进制** | 启动 Codex 时不需要 React/WebView 运行时；管理工具按需打开。 |
 | **Rust workspace + Tauri** | 一套核心 crate 同时被两个二进制复用；GUI 通过 Tauri 命令调用，无双语言序列化层。 |
-| **本地 HTTP bridge (`127.0.0.1:57321`)** | 注入脚本与 Rust 后端解耦；管理工具与渲染脚本可共用相同 API。 |
+| **本地 HTTP bridge (`127.0.0.1:57321`)** | 作为增强脚本的本地 fallback 与旧版本地代理兼容层；Chat Completions 中转默认不再依赖它。 |
 | **平台边界收紧到 Windows / macOS** | 安装包、CI 与运行路径只围绕主流桌面平台维护，避免把未支持系统误写成可用目标。 |
 
 ## 🔌 中转注入
@@ -237,13 +237,13 @@ curl -X POST http://127.0.0.1:57321/backend/status -d '{}' -H 'Content-Type: app
 
 ### Windows 上 Codex 打开了但增强不可用
 
-CodexAssistant 会优先打开 Codex 本体；如果 VPN、腾讯电脑管家、企业防火墙或 WFP 规则阻断 `127.0.0.1` 本机环回连接，本次启动会自动降级为“只打开 Codex，不附加本地增强”，避免因为诊断通道不可用而完全打不开。此时请在 VPN/防火墙/安全软件中允许 `localhost` / `127.0.0.1`，或启用分流/本地网络访问后重新启动。
+CodexAssistant 会优先打开 Codex 本体；Chat Completions 中转默认写入 Codex 原生 `wire_api = "chat"`，不再为了协议转换额外依赖 `127.0.0.1:57321`。如果 VPN、腾讯电脑管家、企业防火墙或 WFP 规则阻断 `127.0.0.1` 本机环回连接，本次启动会自动降级为“只打开 Codex，不附加本地增强”，避免因为诊断通道不可用而完全打不开。此时请在 VPN/防火墙/安全软件中允许 `localhost` / `127.0.0.1`，或启用分流/本地网络访问后重新启动。
 
 CodexAssistant 不会自动修改系统网络、防火墙或安全软件配置；所有恢复动作都需要用户在对应软件中确认。
 
 ### macOS 提示「无法打开」「已损坏」
 
-当前 Release 未做 Developer ID 签名/公证。请到「系统设置 → 隐私与安全性」放行。也可以执行：
+1.2.1 起安装包会在最终 `.app`/`.dmg` 上重新签名并校验，避免无效 bundle 签名被 Gatekeeper 显示成「已损坏」。如果该 Release 未完成 Developer ID 公证，请到「系统设置 → 隐私与安全性」放行。也可以执行：
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/CodexAssistant.app

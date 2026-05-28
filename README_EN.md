@@ -30,7 +30,7 @@ The system is built from three pieces — a **Rust silent launcher**, a **Tauri 
 ## ✨ Features
 
 - 🚀 **Zero-touch injection** — CDP-attaches to a running Codex process. No `app.asar` patching, no DLLs written into the Codex install directory.
-- 🔌 **Relay injection** — Writes an OpenAI Responses-compatible relay profile into `~/.codex/config.toml` as a dedicated provider; switch between multiple relay profiles and revert to the official ChatGPT login mode with one click.
+- 🔌 **Relay injection** — Writes an OpenAI Responses or Chat Completions relay profile into `~/.codex/config.toml` as a dedicated provider; Chat Completions uses Codex's native `wire_api = "chat"` path by default, avoiding unnecessary localhost proxying.
 - ⚡ **Silent launcher** — `codex-assistant`, a standalone Rust binary that spawns Codex with minimal overhead. No console window on Windows, no Dock icon on macOS, single-instance guard.
 - 🎛️ **Tauri manager** — React 19 + TypeScript (strict) frontend with a Rust backend. Includes Diagnostics, Logs, Settings, Relay Injection, User Scripts, and Provider Sync panels with dark/light themes.
 - 🧩 **Enhancements** — Plugin entry unlock, forced install for restricted plugins, session delete, Markdown export, project move, Timeline, recommended content.
@@ -54,7 +54,7 @@ You'll end up with two entry points:
 - **`CodexAssistant`** — silent launcher. Starts Codex with injection enabled and **never opens a window**.
 - **`CodexAssistant Manager`** — Tauri control panel for inspecting injection state, viewing logs, configuring relays, managing user scripts, and toggling enhancements.
 
-> macOS builds are currently neither Developer-ID-signed nor notarised. If Gatekeeper blocks the first launch, allow it from **System Settings → Privacy & Security**.
+> macOS packages are signed and verified after the final `.app` and `.dmg` are assembled. If a release environment does not have Apple Developer ID notarization configured, the first launch may still need approval from **System Settings → Privacy & Security**.
 
 ## 🏗️ Architecture
 
@@ -96,7 +96,7 @@ You'll end up with two entry points:
 | **External CDP injection instead of patching `app.asar`** | Codex upgrades don't break injection; nothing is written into the Codex install directory; Windows doesn't need elevation. |
 | **Silent launcher split from the manager** | Starting Codex doesn't drag in the WebView runtime; the manager only opens on demand. |
 | **Rust workspace + Tauri** | A single core crate is reused by both binaries; the GUI talks to Rust through Tauri commands with no double serialization layer. |
-| **Local HTTP bridge on `127.0.0.1:57321`** | Decouples the injection script from the Rust backend; the manager and the renderer script share one API. |
+| **Local HTTP bridge on `127.0.0.1:57321`** | Provides the enhancement-script fallback API and legacy local-proxy compatibility; Chat Completions relay profiles no longer depend on it by default. |
 | **Platform boundary is Windows / macOS only** | Installers, CI, and runtime paths stay aligned with the supported desktop platforms instead of presenting unsupported systems as viable targets. |
 
 ## 🔌 Relay Injection
@@ -235,7 +235,7 @@ If the endpoint works but injection still reports failure, it's typically a CDP 
 
 ### macOS says "cannot be opened" or "damaged"
 
-Current releases are not Developer-ID-signed/notarised. Allow the app from **System Settings → Privacy & Security**, or remove the quarantine attribute:
+Since 1.2.1, the final `.app` bundles and `.dmg` are re-signed and verified after packaging, which avoids invalid bundle signatures being surfaced by Gatekeeper as "damaged". If a release was not Developer-ID-notarised, allow the app from **System Settings → Privacy & Security**, or remove the quarantine attribute:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/CodexAssistant.app
