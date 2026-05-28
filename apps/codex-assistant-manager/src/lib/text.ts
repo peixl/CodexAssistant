@@ -2,8 +2,8 @@ export const TEXT = {
   appName: "Codex Assistant",
   brand: {
     mark: "IFQ.AI",
-    manifesto: "解锁 插件，释放更多可能",
-    platformFocus: "您的 Codex 助手管理工具",
+    manifesto: "解锁 插件，释放无限可能",
+    platformFocus: "Design by IFQ.AI",
   },
   launcher: {
     ready: "唤起 Codex",
