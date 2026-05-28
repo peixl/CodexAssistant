@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-core"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-data"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -417,7 +417,7 @@ dependencies = [
 
 [[package]]
 name = "codex-assistant-launcher"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
