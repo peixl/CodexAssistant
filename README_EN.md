@@ -137,7 +137,7 @@ Click **Clear API mode** to remove the relay provider and revert to the official
 
 ### Toolchain
 
-- Rust 1.85+ (the workspace uses `edition = "2024"`)
+- Rust 1.85+ (the workspace uses `edition = "2026"`)
 - Node.js 20+ and npm
 - Windows 10/11 or macOS 12+ with the required OS SDK / Xcode Command Line Tools
 

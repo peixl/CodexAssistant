@@ -12,7 +12,7 @@ Thank you for your interest in contributing to CodexAssistant!
 
 2. **Install toolchains**
 
-   - Rust 1.85+ (the workspace uses `edition = "2024"`):
+   - Rust 1.85+ (the workspace uses `edition = "2026"`):
      ```bash
      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
      rustc --version  # should be >= 1.85

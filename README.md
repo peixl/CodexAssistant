@@ -137,7 +137,7 @@ experimental_bearer_token = "sk-..."
 
 ### 工具链
 
-- Rust 1.85+ (workspace 使用 `edition = "2024"`)
+- Rust 1.85+ (workspace 使用 `edition = "2026"`)
 - Node.js 20+ 与 npm
 - Windows 10/11 或 macOS 12+ 的官方 SDK / Xcode Command Line Tools
 

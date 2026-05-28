@@ -408,6 +408,23 @@
         pointer-events: auto;
         -webkit-app-region: no-drag;
       }
+      #${codexPlusMenuId} > button {
+        color: #10a37f !important;
+        font-weight: 600;
+        letter-spacing: .2px;
+        transition: color .15s ease, text-shadow .15s ease;
+      }
+      #${codexPlusMenuId} > button:hover {
+        color: #19c39a !important;
+        text-shadow: 0 0 6px rgba(25, 195, 154, .35);
+      }
+      [data-codex-assistant-theme="dark"] #${codexPlusMenuId} > button {
+        color: #34d399 !important;
+      }
+      [data-codex-assistant-theme="dark"] #${codexPlusMenuId} > button:hover {
+        color: #6ee7b7 !important;
+        text-shadow: 0 0 6px rgba(110, 231, 183, .4);
+      }
       :root {
         --codex-assistant-modal-bg: #ffffff;
         --codex-assistant-modal-fg: #1a1c1f;

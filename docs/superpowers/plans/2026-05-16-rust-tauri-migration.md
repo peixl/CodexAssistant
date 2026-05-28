@@ -64,7 +64,7 @@ members = [
 
 [workspace.package]
 version = "1.0.8"
-edition = "2024"
+edition = "2026"
 license = "MIT"
 repository = "https://github.com/peixl/CodexAssistant"
 

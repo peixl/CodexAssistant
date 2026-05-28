@@ -6,7 +6,7 @@
 
 **Architecture:** 在 `codex-assistant-core` 新增叶子模块 `helper_auth`，通过 CDP 把每次启动随机生成的 token 注入到渲染端 `window.__CODEX_ASSISTANT_HELPER_TOKEN__`；本地 HTTP 桥在 `handle_helper_connection` 入口做常量时间比较。更新和市场两块在 `update.rs` / `script_market.rs` 内部增加 `verify_*_sha256` 检查并修改解析逻辑。所有安全失败路径写 `diagnostic_log` 的 `security.*` 事件。
 
-**Tech Stack:** Rust 2024 edition、tokio、reqwest（rustls-tls）、sha2、base64、getrandom（新增）、Tauri 2.x、原生 JS 注入脚本。
+**Tech Stack:** Rust 2026 edition、tokio、reqwest（rustls-tls）、sha2、base64、getrandom（新增）、Tauri 2.x、原生 JS 注入脚本。
 
 ---
 
