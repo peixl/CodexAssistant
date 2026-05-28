@@ -3,7 +3,7 @@
 ## 📋 项目基本信息
 
 **项目名称**: CodexAssistant  
-**版本**: 1.2.0
+**版本**: 1.2.1
 **开源协议**: MIT  
 **主要语言**: Rust (后端) + TypeScript/React (前端)  
 **框架**: Tauri 2.x  
