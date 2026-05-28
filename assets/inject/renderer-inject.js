@@ -1438,8 +1438,8 @@
   let codexPlusBackendStatus = { status: "checking", message: "正在检查后端…" };
   let codexPlusBackendCheckSeq = 0;
 
-  const codexPlusTriggerLabel = "CodexAssistant - by IFQ.AI";
-  const codexPlusBrandUrl = "https://ifq.ai/";
+  const codexPlusTriggerLabel = "捷时云服务 - by IFQ.AI";
+  const codexPlusBrandUrl = "https://cloud.ifq.ai";
 
   function renderBackendStatus() {
     const status = codexPlusBackendStatus.status || "failed";

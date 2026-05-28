@@ -189,7 +189,12 @@ pub fn stop_launcher_processes() {
 }
 
 #[cfg(not(windows))]
-pub fn stop_launcher_processes() {}
+pub fn stop_launcher_processes() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = run_pkill(MACOS_LAUNCHER_PKILL_PATTERN);
+    }
+}
 
 #[cfg(windows)]
 pub fn stop_codex_processes() {
@@ -199,7 +204,35 @@ pub fn stop_codex_processes() {
 }
 
 #[cfg(not(windows))]
-pub fn stop_codex_processes() {}
+pub fn stop_codex_processes() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = run_pkill(MACOS_CODEX_PKILL_PATTERN);
+    }
+}
+
+/// macOS uses `pkill -f <pattern>` so the manager-side restart-Codex flow has
+/// the same effect it does on Windows. Patterns are anchored to the binary's
+/// canonical bundle path inside the `.app` so we never match unrelated
+/// processes whose argv happens to mention "Codex". Kept as module-level
+/// constants so a unit test can verify the exact arguments without spawning
+/// pkill (which has side effects we don't want in tests).
+#[cfg(target_os = "macos")]
+const MACOS_CODEX_PKILL_PATTERN: &str = "/Codex.app/Contents/MacOS/Codex";
+#[cfg(target_os = "macos")]
+const MACOS_LAUNCHER_PKILL_PATTERN: &str = "/CodexAssistant.app/Contents/MacOS/codex-assistant";
+
+#[cfg(target_os = "macos")]
+fn pkill_command(pattern: &str) -> std::process::Command {
+    let mut command = std::process::Command::new("/usr/bin/pkill");
+    command.arg("-f").arg(pattern);
+    command
+}
+
+#[cfg(target_os = "macos")]
+fn run_pkill(pattern: &str) -> std::io::Result<std::process::ExitStatus> {
+    pkill_command(pattern).status()
+}
 
 #[cfg(windows)]
 fn create_startup_shortcut(launcher_path: &Path, arguments: &str) -> anyhow::Result<()> {
@@ -256,4 +289,33 @@ pub fn is_watcher_installed() -> bool {
 #[cfg(not(windows))]
 pub fn is_watcher_installed() -> bool {
     true
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(test)]
+mod macos_tests {
+    use super::*;
+
+    #[test]
+    fn pkill_codex_pattern_targets_app_bundle_binary_only() {
+        let cmd = pkill_command(MACOS_CODEX_PKILL_PATTERN);
+        let args: Vec<&std::ffi::OsStr> = cmd.get_args().collect();
+        assert_eq!(cmd.get_program(), "/usr/bin/pkill");
+        assert_eq!(args.len(), 2);
+        assert_eq!(args[0], "-f");
+        assert_eq!(args[1], "/Codex.app/Contents/MacOS/Codex");
+    }
+
+    #[test]
+    fn pkill_launcher_pattern_targets_codexassistant_app_only() {
+        let cmd = pkill_command(MACOS_LAUNCHER_PKILL_PATTERN);
+        let args: Vec<&std::ffi::OsStr> = cmd.get_args().collect();
+        assert_eq!(cmd.get_program(), "/usr/bin/pkill");
+        assert_eq!(args.len(), 2);
+        assert_eq!(args[0], "-f");
+        assert_eq!(
+            args[1],
+            "/CodexAssistant.app/Contents/MacOS/codex-assistant"
+        );
+    }
 }

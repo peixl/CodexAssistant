@@ -264,6 +264,14 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
     )
 }
 
+/// How long the manager waits for `bridge_health_ok` before deciding the
+/// existing Codex session is stale and a full (re)launch is needed. Sized
+/// well below a perceived UI delay so the user never sees a spinner stall on
+/// the fast path, while still long enough for a healthy CDP round-trip on
+/// modest hardware. Tuned via observation, not benchmark — adjust if real
+/// users hit false negatives.
+const LAUNCH_HEALTH_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(800);
+
 #[tauri::command]
 pub async fn launch_codex_assistant(request: LaunchRequest) -> CommandResult<Value> {
     let debug_port = request.debug_port;
@@ -312,7 +320,7 @@ async fn codex_pair_is_healthy(debug_port: u16) -> bool {
     // session as stale and let the caller (re)launch. We don't want users
     // staring at a "checking…" spinner because Codex's CDP server is hung.
     let probe = tokio::time::timeout(
-        std::time::Duration::from_millis(800),
+        LAUNCH_HEALTH_PROBE_TIMEOUT,
         codex_assistant_core::launcher::bridge_health_ok(debug_port),
     )
     .await;

@@ -1920,8 +1920,16 @@ fn loopback_degraded_message(
         ""
     };
     if cfg!(target_os = "windows") {
+        // Most QQPC / VPN cases now silently recover via the post-launch CDP
+        // probe (`launcher.loopback_recovered_via_cdp_probe`). If we reach
+        // this message anyway, the local stack is genuinely unreachable —
+        // give a one-line, actionable Chinese hint up front, then keep the
+        // longer English explanation so logs and non-Chinese users still
+        // have full context.
         format!(
-            "Codex launched in compatibility mode because Windows TCP loopback is still blocked after the compliant recovery attempt. Enhancements that require localhost/CDP are disabled for this launch.{proxy_note} This is commonly caused by VPN, Tencent PC Manager, or firewall WFP rules. Try non-destructive recovery: allow localhost/127.0.0.1 for CodexAssistant in the VPN, firewall, or security software settings, or enable split tunneling/local-network access. CodexAssistant never disables VPN, firewall, or security controls automatically. Diagnostic: {detail}"
+            "Codex 已启动，但本机回环连接被拦截，增强功能暂未生效。请在腾讯电脑管家 / VPN / 安全软件中将 codex-assistant.exe 加入白名单，然后重新唤起 Codex。{proxy_note} \
+             Diagnostic: TCP loopback to 127.0.0.1 is blocked even after the launcher's compliant self-heal (program-scoped Windows Firewall allow rule). \
+             CodexAssistant never disables VPN, firewall, or security controls automatically. {detail}"
         )
     } else {
         format!(
@@ -2281,6 +2289,22 @@ mod tests {
         assert!(message.contains("never disables VPN, firewall, or security controls"));
         assert!(!message.contains("Disable-NetAdapter"));
         assert!(!message.contains("netsh"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_loopback_degraded_message_leads_with_actionable_chinese_hint() {
+        let message =
+            loopback_degraded_message(&anyhow::anyhow!("timeout after 2500ms"), false, None);
+
+        // The first sentence the user sees must be a concrete next step in
+        // Chinese, not a long English explanation. The diagnostic detail
+        // tail is preserved for log readers.
+        assert!(message.contains("本机回环连接被拦截"));
+        assert!(message.contains("加入白名单"));
+        assert!(message.contains("never disables VPN, firewall, or security controls"));
+        assert!(message.contains("timeout after 2500ms"));
+        assert!(!message.contains("Disable-NetAdapter"));
     }
 }
 

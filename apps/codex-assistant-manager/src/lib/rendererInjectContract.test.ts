@@ -7,8 +7,8 @@ const rendererInject = fs.readFileSync(rendererInjectPath, "utf8");
 
 describe("renderer injection contract", () => {
   it("keeps the IFQ.AI brand entry visible in the injected settings UI", () => {
-    expect(rendererInject).toContain("CodexAssistant - by IFQ.AI");
-    expect(rendererInject).toContain("https://ifq.ai/");
+    expect(rendererInject).toContain("捷时云服务 - by IFQ.AI");
+    expect(rendererInject).toContain("https://cloud.ifq.ai");
     expect(rendererInject).toContain("IFQ.AI</strong>");
   });
 
