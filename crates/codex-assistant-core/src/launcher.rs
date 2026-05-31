@@ -1914,7 +1914,7 @@ fn loopback_degraded_message(
     let detail = error.to_string();
     let proxy_note = if protocol_proxy_enabled {
         protocol_proxy_fallback_note.unwrap_or(
-            " Local API relay is disabled for this launch because it also requires Windows TCP loopback.",
+            " 本地 API 中转已禁用（需要回环连接）。",
         )
     } else {
         ""
@@ -1927,8 +1927,15 @@ fn loopback_degraded_message(
         // longer English explanation so logs and non-Chinese users still
         // have full context.
         format!(
-            "Codex 已启动，但本机回环连接被拦截，增强功能暂未生效。请在腾讯电脑管家 / VPN / 安全软件中将 codex-assistant.exe 加入白名单，然后重新唤起 Codex。{proxy_note} \
-             Diagnostic: TCP loopback to 127.0.0.1 is blocked even after the launcher's compliant self-heal (program-scoped Windows Firewall allow rule). \
+            "Codex 已启动，但本机回环连接被拦截，增强功能暂未生效。\n\n\
+             【解决方案】\n\
+             1. VPN 用户：在 VPN 设置中添加 127.0.0.1 白名单\n\
+                - WireGuard/Meta Tunnel: 在配置中添加 AllowedIPs = 127.0.0.1/32\n\
+                - 或在 Kill-Switch 设置中排除本地流量\n\
+             2. 安全软件用户：将 codex-assistant.exe 和 Codex.exe 加入白名单\n\
+             3. 临时方案：暂停 VPN kill-switch 功能\n\n\
+             配置完成后，点击「唤起 Codex」重新启动即可恢复全部功能。{proxy_note}\n\n\
+             Technical diagnostic: TCP loopback to 127.0.0.1 is blocked even after the launcher's compliant self-heal (program-scoped Windows Firewall allow rule). \
              CodexAssistant never disables VPN, firewall, or security controls automatically. {detail}"
         )
     } else {
@@ -2188,6 +2195,23 @@ async fn wait_for_port_release(port: u16) {
     }
 }
 
+/// Diagnose loopback connection errors and provide user-friendly hints
+fn diagnose_loopback_error(error: &std::io::Error) -> &'static str {
+    match error.kind() {
+        std::io::ErrorKind::TimedOut =>
+            "(Hint: VPN kill-switch may be blocking 127.0.0.1)",
+        std::io::ErrorKind::ConnectionRefused =>
+            "(Hint: Check Windows Firewall or security software)",
+        std::io::ErrorKind::ConnectionReset =>
+            "(Hint: VPN or security software actively blocking localhost)",
+        std::io::ErrorKind::ConnectionAborted =>
+            "(Hint: Connection aborted by network filter)",
+        std::io::ErrorKind::PermissionDenied =>
+            "(Hint: Security software denied localhost access)",
+        _ => "(Hint: Check VPN and firewall settings)",
+    }
+}
+
 async fn run_loopback_probe_rounds() -> anyhow::Result<()> {
     use std::net::Ipv4Addr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -2197,8 +2221,19 @@ async fn run_loopback_probe_rounds() -> anyhow::Result<()> {
         let listener = match tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await {
             Ok(listener) => listener,
             Err(error) => {
+                let kind_str = format!("{:?}", error.kind());
+                let hint = diagnose_loopback_error(&error);
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "loopback.probe.bind_failed",
+                    serde_json::json!({
+                        "attempt": attempt,
+                        "error": error.to_string(),
+                        "error_kind": kind_str,
+                        "hint": hint,
+                    }),
+                );
                 last_error = Some(anyhow::anyhow!(
-                    "loopback pre-flight attempt {attempt}: failed to bind 127.0.0.1:0: {error}"
+                    "loopback pre-flight attempt {attempt}: failed to bind 127.0.0.1:0: {error} {hint}"
                 ));
                 tokio::time::sleep(PREFLIGHT_LOOPBACK_RETRY_INTERVAL).await;
                 continue;
@@ -2226,14 +2261,47 @@ async fn run_loopback_probe_rounds() -> anyhow::Result<()> {
         match outcome {
             Ok(Ok(())) => return Ok(()),
             Ok(Err(error)) => {
+                let kind_str = format!("{:?}", error.kind());
+                let hint = diagnose_loopback_error(&error);
+
+                let diagnostic = format!(
+                    "TCP connect to 127.0.0.1:{} failed: {} [kind: {}] {}",
+                    port, error, kind_str, hint
+                );
+
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "loopback.probe.connection_failed",
+                    serde_json::json!({
+                        "attempt": attempt,
+                        "port": port,
+                        "error": error.to_string(),
+                        "error_kind": kind_str,
+                        "hint": hint,
+                    }),
+                );
+
                 last_error = Some(anyhow::anyhow!(
-                    "loopback pre-flight attempt {attempt}: TCP connect to 127.0.0.1 failed: {error}"
+                    "loopback pre-flight attempt {attempt}: {diagnostic}"
                 ));
             }
             Err(_) => {
-                last_error = Some(anyhow::anyhow!(
-                    "loopback pre-flight attempt {attempt}: TCP connect to 127.0.0.1 timed out after {}ms",
+                let diagnostic = format!(
+                    "TCP connect to 127.0.0.1:{} timed out after {}ms (likely VPN kill-switch blocking)",
+                    port,
                     PREFLIGHT_LOOPBACK_TIMEOUT.as_millis()
+                );
+
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "loopback.probe.timeout",
+                    serde_json::json!({
+                        "attempt": attempt,
+                        "port": port,
+                        "timeout_ms": PREFLIGHT_LOOPBACK_TIMEOUT.as_millis(),
+                    }),
+                );
+
+                last_error = Some(anyhow::anyhow!(
+                    "loopback pre-flight attempt {attempt}: {diagnostic}"
                 ));
             }
         }

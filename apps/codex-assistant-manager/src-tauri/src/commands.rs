@@ -1120,6 +1120,73 @@ fn copy_diagnostics_blocking() -> CommandResult<DiagnosticsPayload> {
 }
 
 #[tauri::command]
+pub async fn test_loopback_connectivity() -> CommandResult<Value> {
+    run_blocking_command(
+        || test_loopback_connectivity_blocking(),
+        |error| {
+            failed(
+                &format!("回环测试后台任务失败：{error}"),
+                json!({
+                    "status": "failed",
+                    "diagnostic": error.to_string()
+                }),
+            )
+        },
+    )
+    .await
+}
+
+fn test_loopback_connectivity_blocking() -> CommandResult<Value> {
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            return failed(
+                &format!("创建 runtime 失败: {e}"),
+                json!({
+                    "status": "failed",
+                    "diagnostic": format!("无法创建异步运行时: {e}")
+                }),
+            );
+        }
+    };
+
+    match runtime.block_on(codex_assistant_core::launcher::preflight_loopback_reachable()) {
+        Ok(()) => ok(
+            "本地回环连接测试通过。",
+            json!({
+                "status": "ok",
+                "message": "✓ 127.0.0.1 连接正常，所有功能可用。"
+            }),
+        ),
+        Err(error) => {
+            let diagnostic = format!(
+                "本地回环连接失败。\n\n\
+                 可能原因：\n\
+                 • VPN Kill-Switch 阻塞了 127.0.0.1\n\
+                 • 安全软件拦截了本地网络\n\
+                 • Windows 防火墙规则限制\n\n\
+                 解决方案：\n\
+                 1. 在 VPN 设置中添加 127.0.0.1 白名单\n\
+                    - WireGuard/Meta Tunnel: 在配置中添加 AllowedIPs = 127.0.0.1/32\n\
+                    - 或在 Kill-Switch 设置中排除本地流量\n\
+                 2. 在安全软件中允许 codex-assistant.exe\n\
+                 3. 临时关闭 VPN kill-switch 测试\n\n\
+                 技术详情: {}",
+                error
+            );
+
+            failed(
+                "本地回环连接测试失败。",
+                json!({
+                    "status": "failed",
+                    "diagnostic": diagnostic
+                }),
+            )
+        }
+    }
+}
+
+#[tauri::command]
 pub async fn reset_settings() -> CommandResult<SettingsPayload> {
     run_blocking_command(reset_settings_blocking, |error| {
         failed(

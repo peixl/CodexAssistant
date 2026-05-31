@@ -51,6 +51,7 @@ pub fn run() {
             commands::disable_watcher,
             commands::read_latest_logs,
             commands::copy_diagnostics,
+            commands::test_loopback_connectivity,
             commands::reset_settings,
             commands::relay_status,
             commands::read_relay_files,
