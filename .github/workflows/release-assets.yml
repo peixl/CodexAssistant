@@ -65,7 +65,7 @@ jobs:
       HAS_MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Rust toolchain
         run: |
@@ -76,7 +76,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -140,7 +140,7 @@ jobs:
       TARGET: x86_64-pc-windows-msvc
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Rust toolchain
         run: |
@@ -163,7 +163,7 @@ jobs:
           }
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -212,7 +212,7 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify build artifacts are attached to release
         env:
